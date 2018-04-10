@@ -1,0 +1,5 @@
+All auto-generated binding code is SPDX-License-Identifier: EPL-2.0
+Everything else is distributed under Apache License 2.0
+This includes io.netty and the ONVIF library that is used as they come with Apache License 2.0
+
+Big THANKS to all the contributors that created both of these two libraries and the example code that they have provided.

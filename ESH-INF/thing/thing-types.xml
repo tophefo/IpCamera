@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="ipcamera" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0 http://eclipse.org/smarthome/schemas/thing-description-1.0.0.xsd">
+
+    <thing-type id="ONVIF">
+        <label>ONVIF Camera</label>
+        <description>ONVIF Camera</description>
+        <channels>
+            <channel id="testbutton" typeId="testbutton" />
+            <channel id="image" typeId="image" />
+            <channel id="videourl" typeId="videourl" />
+            <channel id="imageurl" typeId="imageurl" />
+            <channel id="pan" typeId="pan" />
+            <channel id="tilt" typeId="tilt" />
+            <channel id="zoom" typeId="zoom" />            
+        </channels>     
+        <config-description>
+
+<parameter name="IPADDRESS" type="text" required="true">
+<context>network-address</context>
+<label>IP Address</label>
+<description>Use this format 192.168.1.2 and do not include the port number.
+</description>        
+</parameter>
+
+<parameter name="USERNAME" type="text" required="false">
+<label>User name for camera.</label>
+<description>Enter the User name used to connect to your camera. Leave blank if your camera does not use login details.
+</description>
+</parameter>
+            
+<parameter name="PASSWORD" type="text" required="false">
+<context>password</context>
+<label>Password for camera.</label>
+<description>Enter Password for your camera. Leave blank if your camera does not use login details.
+</description>
+</parameter>
+
+<parameter name="ONVIF_PROFILE_NUMBER" type="integer" required="true" min="0" max="5">
+<label>ONVIF Profile stream number.</label>
+<description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams.
+</description>
+<default>0</default>
+</parameter>
+
+        </config-description>
+	</thing-type>
+	
+
+        <channel-type id="testbutton">
+        <item-type>Switch</item-type>
+        <label>Button for testing reasons IGNORE ME</label>
+        <description>Ignore me, used for testing new code in development.</description>      
+        </channel-type>
+        
+        <channel-type id="image">
+        <item-type>Image</item-type>
+        <label>Image</label>
+        <description>NOT SUPPORTED YET. A static picture from the camera.</description>
+        <category>Camera</category>
+        </channel-type>
+    
+        <channel-type id="imageurl">
+        <item-type>String</item-type>
+        <label>Image URL</label>
+        <description>A link you can use to fetch a static image from the camera.</description>
+        <category>Camera</category>
+        <state readOnly="true" />
+        </channel-type>
+    
+        <channel-type id="videourl">
+        <item-type>String</item-type>
+        <label>Video URL</label>
+        <description>A link you can use to fetch a video feed from the camera.</description>
+        <category>Camera</category>
+        <state readOnly="true" />
+        </channel-type>
+    
+        <channel-type id="pan">
+        <item-type>Dimmer</item-type>
+        <label>Pan</label>
+        <description>Pan the camera to an absolute position.</description>
+        <category>MoveControl</category>
+        </channel-type>
+        
+        <channel-type id="tilt">
+        <item-type>Dimmer</item-type>
+        <label>Tilt</label>
+        <description>Tilt the camera to an absolute position.</description>
+        <category>MoveControl</category>
+        </channel-type>
+        
+        <channel-type id="zoom">
+        <item-type>Dimmer</item-type>
+        <label>Zoom</label>
+        <description>Zoom the camera to an absolute value.</description>
+        <category>Zoom</category>
+        </channel-type>
+
+</thing:thing-descriptions>
