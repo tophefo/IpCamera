@@ -1,34 +1,42 @@
 # <bindingName> Binding
 
-This binding allows you to use an ONVIF camera in Openhab2 directly.
+This binding allows you to use IP cameras in Openhab2 directly.
 
 ## Supported Things
 
-ONVIF thing type allows any compatible ONVIF camera to connect to openhab. This should allow any brand of compatible camera to be used.
+ONVIF: Use for all ONVIF Cameras from any brand that do not have an API.
+AMCREST: Use for all current Amcrest Cameras as they support an API as well as ONVIF.
+FOSCAM: Use for all current FOSCAM Cameras as they support an API as well as ONVIF.
+AXIS: Use for all current Axis Cameras as they support an API as well as ONVIF
 
 ## Discovery
 
-Auto discovery is not supported currently. Manually add the ONVIF camera either via PaperUI or textual configuration which is covered below in more detail. Once the camera is added you then need to supply the IP address, and optionally a username and password if the camera is secured with these. Clicking on the pencil icon in PaperUI is how you reach these parameters.
+Auto discovery is not supported currently. Manually add the ONVIF camera either via PaperUI or textual configuration which is covered below in more detail. Once the camera is added you then need to supply the IP address and port that ONVIF uses. Optionally a username and password can also be filled in if the camera is secured with these. Clicking on the pencil icon in PaperUI is how you reach these parameters.
 
 ## Binding Configuration
 
-The binding can be configured with PaperUI by clicking on the pencil icon of any of the ONVIF cameras that you have manually added. 
+The binding can be configured with PaperUI by clicking on the pencil icon of any of the cameras that you have manually added. 
 
 It can also be manually configured with text files by doing the following. DO NOT try and change a setting using PaperUI after using textual configuration as the two will conflict as the text file locks the settings preventing them from changing.
 
-The parameters for an ONVIF thing type are:
+The parameters that can be used are:
 
 IPADDRESS
+
+ONVIF_PORT
 
 USERNAME
 
 PASSWORD
 
-ONVIF_PROFILE_NUMBER
+ONVIF_MEDIA_PROFILE
+
+CHECK_STATUS_DELAY
+
 
 Create a file called 'ipcamera.things' and save it to your things folder.
 
-Thing ipcamera:ONVIF:001 [ IPADDRESS="192.168.1.2", PASSWORD="suitcase123456", USERNAME="Admin", ONVIF_PROFILE_NUMBER=0]
+Thing ipcamera:ONVIF:001 [ IPADDRESS="192.168.1.2", PASSWORD="suitcase123456", USERNAME="Admin", ONVIF_MEDIA_PROFILE=0]
 
 
 
@@ -44,7 +52,7 @@ Currently there are two channels to ignore and they are the Image channel which 
 
 ## Full Example
 
-Use the following examples to base your setup on to save some time. It should be possible to fetch the link from the camera and to auto insert it into the Webview url which is why the binding provides a String channel that contains the link.
+Use the following examples to base your setup on to save some time. It should be possible to fetch the link from the camera and to auto insert it into the Webview url which is why the binding provides a String channel that contains the link. NOTE: If your cameras is secured with a user and password the links will not work and will require a future feature to be added to the binding.
 
 *.sitemap
 
@@ -68,8 +76,8 @@ Dimmer Cam001Zoom {channel="ipcamera:ONVIF:001:zoom"}
 
 *.things
 
-Thing ipcamera:ONVIF:001 [ IPADDRESS="192.168.1.2", PASSWORD="suitcase123456", USERNAME="Admin", ONVIF_PROFILE_NUMBER=0]
+Thing ipcamera:ONVIF:001 [ IPADDRESS="192.168.1.2", PASSWORD="suitcase123456", USERNAME="Admin", ONVIF_MEDIA_PROFILE=0]
 
 ## Roadmap for further development
 
-Next features being worked on currently is supporting HTTP API features from cameras that have the ability to access more advanced feature via an API. This requires some frame work to be created that allows basic and also digest authorization to be created first then the advanced features can be worked on. Motion and Audio alarms are high on the list to get supported.
+Audio Alarm support for Amcrest cameras is being looked at, followed by a way to give a picture in Openhab from cameras with password protected features. If you need a feature added that is in an API it is very easy to add most of them, so raise a ticket with the request.
