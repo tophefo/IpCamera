@@ -28,12 +28,17 @@ public class IpCameraBindingConstants {
 
     // List of all Thing Type UIDs
     public static final ThingTypeUID THING_TYPE_ONVIF = new ThingTypeUID(BINDING_ID, "ONVIF");
+    public static final ThingTypeUID THING_TYPE_AMCREST = new ThingTypeUID(BINDING_ID, "AMCREST");
+    public static final ThingTypeUID THING_TYPE_AXIS = new ThingTypeUID(BINDING_ID, "AXIS");
+    public static final ThingTypeUID THING_TYPE_FOSCAM = new ThingTypeUID(BINDING_ID, "FOSCAM");
 
     // List of all Thing Config items
     public static final String CONFIG_IPADDRESS = "IPADDRESS";
+    public static final String CONFIG_ONVIF_PORT = "ONVIF_PORT";
     public static final String CONFIG_USERNAME = "USERNAME";
     public static final String CONFIG_PASSWORD = "PASSWORD";
-    public static final String CONFIG_ONVIF_PROFILE_NUMBER = "ONVIF_PROFILE_NUMBER";
+    public static final String CONFIG_ONVIF_PROFILE_NUMBER = "ONVIF_MEDIA_PROFILE";
+    public static final String CONFIG_CHECK_STATUS_DELAY = "CHECK_STATUS_DELAY";
 
     // List of all Channel ids
     public static final String CHANNEL_1 = "testbutton";
@@ -43,4 +48,7 @@ public class IpCameraBindingConstants {
     public static final String CHANNEL_ABSOLUTE_PAN = "pan";
     public static final String CHANNEL_ABSOLUTE_TILT = "tilt";
     public static final String CHANNEL_ABSOLUTE_ZOOM = "zoom";
+    public static final String CHANNEL_MOTION_ALARM = "motionAlarm";
+    public static final String CHANNEL_AUDIO_ALARM = "audioAlarm";
+
 }
