@@ -17,11 +17,9 @@ import static org.openhab.binding.ipcamera.IpCameraBindingConstants.*;
 import java.net.ConnectException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -34,6 +32,7 @@ import javax.xml.soap.SOAPException;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.PercentType;
+import org.eclipse.smarthome.core.library.types.RawType;
 import org.eclipse.smarthome.core.library.types.StringType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
@@ -46,6 +45,7 @@ import org.onvif.ver10.schema.FloatRange;
 import org.onvif.ver10.schema.PTZVector;
 import org.onvif.ver10.schema.Profile;
 import org.onvif.ver10.schema.VideoEncoderConfiguration;
+import org.openhab.binding.ipcamera.internal.MyNettyAuthHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +65,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.base64.Base64;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
+import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpContentDecompressor;
@@ -88,9 +89,6 @@ import io.netty.util.CharsetUtil;
  * @author Matthew Skinner - Initial contribution
  */
 
-// Special note and thanks to authors of HttpSnoopClient which is sample code for the Netty library from which some code
-// is based heavily from and is released under Apache License version 2.0//
-
 public class IpCameraHandler extends BaseThingHandler {
 
     public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<ThingTypeUID>(
@@ -104,25 +102,25 @@ public class IpCameraHandler extends BaseThingHandler {
     private FloatRange tiltRange;
     private PtzDevices ptzDevices;
     private ScheduledFuture<?> cameraConnectionJob = null;
-    private ScheduledFuture<?> checkAlarmJob = null;
+    private ScheduledFuture<?> fetchCameraOutputJob = null;
     private int selectedMediaProfile = 0;
     private EventLoopGroup eventLoopGroup;
     private Bootstrap bootstrap;
-    private String fullRequestPath;
+    public String fullRequestPath;
     private PTZVector ptzLocation;
 
     @NonNull
     private final Logger logger = LoggerFactory.getLogger(IpCameraHandler.class);
     private final ScheduledExecutorService cameraConnection = Executors.newSingleThreadScheduledExecutor();
-    private final ScheduledExecutorService checkAlarm = Executors.newSingleThreadScheduledExecutor();
-    private String snapshotUri = "empty";
+    private final ScheduledExecutorService fetchCameraOutput = Executors.newSingleThreadScheduledExecutor();
+    private String snapshotUri = "";
     private String videoStreamUri = "empty";
     private String ipAddress = "empty";
     private String profileToken = "empty";
-    private boolean useDigestAuth = false;
-    private boolean useBasicAuth = false;
-    private String digestString = "false";
-    private int ncCounter = 0;
+    public boolean useDigestAuth = false;
+    public boolean useBasicAuth = false;
+    public String digestString = "false";
+
     // These hold the cameras PTZ position in the range that the camera uses, ie mine is -1 to +1
     private float currentPanCamValue = 0.0f;
     private float currentTiltCamValue = 0.0f;
@@ -134,7 +132,10 @@ public class IpCameraHandler extends BaseThingHandler {
     private float currentTiltPercentage = 0.0f;
     private float currentZoomPercentage = 0.0f;
 
-    private void sendHttpRequest(String httpRequest) {
+    // Special note and thanks to authors of HttpSnoopClient which is sample code for the Netty library from which some
+    // code
+    // is based heavily from and any sample code that I used is released under Apache License version 2.0//
+    public void sendHttpRequest(String httpRequest) {
 
         if (eventLoopGroup == null) {
             eventLoopGroup = new NioEventLoopGroup();
@@ -153,6 +154,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 public void initChannel(SocketChannel socketChannel) throws Exception {
                     socketChannel.pipeline().addLast(new HttpClientCodec());
                     socketChannel.pipeline().addLast(new HttpContentDecompressor());
+                    socketChannel.pipeline().addLast(new MyNettyAuthHandler(username, password, thing.getHandler()));
 
                     switch (thing.getThingTypeUID().getId()) {
                         case "AMCREST":
@@ -276,62 +278,13 @@ public class IpCameraHandler extends BaseThingHandler {
         return null;
     }
 
-    private String calcMD5Hash(String toHash) {
-        try {
-            MessageDigest messageDigest = MessageDigest.getInstance("MD5");
-            byte[] array = messageDigest.digest(toHash.getBytes());
-            StringBuffer stringBuffer = new StringBuffer();
-            for (int i = 0; i < array.length; ++i) {
-                stringBuffer.append(Integer.toHexString((array[i] & 0xFF) | 0x100).substring(1, 3));
-            }
-            return stringBuffer.toString();
-        } catch (java.security.NoSuchAlgorithmException e) {
-            logger.error("NoSuchAlgorithmException when calculating MD5 hash");
-        }
-        return null;
-    }
-
-    void processAuth(String rawString) {
-
-        String realm = searchString(rawString, "Basic realm=\"");
-
-        if (realm != null) {
-            useDigestAuth = false;
-            useBasicAuth = true;
-            return;
-        }
-        realm = searchString(rawString, "Digest realm=\"");
-        if (realm == null) {
-            useDigestAuth = false;
-            useBasicAuth = false;
-            return;
-        }
-        useDigestAuth = true;
-        // Must increase each time otherwise a new nonce and cnonce is needed which increases traffic.
-        ncCounter = (ncCounter <= 65000) ? ncCounter + 1 : 1;
-        Random random = new Random();
-        // Can keep the cnonce the same to save network traffic in certain cases.
-        String cnonce = Integer.toHexString(random.nextInt());
-        String nonce = searchString(rawString, "nonce=\"");
-        String opaque = searchString(rawString, "opaque=\"");
-        String qop = searchString(rawString, "qop=\"");
-        // create the MD5 hashes
-        String ha1 = username + ":" + realm + ":" + password;
-        ha1 = calcMD5Hash(ha1);
-        String ha2 = "GET:" + fullRequestPath;
-        ha2 = calcMD5Hash(ha2);
-        String request = ha1 + ":" + nonce + ":" + ncCounter + ":" + cnonce + ":" + qop + ":" + ha2;
-        request = calcMD5Hash(request);
-
-        digestString = "username=\"" + username + "\", realm=\"" + realm + "\", nonce=\"" + nonce + "\", uri=\""
-                + fullRequestPath + "\", qop=" + qop + ", nc=" + ncCounter + ", cnonce=\"" + cnonce + "\", response=\""
-                + request + "\", opaque=\"" + opaque + "\"";
-
-        sendHttpRequest(fullRequestPath);
-    }
-
     public class AmcrestHandler extends ChannelInboundHandlerAdapter {
+        private int bytesToRecieve = 0;
+        private int bytesAlreadyRecieved = 0;
+        private byte[] lastSnapshot;
+        private String contentType;
 
+        // Any camera specific changes are to be in here to make this easier to maintain//
         private void processResponseContent(String content) {
 
             logger.debug("HTTP Result back from camera is :{}:", content);
@@ -339,124 +292,199 @@ public class IpCameraHandler extends BaseThingHandler {
             switch (content) {
                 case "Error: No Events\r\n":
                     updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                    break;
+                    return;
 
                 case "channels[0]=0\r\n":
                     updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("ON"));
-                    break;
+                    return;
             }
+
+            if (searchString(content, "table.MotionDetect[0].Enable=false") != null) {
+                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                return;
+            } else if (searchString(content, "table.MotionDetect[0].Enable=true") != null) {
+                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
+                return;
+            }
+
         }
 
-        @Override
-        public void channelActive(ChannelHandlerContext channelHandlerContext) throws Exception {
-        }
-
-        // This method handles the Servers response
+        // This method handles the Servers response, nothing specific to the camera should be in here //
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            logger.debug(msg.toString());
+            // logger.debug(msg.toString());
 
             if (msg instanceof HttpResponse) {
                 HttpResponse response = (HttpResponse) msg;
 
-                // WWW-Authenticate
                 if (!response.headers().isEmpty()) {
                     for (CharSequence name : response.headers().names()) {
                         for (CharSequence value : response.headers().getAll(name)) {
                             // logger.debug("HEADER: {} = {}", name, value);
-                            if (name.toString().equals("WWW-Authenticate")) {
-                                processAuth(value.toString());
+
+                            if (name.toString().equals("Content-Type")) {
+                                contentType = value.toString();
+                                logger.debug("This reponse from camera contains :{}", contentType);
+                            }
+
+                            else if (name.toString().equals("Content-Length")) {
+                                logger.debug("This reponse from camera is {} bytes long", value);
+                                bytesToRecieve = Integer.parseInt(value.toString());
+                            } else if (name.toString().equals("Content-Transfer-Encoding")) {
+                                logger.debug("This reponse from camera uses {} encoding", value);
                             }
                         }
                     }
                 }
 
                 if (HttpUtil.isTransferEncodingChunked(response)) {
-                    logger.debug("CHUNKED CONTENT {");
-                } else {
-                    logger.debug("CONTENT {");
+                    logger.debug("CHUNKED CONTENT HAS BEEN FOUND");
                 }
+
             }
             if (msg instanceof HttpContent) {
                 HttpContent content = (HttpContent) msg;
-                logger.debug(content.content().toString(CharsetUtil.UTF_8));
 
-                // Process the contents of a response //
-                if (!content.content().toString().isEmpty()) {
+                // Process the contents of a response if it is not an image//
+                if (!content.content().toString().contentEquals("\r\n") && !"image/jpeg".equals(contentType)) {
                     processResponseContent(content.content().toString(CharsetUtil.UTF_8));
+                    bytesAlreadyRecieved = 0;
+                    lastSnapshot = null;
                 }
 
                 if (content instanceof LastHttpContent) {
-                    logger.debug("} END OF CONTENT");
                     ctx.close();
+                }
+
+                if (content instanceof DefaultHttpContent) {
+
+                    if ("image/jpeg".equals(contentType)) {
+
+                        for (int i = 0; i < content.content().capacity(); i++) {
+                            if (lastSnapshot == null) {
+                                lastSnapshot = new byte[bytesToRecieve];
+                            }
+                            lastSnapshot[bytesAlreadyRecieved++] = content.content().getByte(i);
+                        }
+                        // logger.debug("got {} bytes out of the total {}, so still waiting for {} more",
+                        // bytesAlreadyRecieved, bytesToRecieve, bytesToRecieve - bytesAlreadyRecieved);
+
+                        if (bytesAlreadyRecieved >= bytesToRecieve) {
+                            if (bytesToRecieve != bytesAlreadyRecieved) {
+                                logger.error(
+                                        "We got too many packets back from the camera for some reason, please report this.");
+                            }
+                            logger.debug("Updating the image channel now with {} Bytes.", bytesAlreadyRecieved);
+                            updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
+                            bytesAlreadyRecieved = 0;
+                            lastSnapshot = null;
+                        }
+                    }
                 }
             }
         }
     }
 
     public class FoscamHandler extends ChannelInboundHandlerAdapter {
+        private int bytesToRecieve = 0;
+        private int bytesAlreadyRecieved = 0;
+        private byte[] lastSnapshot;
+        private String contentType;
 
         private void processResponseContent(String content) {
             logger.debug("HTTP Result back from camera is :{}:", content);
 
             if (searchString(content, "<MotionDetectAlarm> 1 </ motionDetectAlarm>") != null) {
                 updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                return;
             } else if (searchString(content, "<MotionDetectAlarm> 2 </ motionDetectAlarm>") != null) {
                 updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("ON"));
+                return;
             } else if (searchString(content, "<MotionDetectAlarm> 0 </ motionDetectAlarm>") != null) {
                 logger.debug("Motion Alarm is turned off in camera settings.");
                 updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                return;
             } else if (searchString(content, "<Sound alarm> 0 </ sound alarm>") != null) {
                 updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                return;
             } else if (searchString(content, "<Sound alarm> 1 </ sound alarm>") != null) {
                 updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                return;
             } else if (searchString(content, "<Sound alarm> 2 </ sound alarm>") != null) {
                 updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("ON"));
+                return;
             }
         }
 
-        @Override
-        public void channelActive(ChannelHandlerContext channelHandlerContext) throws Exception {
-        }
-
-        // This method handles the Cameras response
+        // This method handles the Servers response, nothing specific to the camera should be in here //
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            logger.debug(msg.toString());
+            // logger.debug(msg.toString());
 
             if (msg instanceof HttpResponse) {
                 HttpResponse response = (HttpResponse) msg;
 
-                // WWW-Authenticate
                 if (!response.headers().isEmpty()) {
                     for (CharSequence name : response.headers().names()) {
                         for (CharSequence value : response.headers().getAll(name)) {
                             // logger.debug("HEADER: {} = {}", name, value);
-                            if (name.toString().equals("WWW-Authenticate")) {
-                                processAuth(value.toString());
+
+                            if (name.toString().equals("Content-Type")) {
+                                contentType = value.toString();
+                                logger.debug("This reponse from camera contains :{}", contentType);
+                            }
+
+                            else if (name.toString().equals("Content-Length")) {
+                                logger.debug("This reponse from camera is {} bytes long", value);
+                                bytesToRecieve = Integer.parseInt(value.toString());
+                            } else if (name.toString().equals("Content-Transfer-Encoding")) {
+                                logger.debug("This reponse from camera uses {} encoding", value);
                             }
                         }
                     }
                 }
 
                 if (HttpUtil.isTransferEncodingChunked(response)) {
-                    logger.debug("CHUNKED CONTENT {");
-                } else {
-                    logger.debug("CONTENT {");
+                    logger.debug("CHUNKED CONTENT HAS BEEN FOUND");
                 }
+
             }
             if (msg instanceof HttpContent) {
                 HttpContent content = (HttpContent) msg;
-                logger.debug(content.content().toString(CharsetUtil.UTF_8));
 
-                // Process the contents of a response //
-                if (!content.content().toString().isEmpty()) {
+                // Process the contents of a response if it is not an image//
+                if (!content.content().toString().contentEquals("\r\n") && !"image/jpeg".equals(contentType)) {
                     processResponseContent(content.content().toString(CharsetUtil.UTF_8));
+                    bytesAlreadyRecieved = 0;
+                    lastSnapshot = null;
                 }
 
                 if (content instanceof LastHttpContent) {
-                    logger.debug("} END OF CONTENT");
                     ctx.close();
+                }
+
+                if (content instanceof DefaultHttpContent) {
+
+                    if ("image/jpeg".equals(contentType)) {
+
+                        for (int i = 0; i < content.content().capacity(); i++) {
+                            if (lastSnapshot == null) {
+                                lastSnapshot = new byte[bytesToRecieve];
+                            }
+                            lastSnapshot[bytesAlreadyRecieved++] = content.content().getByte(i);
+                        }
+
+                        if (bytesAlreadyRecieved >= bytesToRecieve) {
+                            if (bytesToRecieve != bytesAlreadyRecieved) {
+                                logger.error(
+                                        "We got too many packets back from the camera for some reason, please report this.");
+                            }
+                            logger.debug("Updating the image channel now with {} Bytes.", bytesAlreadyRecieved);
+                            updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
+                            bytesAlreadyRecieved = 0;
+                            lastSnapshot = null;
+                        }
+                    }
                 }
             }
         }
@@ -480,9 +508,21 @@ public class IpCameraHandler extends BaseThingHandler {
 
                     break;
 
-                case CHANNEL_VIDEO_URL:
+                case CHANNEL_ENABLE_MOTION_ALARM:
+                    switch (thing.getThingTypeUID().getId()) {
+
+                        case "AMCREST":
+                            sendHttpRequest(
+                                    "http://192.168.1.108/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect");
+                            break;
+
+                        case "FOSCAM":
+                            sendHttpRequest("http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=getMotionDetectConfig");
+                            break;
+                    }
 
                     break;
+
                 case CHANNEL_ABSOLUTE_PAN:
                     if (ptzDevices != null) {
                         currentPanPercentage = (((panRange.getMin() - ptzLocation.getPanTilt().getX()) * -1)
@@ -520,7 +560,30 @@ public class IpCameraHandler extends BaseThingHandler {
             case CHANNEL_1:
 
                 logger.debug("button pushed");
-                // sendHttpRequest("http://192.168.1.108/really cool address ;)");
+                break;
+
+            case CHANNEL_ENABLE_MOTION_ALARM:
+
+                switch (thing.getThingTypeUID().getId()) {
+                    case "AMCREST":
+                        if ("ON".equals(command.toString())) {
+                            sendHttpRequest(
+                                    "http://192.168.1.108/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=true");
+                        } else {
+                            sendHttpRequest(
+                                    "http://192.168.1.108/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=false");
+                        }
+                        break;
+
+                    case "FOSCAM":
+                        if ("ON".equals(command.toString())) {
+                            sendHttpRequest(
+                                    "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig&isEnable=1");
+                        } else {
+                            sendHttpRequest(
+                                    "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig&isEnable=0");
+                        }
+                }
 
                 break;
 
@@ -539,6 +602,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     }
                 }
                 break;
+
             case CHANNEL_ABSOLUTE_TILT:
                 if (ptzDevices != null) {
                     currentTiltCamValue = ((((tiltRange.getMin() - tiltRange.getMax()) * -1) / 100)
@@ -658,7 +722,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     updateState(CHANNEL_VIDEO_URL, new StringType(videoStreamUri));
                     cameraConnectionJob.cancel(true);
                     cameraConnectionJob = null;
-                    cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 29, 29,
+                    cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 30, 30,
                             TimeUnit.SECONDS);
                     updateStatus(ThingStatus.ONLINE);
 
@@ -675,8 +739,6 @@ public class IpCameraHandler extends BaseThingHandler {
             //////////////// Code below is when Camera is already connected ////////////////
             else {
 
-                logger.debug("Checking camera is still online. This occurs every 29 seconds.");
-
                 try {
                     onvifCamera.getMedia().getSnapshotUri(profileToken);
                     ptzLocation = (ptzLocation == null) ? null : ptzDevices.getPosition(profileToken);
@@ -691,9 +753,13 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     };
 
-    Runnable pollingAlarm = new Runnable() {
+    Runnable pollingCamera = new Runnable() {
         @Override
         public void run() {
+
+            if (snapshotUri != null) {
+                sendHttpRequest(snapshotUri);
+            }
 
             switch (thing.getThingTypeUID().getId()) {
                 case "AMCREST":
@@ -726,12 +792,14 @@ public class IpCameraHandler extends BaseThingHandler {
 
         cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 0, 180, TimeUnit.SECONDS);
 
-        if (thing.getThingTypeUID().getId().equals("AMCREST") || thing.getThingTypeUID().getId().equals("FOSCAM")) {
-            checkAlarmJob = checkAlarm.scheduleAtFixedRate(pollingAlarm,
-                    Integer.parseInt(thing.getConfiguration().get(CONFIG_CHECK_STATUS_DELAY).toString()),
-                    Integer.parseInt(thing.getConfiguration().get(CONFIG_CHECK_STATUS_DELAY).toString()),
-                    TimeUnit.MILLISECONDS);
-        }
+        fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera,
+                Integer.parseInt(thing.getConfiguration().get(CONFIG_POLL_CAMERA_MS).toString()),
+                Integer.parseInt(thing.getConfiguration().get(CONFIG_POLL_CAMERA_MS).toString()),
+                TimeUnit.MILLISECONDS);
+
+        // when testing code it is handy to shut down the Jobs and go straight online//
+        // updateStatus(ThingStatus.ONLINE);
+
     }
 
     @Override
@@ -740,8 +808,8 @@ public class IpCameraHandler extends BaseThingHandler {
         if (cameraConnectionJob != null) {
             cameraConnectionJob.cancel(true);
         }
-        if (checkAlarmJob != null) {
-            checkAlarmJob.cancel(true);
+        if (fetchCameraOutputJob != null) {
+            fetchCameraOutputJob.cancel(true);
         }
     }
 }

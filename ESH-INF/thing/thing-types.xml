@@ -50,6 +50,13 @@
 <default>0</default>
 </parameter>
 
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="10000">
+<label>Time in milliseconds between checking camera states and fetching an Image.</label>
+<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
+</description>
+<default>5000</default>
+</parameter>
+
 </config-description>
 </thing-type>
 
@@ -65,8 +72,8 @@
             <channel id="pan" typeId="pan" />
             <channel id="tilt" typeId="tilt" />
             <channel id="zoom" typeId="zoom" />
-            <channel id="motionAlarm" typeId="motionAlarm" />
-            <channel id="audioAlarm" typeId="audioAlarm" />            
+            <channel id="motionAlarm" typeId="motionAlarm" />    
+            <channel id="enableMotionAlarm" typeId="enableMotionAlarm" />     
         </channels>     
         <config-description>
 
@@ -104,9 +111,9 @@
 <default>0</default>
 </parameter>
 
-<parameter name="CHECK_STATUS_DELAY" type="integer" required="true" min="500" max="10000">
-<label>Time in milliseconds between checking camera states.</label>
-<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "4000" which is 4 seconds.
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="10000">
+<label>Time in milliseconds between checking camera states and fetching an Image.</label>
+<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
 </description>
 <default>5000</default>
 </parameter>
@@ -125,7 +132,8 @@
             <channel id="tilt" typeId="tilt" />
             <channel id="zoom" typeId="zoom" />    
             <channel id="motionAlarm" typeId="motionAlarm" />
-            <channel id="audioAlarm" typeId="audioAlarm" />        
+            <channel id="audioAlarm" typeId="audioAlarm" />
+            <channel id="enableMotionAlarm" typeId="enableMotionAlarm" />         
         </channels>     
         <config-description>
 
@@ -163,9 +171,9 @@
 <default>0</default>
 </parameter>
 
-<parameter name="CHECK_STATUS_DELAY" type="integer" required="true" min="500" max="60000">
-<label>Time in milliseconds between checking camera states.</label>
-<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "4000" which is 4 seconds.
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="10000">
+<label>Time in milliseconds between checking camera states and fetching an Image.</label>
+<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
 </description>
 <default>5000</default>
 </parameter>
@@ -220,6 +228,13 @@
 <default>0</default>
 </parameter>
 
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="10000">
+<label>Time in milliseconds between checking camera states and fetching an Image.</label>
+<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
+</description>
+<default>5000</default>
+</parameter>
+
 </config-description>
 </thing-type>
 
@@ -231,8 +246,8 @@
         
         <channel-type id="image">
         <item-type>Image</item-type>
-        <label>NOT SUPPORTED YET: Image</label>
-        <description>NOT SUPPORTED YET. A static picture from the camera.</description>
+        <label>A JPG Image that will auto update from your camera.</label>
+        <description>Low frame rate and low bandwidth to keep demands on your internet connection low when using to remote view.</description>
         <category>Camera</category>
         </channel-type>
     
@@ -288,5 +303,13 @@
         <category>Noise</category>
         <state readOnly="true" />
         </channel-type>
-
+        
+        <channel-type id="enableMotionAlarm">
+        <item-type>Switch</item-type>
+        <label>Enable/Disable the Motion Alarm</label>
+        <description>By using this feature you can stop the camera from sending emails when you are actually home.</description>
+        <category>Motion</category>
+        </channel-type>
+          
+       
 </thing:thing-descriptions>
