@@ -74,7 +74,6 @@ import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
-import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.ssl.SslContext;
@@ -110,7 +109,7 @@ public class IpCameraHandler extends BaseThingHandler {
     private PTZVector ptzLocation;
 
     @NonNull
-    private final Logger logger = LoggerFactory.getLogger(IpCameraHandler.class);
+    private final Logger logger = LoggerFactory.getLogger(getClass());
     private final ScheduledExecutorService cameraConnection = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService fetchCameraOutput = Executors.newSingleThreadScheduledExecutor();
     private String snapshotUri = "";
@@ -212,12 +211,12 @@ public class IpCameraHandler extends BaseThingHandler {
                 fullRequestPath = uri.getPath() + "?" + uri.getRawQuery();
             }
 
-            logger.debug("The request is going to be :{}", fullRequestPath);
-
             HttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, fullRequestPath);
             request.headers().set(HttpHeaderNames.HOST, ipAddress);
             request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
             request.headers().set(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.GZIP);
+
+            logger.debug("The request is going to be :{}", fullRequestPath);
 
             if (useDigestAuth) {
                 request.headers().set(HttpHeaderNames.AUTHORIZATION, "Digest " + digestString);
@@ -306,7 +305,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
                 return;
             }
-
         }
 
         // This method handles the Servers response, nothing specific to the camera should be in here //
@@ -322,31 +320,24 @@ public class IpCameraHandler extends BaseThingHandler {
                         for (CharSequence value : response.headers().getAll(name)) {
                             // logger.debug("HEADER: {} = {}", name, value);
 
-                            if (name.toString().equals("Content-Type")) {
+                            if (name.toString().equalsIgnoreCase("Content-Type")) {
                                 contentType = value.toString();
-                                logger.debug("This reponse from camera contains :{}", contentType);
+                                logger.debug("This reponse from camera contains :{}:", contentType);
                             }
 
-                            else if (name.toString().equals("Content-Length")) {
+                            else if (name.toString().equalsIgnoreCase("Content-Length")) {
                                 logger.debug("This reponse from camera is {} bytes long", value);
                                 bytesToRecieve = Integer.parseInt(value.toString());
-                            } else if (name.toString().equals("Content-Transfer-Encoding")) {
-                                logger.debug("This reponse from camera uses {} encoding", value);
                             }
                         }
                     }
                 }
-
-                if (HttpUtil.isTransferEncodingChunked(response)) {
-                    logger.debug("CHUNKED CONTENT HAS BEEN FOUND");
-                }
-
             }
             if (msg instanceof HttpContent) {
                 HttpContent content = (HttpContent) msg;
 
                 // Process the contents of a response if it is not an image//
-                if (!content.content().toString().contentEquals("\r\n") && !"image/jpeg".equals(contentType)) {
+                if (!"image/jpeg".equalsIgnoreCase(contentType)) {
                     processResponseContent(content.content().toString(CharsetUtil.UTF_8));
                     bytesAlreadyRecieved = 0;
                     lastSnapshot = null;
@@ -357,8 +348,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
 
                 if (content instanceof DefaultHttpContent) {
-
-                    if ("image/jpeg".equals(contentType)) {
+                    if ("image/jpeg".equalsIgnoreCase(contentType)) {
 
                         for (int i = 0; i < content.content().capacity(); i++) {
                             if (lastSnapshot == null) {
@@ -374,7 +364,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                 logger.error(
                                         "We got too many packets back from the camera for some reason, please report this.");
                             }
-                            logger.debug("Updating the image channel now with {} Bytes.", bytesAlreadyRecieved);
+                            // logger.debug("Updating the image channel now with {} Bytes.", bytesAlreadyRecieved);
                             updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
                             bytesAlreadyRecieved = 0;
                             lastSnapshot = null;
@@ -429,31 +419,24 @@ public class IpCameraHandler extends BaseThingHandler {
                         for (CharSequence value : response.headers().getAll(name)) {
                             // logger.debug("HEADER: {} = {}", name, value);
 
-                            if (name.toString().equals("Content-Type")) {
+                            if (name.toString().equalsIgnoreCase("Content-Type")) {
                                 contentType = value.toString();
-                                logger.debug("This reponse from camera contains :{}", contentType);
+                                logger.debug("This reponse from camera contains :{}:", contentType);
                             }
 
-                            else if (name.toString().equals("Content-Length")) {
+                            else if (name.toString().equalsIgnoreCase("Content-Length")) {
                                 logger.debug("This reponse from camera is {} bytes long", value);
                                 bytesToRecieve = Integer.parseInt(value.toString());
-                            } else if (name.toString().equals("Content-Transfer-Encoding")) {
-                                logger.debug("This reponse from camera uses {} encoding", value);
                             }
                         }
                     }
                 }
-
-                if (HttpUtil.isTransferEncodingChunked(response)) {
-                    logger.debug("CHUNKED CONTENT HAS BEEN FOUND");
-                }
-
             }
             if (msg instanceof HttpContent) {
                 HttpContent content = (HttpContent) msg;
 
                 // Process the contents of a response if it is not an image//
-                if (!content.content().toString().contentEquals("\r\n") && !"image/jpeg".equals(contentType)) {
+                if (!"image/jpeg".equalsIgnoreCase(contentType)) {
                     processResponseContent(content.content().toString(CharsetUtil.UTF_8));
                     bytesAlreadyRecieved = 0;
                     lastSnapshot = null;
@@ -464,8 +447,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
 
                 if (content instanceof DefaultHttpContent) {
-
-                    if ("image/jpeg".equals(contentType)) {
+                    if ("image/jpeg".equalsIgnoreCase(contentType)) {
 
                         for (int i = 0; i < content.content().capacity(); i++) {
                             if (lastSnapshot == null) {
@@ -473,13 +455,15 @@ public class IpCameraHandler extends BaseThingHandler {
                             }
                             lastSnapshot[bytesAlreadyRecieved++] = content.content().getByte(i);
                         }
+                        // logger.debug("got {} bytes out of the total {}, so still waiting for {} more",
+                        // bytesAlreadyRecieved, bytesToRecieve, bytesToRecieve - bytesAlreadyRecieved);
 
                         if (bytesAlreadyRecieved >= bytesToRecieve) {
                             if (bytesToRecieve != bytesAlreadyRecieved) {
                                 logger.error(
                                         "We got too many packets back from the camera for some reason, please report this.");
                             }
-                            logger.debug("Updating the image channel now with {} Bytes.", bytesAlreadyRecieved);
+                            // logger.debug("Updating the image channel now with {} Bytes.", bytesAlreadyRecieved);
                             updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
                             bytesAlreadyRecieved = 0;
                             lastSnapshot = null;
@@ -683,16 +667,15 @@ public class IpCameraHandler extends BaseThingHandler {
 
                     profileToken = profiles.get(selectedMediaProfile).getToken();
                     snapshotUri = onvifCamera.getMedia().getSnapshotUri(profileToken);
-                    videoStreamUri = onvifCamera.getMedia().getHTTPStreamUri(profileToken);
-                    logger.info(
-                            "This camera supports the following Video links. NOTE: The camera may report a link or error that does not match the header, this is the camera not a bug in the binding.");
-                    logger.info("HTTP Stream:{}", videoStreamUri);
-                    logger.info("TCP Stream:{}", onvifCamera.getMedia().getTCPStreamUri(profileToken));
-                    logger.info("RTSP Stream:{}", onvifCamera.getMedia().getRTSPStreamUri(profileToken));
-                    logger.info("UDP Stream:{}", onvifCamera.getMedia().getUDPStreamUri(profileToken));
+                    videoStreamUri = onvifCamera.getMedia().getRTSPStreamUri(profileToken);
 
-                    if (!videoStreamUri.contains("http") && !videoStreamUri.contains("HTTP")) {
-                        videoStreamUri = onvifCamera.getMedia().getRTSPStreamUri(profileToken);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(
+                                "This camera supports the following Video links. NOTE: The camera may report a link or error that does not match the header, this is the camera not a bug in the binding.");
+                        logger.debug("HTTP Stream:{}", onvifCamera.getMedia().getHTTPStreamUri(profileToken));
+                        logger.debug("TCP Stream:{}", onvifCamera.getMedia().getTCPStreamUri(profileToken));
+                        logger.debug("RTSP Stream:{}", onvifCamera.getMedia().getRTSPStreamUri(profileToken));
+                        logger.debug("UDP Stream:{}", onvifCamera.getMedia().getUDPStreamUri(profileToken));
                     }
 
                     ptzDevices = onvifCamera.getPtz();
@@ -725,6 +708,10 @@ public class IpCameraHandler extends BaseThingHandler {
                     cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 30, 30,
                             TimeUnit.SECONDS);
                     updateStatus(ThingStatus.ONLINE);
+
+                    fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 2000,
+                            Integer.parseInt(thing.getConfiguration().get(CONFIG_POLL_CAMERA_MS).toString()),
+                            TimeUnit.MILLISECONDS);
 
                 } catch (ConnectException e) {
                     updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
@@ -791,14 +778,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 : Integer.parseInt(thing.getConfiguration().get(CONFIG_ONVIF_PROFILE_NUMBER).toString());
 
         cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 0, 180, TimeUnit.SECONDS);
-
-        fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera,
-                Integer.parseInt(thing.getConfiguration().get(CONFIG_POLL_CAMERA_MS).toString()),
-                Integer.parseInt(thing.getConfiguration().get(CONFIG_POLL_CAMERA_MS).toString()),
-                TimeUnit.MILLISECONDS);
-
-        // when testing code it is handy to shut down the Jobs and go straight online//
-        // updateStatus(ThingStatus.ONLINE);
 
     }
 
