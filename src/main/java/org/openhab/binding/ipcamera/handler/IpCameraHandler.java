@@ -709,7 +709,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             TimeUnit.SECONDS);
                     updateStatus(ThingStatus.ONLINE);
 
-                    fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 2000,
+                    fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 5000,
                             Integer.parseInt(thing.getConfiguration().get(CONFIG_POLL_CAMERA_MS).toString()),
                             TimeUnit.MILLISECONDS);
 
@@ -779,6 +779,11 @@ public class IpCameraHandler extends BaseThingHandler {
 
         cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 0, 180, TimeUnit.SECONDS);
 
+        /////////////////////////
+        // when testing code it is handy to shut down the Jobs and go straight online//
+        // snapshotUri = "http://192.168.1.108/cgi-bin/snapshot.cgi?channel=1";
+        // updateStatus(ThingStatus.ONLINE);
+        /////////////////////////
     }
 
     @Override

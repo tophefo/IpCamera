@@ -35,7 +35,7 @@ PASSWORD
 
 ONVIF_MEDIA_PROFILE
 
-CONFIG_POLL_CAMERA_MS
+POLL_CAMERA_MS
 
 
 Create a file called 'ipcamera.things' and save it to your things folder.
@@ -59,27 +59,23 @@ Use the following examples to base your setup on to save some time. It should be
 
 *.sitemap
 
-Slider item=Cam001Pan
+Slider item=ipcamera_AMCREST_001_pan
 
-Slider item=Cam001Tilt
+Slider item=ipcamera_AMCREST_001_tilt
 
-Slider item=Cam001Zoom
+Slider item=ipcamera_AMCREST_001_zoom
 
-Webview url="http://192.168.1.2/onvifsnapshot/media_service/snapshot?channel=1&subtype=0" height=30
-              
-                
- *.items   
+Switch item=ipcamera_AMCREST_001_enableMotionAlarm
+
+Switch item=ipcamera_AMCREST_001_motionAlarm
+
+Image url="http://google.com/leaveLinkAsThis" item=ipcamera_AMCREST_001_image refresh=5000
              
-Dimmer Cam001Pan {channel="ipcamera:ONVIF:001:pan"}
-
-Dimmer Cam001Tilt {channel="ipcamera:ONVIF:001:tilt"}
-
-Dimmer Cam001Zoom {channel="ipcamera:ONVIF:001:zoom"}
-
+                
 
 *.things
 
-Thing ipcamera:ONVIF:001 [ IPADDRESS="192.168.1.2", PASSWORD="suitcase123456", USERNAME="Admin", ONVIF_MEDIA_PROFILE=0]
+Thing ipcamera:AMCREST:001 [ IPADDRESS="192.168.1.2", PASSWORD="suitcase123456", USERNAME="Admin", ONVIF_MEDIA_PROFILE=0]
 
 ## Roadmap for further development
 
