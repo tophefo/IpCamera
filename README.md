@@ -5,9 +5,13 @@ This binding allows you to use IP cameras in Openhab2 directly.
 ## Supported Things
 
 ONVIF: Use for all ONVIF Cameras from any brand that do not have an API.
+
 AMCREST: Use for all current Amcrest Cameras as they support an API as well as ONVIF.
+
 FOSCAM: Use for all current FOSCAM Cameras as they support an API as well as ONVIF.
+
 AXIS: Use for all current Axis Cameras as they support an API as well as ONVIF
+
 
 ## Discovery
 
@@ -17,7 +21,7 @@ Auto discovery is not supported currently. Manually add the ONVIF camera either 
 
 The binding can be configured with PaperUI by clicking on the pencil icon of any of the cameras that you have manually added. 
 
-It can also be manually configured with text files by doing the following. DO NOT try and change a setting using PaperUI after using textual configuration as the two will conflict as the text file locks the settings preventing them from changing.
+It can also be manually configured with text files by doing the following. DO NOT try and change a setting using PaperUI after using textual configuration as the two will conflict as the text file locks the settings preventing them from changing. Because the binding is changing so much at the moment I would recommend you only use paperUI and each time you upgrade to a newer version you remove and re-add the camera.
 
 The parameters that can be used are:
 
@@ -31,7 +35,7 @@ PASSWORD
 
 ONVIF_MEDIA_PROFILE
 
-CHECK_STATUS_DELAY
+CONFIG_POLL_CAMERA_MS
 
 
 Create a file called 'ipcamera.things' and save it to your things folder.
@@ -47,8 +51,7 @@ After setting up the camera as per above, you will need to watch the log files w
 
 ## Channels
 
-See PaperUI for a full list of channels and the descriptions.
-Currently there are two channels to ignore and they are the Image channel which requires the HTTP code to be finished first and a test button which I use to trigger new features that I am writing.
+See PaperUI for a full list of channels and the descriptions. Each camera brand will have different channels depending on how much of the support for an API has been added. The channels are kept consistant from camera to camera when possible to make upgrading to a different branded camera easier without the need to edit your rules as much.
 
 ## Full Example
 
@@ -80,4 +83,4 @@ Thing ipcamera:ONVIF:001 [ IPADDRESS="192.168.1.2", PASSWORD="suitcase123456", U
 
 ## Roadmap for further development
 
-Audio Alarm support for Amcrest cameras is being looked at, followed by a way to give a picture in Openhab from cameras with password protected features. If you need a feature added that is in an API it is very easy to add most of them, so raise a ticket with the request.
+If you need a feature added that is in an API it is very easy to add most of them, so raise a ticket with the request if you are not able to copy what I have already done and create a push request.
