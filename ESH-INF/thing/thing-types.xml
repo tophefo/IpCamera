@@ -418,7 +418,7 @@
         <item-type>Switch</item-type>
         <label>Audio Alarm</label>
         <description>Audio has triggered an Alarm.</description>
-        <category>Noise</category>
+        <category>SoundVolume</category>
         <state readOnly="true" />
         </channel-type>
         

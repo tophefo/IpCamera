@@ -913,7 +913,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
         cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 0, 180, TimeUnit.SECONDS);
 
-        // Currently using set MAVEN_OPTS=-Xms512m -Xmx1024m
+        // Currently using set MAVEN_OPTS=-Xms256m -Xmx512m
         /////////////////////////
         // when testing code it is handy to shut down the Jobs and go straight online//
         // snapshotUri = "http://192.168.1.108/cgi-bin/snapshot.cgi?channel=1";

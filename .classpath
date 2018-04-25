@@ -4,6 +4,6 @@
 	<classpathentry exported="true" kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
 	<classpathentry kind="src" path="src/main/java"/>
 	<classpathentry exported="true" kind="lib" path="lib/onvif-2016-03-16.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/netty-all-4.1.24.Final.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-all-4.1.25.Final.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
