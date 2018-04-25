@@ -27,6 +27,7 @@ public class IpCameraBindingConstants {
     private static final String BINDING_ID = "ipcamera";
 
     // List of all Thing Type UIDs
+    public static final ThingTypeUID THING_TYPE_NON_ONVIF = new ThingTypeUID(BINDING_ID, "NON_ONVIF");
     public static final ThingTypeUID THING_TYPE_ONVIF = new ThingTypeUID(BINDING_ID, "ONVIF");
     public static final ThingTypeUID THING_TYPE_AMCREST = new ThingTypeUID(BINDING_ID, "AMCREST");
     public static final ThingTypeUID THING_TYPE_AXIS = new ThingTypeUID(BINDING_ID, "AXIS");
@@ -34,11 +35,14 @@ public class IpCameraBindingConstants {
 
     // List of all Thing Config items
     public static final String CONFIG_IPADDRESS = "IPADDRESS";
+    public static final String CONFIG_PORT = "PORT";
+    public static final String CONFIG_USE_HTTPS = "USE_HTTPS";
     public static final String CONFIG_ONVIF_PORT = "ONVIF_PORT";
     public static final String CONFIG_USERNAME = "USERNAME";
     public static final String CONFIG_PASSWORD = "PASSWORD";
     public static final String CONFIG_ONVIF_PROFILE_NUMBER = "ONVIF_MEDIA_PROFILE";
     public static final String CONFIG_POLL_CAMERA_MS = "POLL_CAMERA_MS";
+    public static final String CONFIG_SNAPSHOT_URL_OVERIDE = "SNAPSHOT_URL_OVERIDE";
 
     // List of all Channel ids
     public static final String CHANNEL_1 = "testbutton";

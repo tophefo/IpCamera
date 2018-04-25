@@ -44,7 +44,6 @@ public class IpCameraHandlerFactory extends BaseThingHandlerFactory {
         if (IpCameraHandler.SUPPORTED_THING_TYPES.contains(thingTypeUID)) {
             return new IpCameraHandler(thing);
         }
-
         return null;
     }
 }

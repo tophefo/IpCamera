@@ -4,6 +4,8 @@ This binding allows you to use IP cameras in Openhab2 directly.
 
 ## Supported Things
 
+NON_ONVIF: For any camera that is not ONVIF compatible, yet has the ability to fetch a snapshot with a url.
+
 ONVIF: Use for all ONVIF Cameras from any brand that do not have an API.
 
 AMCREST: Use for all current Amcrest Cameras as they support an API as well as ONVIF.
