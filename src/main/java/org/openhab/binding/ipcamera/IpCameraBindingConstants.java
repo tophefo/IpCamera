@@ -43,6 +43,7 @@ public class IpCameraBindingConstants {
     public static final String CONFIG_ONVIF_PROFILE_NUMBER = "ONVIF_MEDIA_PROFILE";
     public static final String CONFIG_POLL_CAMERA_MS = "POLL_CAMERA_MS";
     public static final String CONFIG_SNAPSHOT_URL_OVERIDE = "SNAPSHOT_URL_OVERIDE";
+    public static final String CONFIG_IMAGE_UPDATE_EVENTS = "IMAGE_UPDATE_EVENTS";
 
     // List of all Channel ids
     public static final String CHANNEL_1 = "testbutton";
@@ -55,5 +56,7 @@ public class IpCameraBindingConstants {
     public static final String CHANNEL_MOTION_ALARM = "motionAlarm";
     public static final String CHANNEL_AUDIO_ALARM = "audioAlarm";
     public static final String CHANNEL_ENABLE_MOTION_ALARM = "enableMotionAlarm";
+    public static final String CHANNEL_ENABLE_AUDIO_ALARM = "enableAudioAlarm";
+    public static final String CHANNEL_THRESHOLD_AUDIO_ALARM = "thresholdAudioAlarm";
 
 }

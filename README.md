@@ -45,6 +45,9 @@ USE_HTTPS (not working yet)
 
 SNAPSHOT_URL_OVERIDE
 
+IMAGE_UPDATE_EVENTS
+
+
 
 Create a file called 'ipcamera.things' and save it to your things folder.
 

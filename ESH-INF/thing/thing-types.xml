@@ -11,49 +11,63 @@
             <channel id="imageurl" typeId="imageurl" />        
         </channels>     
         <config-description>
+        
+<parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
+<label>Update the Image when:</label>
+<description>
+<![CDATA[
+The Image channel can be set Auto update in a number of ways to help reduce network traffic.</p>
+]]>
+</description>
+<default>1</default>
+<options>
+<option value="0">Never Update</option>
+<option value="1">Always Update</option>
+</options>
+</parameter>
 
-<parameter name="IPADDRESS" type="text" required="true">
+<parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
 <context>network-address</context>
 <label>IP Address</label>
 <description>Use this format 192.168.1.2 and do not include the port number.
 </description>        
 </parameter>
 
-<parameter name="PORT" type="integer" required="true" min="1" max="65535">
+<parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">
 <label>The port of the camera that accepts HTTP/S.</label>
 <description>This port will be used for http/https as the binding will not change between the two.
 </description>
 <default>80</default>
 </parameter>
 
-<parameter name="USE_HTTPS" type="boolean" required="true">
+<parameter name="USE_HTTPS" type="boolean" required="true" groupName="Settings">
 <label>NOT WORKING: Use HTTPS instead of HTTP.</label>
 <description>NOT WORKING: Use HTTPS to increase the security of poorly protected passwords
 </description>
 <default>false</default>
 </parameter>
 
-
 <parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="true">
+<context>url</context>
 <label>Snapshot http address for your camera.</label>
 <description>Full http address to where a snapshot can be seen from your camera if entered into any browser.
 </description>        
 </parameter>
 
-<parameter name="USERNAME" type="text" required="false">
+<parameter name="USERNAME" type="text" required="false" groupName="Settings">
 <label>User name for camera.</label>
 <description>Enter the User name used to connect to your camera. Leave blank if your camera does not use login details.
 </description>
 </parameter>
             
-<parameter name="PASSWORD" type="text" required="false">
+<parameter name="PASSWORD" type="text" required="false" groupName="Settings">
 <context>password</context>
 <label>Password for camera.</label>
 <description>Enter Password for your camera. Leave blank if your camera does not use login details.
 </description>
 </parameter>
 
-<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="10000">
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="10000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
 </description>
@@ -76,56 +90,82 @@
             <channel id="zoom" typeId="zoom" />            
         </channels>     
         <config-description>
+        
+<parameter-group name="Image Settings">
+<label>Image Settings</label>
+<description>Image Settings</description>
+<advanced>false</advanced>
+</parameter-group>
+    
+<parameter-group name="Settings">
+<label>Main Settings</label>
+<description>Main Settings</description>
+<advanced>false</advanced>
+</parameter-group>
+        
+<parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
+<label>Update the Image when:</label>
+<description>
+<![CDATA[
+The Image channel can be set Auto update in a number of ways to help reduce network traffic.</p>
+]]>
+</description>
+<default>1</default>
+<options>
+<option value="0">Never Update</option>
+<option value="1">Always Update</option>
+</options>
+</parameter>
 
-<parameter name="IPADDRESS" type="text" required="true">
+<parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
 <context>network-address</context>
 <label>IP Address</label>
 <description>Use this format 192.168.1.2 and do not include the port number.
 </description>        
 </parameter>
 
-<parameter name="PORT" type="integer" required="true" min="1" max="65535">
+<parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">
 <label>The port of the camera that accepts HTTP/S.</label>
 <description>This port will be used for http/https as the binding will not change between the two.
 </description>
 <default>80</default>
 </parameter>
 
-<parameter name="USE_HTTPS" type="boolean" required="true">
+<parameter name="USE_HTTPS" type="boolean" required="true" groupName="Settings">
 <label>NOT WORKING: Use HTTPS instead of HTTP.</label>
 <description>NOT WORKING: Use HTTPS to increase the security of poorly protected passwords
 </description>
 <default>false</default>
 </parameter>
 
-<parameter name="ONVIF_PORT" type="text" required="true">
+<parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
 <label>ONVIF Port</label>
 <description>The port your camera uses for ONVIF connections.
 </description>        
 <default>80</default>
 </parameter>
 
-<parameter name="USERNAME" type="text" required="false">
+<parameter name="USERNAME" type="text" required="false" groupName="Settings">
 <label>User name for camera.</label>
 <description>Enter the User name used to connect to your camera. Leave blank if your camera does not use login details.
 </description>
 </parameter>
             
-<parameter name="PASSWORD" type="text" required="false">
+<parameter name="PASSWORD" type="text" required="false" groupName="Settings">
 <context>password</context>
 <label>Password for camera.</label>
 <description>Enter Password for your camera. Leave blank if your camera does not use login details.
 </description>
 </parameter>
 
-<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5">
+<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Image Settings">
 <label>ONVIF Media Profile stream number.</label>
 <description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
 </description>
 <default>0</default>
 </parameter>
 
-<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="10000">
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="10000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
 </description>
@@ -152,56 +192,87 @@
             <channel id="enableMotionAlarm" typeId="enableMotionAlarm" />     
         </channels>     
         <config-description>
+        
+<parameter-group name="Image Settings">
+<label>Image Settings</label>
+<description>Image Settings</description>
+<advanced>false</advanced>
+</parameter-group>
+    
+<parameter-group name="Settings">
+<label>Main Settings</label>
+<description>Main Settings</description>
+<advanced>false</advanced>
+</parameter-group>
+        
+<parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
+<label>Update the Image when:</label>
+<description><![CDATA[
+The Image channel can be set Auto update in a number of ways to help reduce network traffic.</p>
+]]>
+</description>
+<default>1</default>
+<options>
+<option value="0">Don't Auto Update</option>
+<option value="1">Auto Update</option>
+<option value="2">Start Motion Alarm</option>
+<option value="3">Start Audio Alarm</option>
+<option value="23">Start of Motion and Audio Alarms</option>
+<option value="4">During Motion Alarm</option>
+<option value="5">During Audio Alarm</option>
+<option value="45">During Motion and Audio Alarms</option>
+</options>
+</parameter>
 
-<parameter name="IPADDRESS" type="text" required="true">
+<parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
 <context>network-address</context>
 <label>IP Address</label>
 <description>Use this format 192.168.1.2 and do not include the port number.
 </description>        
 </parameter>
 
-<parameter name="PORT" type="integer" required="true" min="1" max="65535">
+<parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">
 <label>The port of the camera that accepts HTTP/S.</label>
 <description>This port will be used for http/https as the binding will not change between the two.
 </description>
 <default>80</default>
 </parameter>
 
-<parameter name="USE_HTTPS" type="boolean" required="true">
+<parameter name="USE_HTTPS" type="boolean" required="true" groupName="Settings">
 <label>NOT WORKING: Use HTTPS instead of HTTP.</label>
 <description>NOT WORKING: Use HTTPS to increase the security of poorly protected passwords
 </description>
 <default>false</default>
 </parameter>
 
-<parameter name="ONVIF_PORT" type="text" required="true">
+<parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
 <label>ONVIF Port</label>
 <description>The port your camera uses for ONVIF connections.
 </description>        
 <default>80</default>
 </parameter>
 
-<parameter name="USERNAME" type="text" required="false">
+<parameter name="USERNAME" type="text" required="false" groupName="Settings">
 <label>User name for camera.</label>
 <description>Enter the User name used to connect to your camera. Leave blank if your camera does not use login details.
 </description>
 </parameter>
             
-<parameter name="PASSWORD" type="text" required="false">
+<parameter name="PASSWORD" type="text" required="false" groupName="Settings">
 <context>password</context>
 <label>Password for camera.</label>
 <description>Enter Password for your camera. Leave blank if your camera does not use login details.
 </description>
 </parameter>
 
-<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5">
+<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Image Settings">
 <label>ONVIF Media Profile stream number.</label>
 <description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
 </description>
 <default>0</default>
 </parameter>
 
-<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="15000">
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="15000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
 </description>
@@ -223,59 +294,92 @@
             <channel id="zoom" typeId="zoom" />    
             <channel id="motionAlarm" typeId="motionAlarm" />
             <channel id="audioAlarm" typeId="audioAlarm" />
-            <channel id="enableMotionAlarm" typeId="enableMotionAlarm" />         
+            <channel id="enableMotionAlarm" typeId="enableMotionAlarm" /> 
+            <channel id="enableAudioAlarm" typeId="enableAudioAlarm" />
+            <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm" />          
         </channels>     
         <config-description>
+        
+<parameter-group name="Image Settings">
+<label>Image Settings</label>
+<description>Image Settings</description>
+<advanced>false</advanced>
+</parameter-group>
+    
+<parameter-group name="Settings">
+<label>Main Settings</label>
+<description>Main Settings</description>
+<advanced>false</advanced>
+</parameter-group>
+        
+<parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
+<label>Update the Image when:</label>
+<description><![CDATA[
+The Image channel can be set Auto update in a number of ways to help reduce network traffic.</p>
+]]>
+</description>
+<default>1</default>
+<options>
+<option value="0">Don't Auto Update</option>
+<option value="1">Auto Update</option>
+<option value="2">Start Motion Alarm</option>
+<option value="3">Start Audio Alarm</option>
+<option value="23">Start of Motion and Audio Alarms</option>
+<option value="4">During Motion Alarm</option>
+<option value="5">During Audio Alarm</option>
+<option value="45">During Motion and Audio Alarms</option>
+</options>
+</parameter>
 
-<parameter name="IPADDRESS" type="text" required="true">
+<parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
 <context>network-address</context>
 <label>IP Address</label>
 <description>Use this format 192.168.1.2 and do not include the port number.
 </description>        
 </parameter>
 
-<parameter name="PORT" type="integer" required="true" min="1" max="65535">
+<parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">
 <label>The port of the camera that accepts HTTP/S.</label>
 <description>This port will be used for http/https as the binding will not change between the two.
 </description>
 <default>80</default>
 </parameter>
 
-<parameter name="USE_HTTPS" type="boolean" required="true">
+<parameter name="USE_HTTPS" type="boolean" required="true" groupName="Settings">
 <label>NOT WORKING: Use HTTPS instead of HTTP.</label>
 <description>NOT WORKING: Use HTTPS to increase the security of poorly protected passwords
 </description>
 <default>false</default>
 </parameter>
 
-<parameter name="ONVIF_PORT" type="text" required="true">
+<parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
 <label>ONVIF Port</label>
 <description>The port your camera uses for ONVIF connections.
 </description>        
 <default>80</default>
 </parameter>
 
-<parameter name="USERNAME" type="text" required="false">
+<parameter name="USERNAME" type="text" required="false" groupName="Settings">
 <label>User name for camera.</label>
 <description>Enter the User name used to connect to your camera. Leave blank if your camera does not use login details.
 </description>
 </parameter>
             
-<parameter name="PASSWORD" type="text" required="false">
+<parameter name="PASSWORD" type="text" required="false" groupName="Settings">
 <context>password</context>
 <label>Password for camera.</label>
 <description>Enter Password for your camera. Leave blank if your camera does not use login details.
 </description>
 </parameter>
 
-<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5">
+<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Image Settings">
 <label>ONVIF Media Profile stream number.</label>
 <description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
 </description>
 <default>0</default>
 </parameter>
 
-<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="60000">
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="60000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
 </description>
@@ -297,56 +401,82 @@
             <channel id="zoom" typeId="zoom" />            
         </channels>     
         <config-description>
+        
+<parameter-group name="Image Settings">
+<label>Image Settings</label>
+<description>Image Settings</description>
+<advanced>false</advanced>
+</parameter-group>
+    
+<parameter-group name="Settings">
+<label>Main Settings</label>
+<description>Main Settings</description>
+<advanced>false</advanced>
+</parameter-group>
+        
+<parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
+<label>Update the Image when:</label>
+<description>
+<![CDATA[
+The Image channel can be set Auto update in a number of ways to help reduce network traffic.</p>
+]]>
+</description>
+<default>1</default>
+<options>
+<option value="0">Never Update</option>
+<option value="1">Always Update</option>
+</options>
+</parameter>
 
-<parameter name="IPADDRESS" type="text" required="true">
+<parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
 <context>network-address</context>
 <label>IP Address</label>
 <description>Use this format 192.168.1.2 and do not include the port number.
 </description>        
 </parameter>
 
-<parameter name="PORT" type="integer" required="true" min="1" max="65535">
+<parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">
 <label>The port of the camera that accepts HTTP/S.</label>
 <description>This port will be used for http/https as the binding will not change between the two.
 </description>
 <default>80</default>
 </parameter>
 
-<parameter name="USE_HTTPS" type="boolean" required="true">
+<parameter name="USE_HTTPS" type="boolean" required="true" groupName="Settings">
 <label>NOT WORKING: Use HTTPS instead of HTTP.</label>
 <description>NOT WORKING: Use HTTPS to increase the security of poorly protected passwords
 </description>
 <default>false</default>
 </parameter>
 
-<parameter name="ONVIF_PORT" type="text" required="true">
+<parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
 <label>ONVIF Port</label>
 <description>The port your camera uses for ONVIF connections.
 </description>        
 <default>80</default>
 </parameter>
 
-<parameter name="USERNAME" type="text" required="false">
+<parameter name="USERNAME" type="text" required="false" groupName="Settings">
 <label>User name for camera.</label>
 <description>Enter the User name used to connect to your camera. Leave blank if your camera does not use login details.
 </description>
 </parameter>
             
-<parameter name="PASSWORD" type="text" required="false">
+<parameter name="PASSWORD" type="text" required="false" groupName="Settings">
 <context>password</context>
 <label>Password for camera.</label>
 <description>Enter Password for your camera. Leave blank if your camera does not use login details.
 </description>
 </parameter>
 
-<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5">
+<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Image Settings">
 <label>ONVIF Media Profile stream number.</label>
 <description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
 </description>
 <default>0</default>
 </parameter>
 
-<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="10000">
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="10000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
 </description>
@@ -428,6 +558,20 @@
         <description>By using this feature you can stop the camera from sending emails when you are actually home.</description>
         <category>Motion</category>
         </channel-type>
-          
+        
+        <channel-type id="enableAudioAlarm">
+        <item-type>Switch</item-type>
+        <label>Enable/Disable the Audio Alarm</label>
+        <description>By using this feature you can stop the camera from sending emails when you are having a party.</description>
+        <category>SoundVolume</category>
+        </channel-type>
+        
+        <channel-type id="thresholdAudioAlarm">
+        <item-type>Dimmer</item-type>
+        <label>Threshold for the Audio Alarm</label>
+        <description>By moving this control you should be able to change how sensitive the audio alarm is to soft or loud noises.</description>
+        <category>SoundVolume</category>
+        </channel-type>
+                  
        
 </thing:thing-descriptions>
