@@ -134,23 +134,23 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
         Random random = new Random();
         String cnonce = Integer.toHexString(random.nextInt());
-        myHandler.ncCounter = (myHandler.ncCounter > 99999) ? 1 : ++myHandler.ncCounter;
+        myHandler.ncCounter = (myHandler.ncCounter > 999999999) ? 1 : ++myHandler.ncCounter;
+        String nc = String.format("%08X", myHandler.ncCounter); // 8 digit hex with uppercase
+        // int nc = myHandler.ncCounter;
+        // int nc = 1;
         String ha2 = "GET:" + requestURI;
         ha2 = calcMD5Hash(ha2);
-        String request = ha1 + ":" + myHandler.nonce + ":" + myHandler.ncCounter + ":" + cnonce + ":" + myHandler.qop
-                + ":" + ha2;
+        String request = ha1 + ":" + myHandler.nonce + ":" + nc + ":" + cnonce + ":" + myHandler.qop + ":" + ha2;
         request = calcMD5Hash(request);
 
         digestString = "username=\"" + username + "\", realm=\"" + myHandler.realm + "\", nonce=\"" + myHandler.nonce
-                + "\", uri=\"" + requestURI + "\", qop=" + myHandler.qop + ", nc=" + myHandler.ncCounter + ", cnonce=\""
-                + cnonce + "\", response=\"" + request + "\", opaque=\"" + myHandler.opaque + "\"";
+                + "\", uri=\"" + requestURI + "\", qop=" + myHandler.qop + ", nc=" + nc + ", cnonce=\"" + cnonce
+                + "\", response=\"" + request + "\", opaque=\"" + myHandler.opaque + "\"";
 
         if (reSend) {
             myHandler.digestString = digestString;
-
             if (!requestURI.contains(myHandler.fullRequestPath.toString())) {
-                logger.debug(
-                        "!!!!!!!!!!! we failed to get a match another request must have beaten us !!!!!!!!!!!!!!!!!");
+                logger.debug("!!!! we failed to get a match another request must have beaten us !!!!");
             }
             myHandler.sendHttpRequest(requestURI); // first channel//
             // myHandler.sendHttpRequest(requestURI, digestString); // second channel//
@@ -171,8 +171,8 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                     for (CharSequence name : response.headers().names()) {
                         for (CharSequence value : response.headers().getAll(name)) {
                             if (name.toString().equals("WWW-Authenticate")) {
-
-                                // NONCE is very fresh so will be good, requestpath may be already replaced//
+                                // logger.debug("Camera gave this string:{}", value.toString());
+                                // NONCE is very fresh so will be good,
                                 processAuth(value.toString(), myHandler.fullRequestPath, true);
                             }
                         }

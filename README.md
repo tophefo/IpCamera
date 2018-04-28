@@ -4,7 +4,7 @@ This binding allows you to use IP cameras in Openhab2 directly.
 
 ## Supported Things
 
-NON_ONVIF: For any camera that is not ONVIF compatible, yet has the ability to fetch a snapshot with a url.
+NON_ONVIF: For any camera that is not ONVIF compatible, and has the ability to fetch a snapshot with a url.
 
 ONVIF: Use for all ONVIF Cameras from any brand that do not have an API.
 
@@ -66,7 +66,7 @@ See PaperUI for a full list of channels and the descriptions. Each camera brand 
 
 ## Full Example
 
-Use the following examples to base your setup on to save some time. NOTE: If your cameras is secured with a user and password the links will not work and you will have to use the IMAGE channel to see a picture. FOSCAM cameras are the exception to this as they use the user and pass in plain text in the URL.
+Use the following examples to base your setup on to save some time. NOTE: If your camera is secured with a user and password the links will not work and you will have to use the IMAGE channel to see a picture. FOSCAM cameras are the exception to this as they use the user and pass in plain text in the URL. In the example below you need to leave a fake address in the "Image url=" line otherwise it does not work.
 
 *.sitemap
 
@@ -92,4 +92,4 @@ Thing ipcamera:AMCREST:001 [ IPADDRESS="192.168.1.2", PASSWORD="suitcase123456",
 
 ## Roadmap for further development
 
-If you need a feature added that is in an API it is very easy to add most of them, so raise a ticket with the request if you are not able to copy what I have already done and create a push request.
+If you need a feature added that is in an API, please raise an issue ticket here at this github project if you are not able to copy what I have already done and create a push request. I am looking at 2 way audio and how it can be best added to the binding, if you have ideas then please see the issue ticket I created to discuss how this can be done and how the features will work.

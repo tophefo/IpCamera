@@ -159,13 +159,15 @@ public class IpCameraHandler extends BaseThingHandler {
     // I used it as a starting point and it is released under Apache License version 2.0//
 
     public void sendHttpRequest(String digestFullRequestPath, String newDigestString) {
-        // Uses a second channel for testing reasons//
+        // Second channel as I may need to keep one for streaming and the other for commands//
         if (secondBootstrap == null) {
             secondBootstrap = new Bootstrap();
             secondBootstrap.group(secondEventLoopGroup);
             secondBootstrap.channel(NioSocketChannel.class);
             secondBootstrap.option(ChannelOption.SO_KEEPALIVE, true);
             secondBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000);
+            secondBootstrap.option(ChannelOption.SO_SNDBUF, 1024 * 128);
+            secondBootstrap.option(ChannelOption.SO_RCVBUF, 1024 * 1024);
             secondBootstrap.option(ChannelOption.TCP_NODELAY, true);
             secondBootstrap.handler(new ChannelInitializer<SocketChannel>() {
                 @Override
@@ -200,14 +202,12 @@ public class IpCameraHandler extends BaseThingHandler {
         }
 
         secondchfuture = secondBootstrap.connect(new InetSocketAddress(ipAddress, port));
-        secondchfuture.awaitUninterruptibly(10000);
-
+        secondchfuture.awaitUninterruptibly(3000);
         digestChannel = secondchfuture.channel();
-
         logger.debug("+++ A digest request is just sent {}", digestFullRequestPath);
         digestChannel.writeAndFlush(request);
         secondchfuture = digestChannel.closeFuture();
-        secondchfuture.awaitUninterruptibly(10000);
+        secondchfuture.awaitUninterruptibly(2000);
     }
 
     public boolean sendHttpRequest(String httpRequest) {
@@ -218,6 +218,8 @@ public class IpCameraHandler extends BaseThingHandler {
             mainBootstrap.channel(NioSocketChannel.class);
             mainBootstrap.option(ChannelOption.SO_KEEPALIVE, true);
             mainBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000);
+            mainBootstrap.option(ChannelOption.SO_SNDBUF, 1024 * 128);
+            mainBootstrap.option(ChannelOption.SO_RCVBUF, 1024 * 1024);
             mainBootstrap.option(ChannelOption.TCP_NODELAY, true);
             mainBootstrap.handler(new ChannelInitializer<SocketChannel>() {
 
@@ -272,7 +274,8 @@ public class IpCameraHandler extends BaseThingHandler {
                 sslCtx = null;
             }
 
-            // Try to connect then wait to catch a connection timeout.
+            logger.debug("Trying to connect with new request for camera at IP:{}", ipAddress);
+            // Try to connect then catch any connection timeouts.
             mainChFuture = mainBootstrap.connect(new InetSocketAddress(ipAddress, port));
             mainChFuture.awaitUninterruptibly(10000);
 
@@ -299,6 +302,9 @@ public class IpCameraHandler extends BaseThingHandler {
             logger.debug("++ The request is going to be :{}:", fullRequestPath);
 
             if (useDigestAuth) {
+                // following line causes nc to increase by 2
+                // digestString = authChecker.processAuth(null, fullRequestPath, false);
+                // logger.debug("Send method using this header:{}", digestString);
                 request.headers().set(HttpHeaderNames.AUTHORIZATION, "Digest " + digestString);
             }
 
@@ -318,8 +324,17 @@ public class IpCameraHandler extends BaseThingHandler {
             }
 
             ch.writeAndFlush(request);
+            // wait for camera to reply and close the connection for 3 seconds//
             mainChFuture = ch.closeFuture();
-            mainChFuture.awaitUninterruptibly(10000);
+            mainChFuture.awaitUninterruptibly(3000);
+
+            if (!mainChFuture.isSuccess()) {
+                logger.error(
+                        "Camera at {}:{} is not closing the connection or taking a very long time to reply. Check for stale.",
+                        ipAddress, port);
+                ch.close();// force close to prevent the thread getting locked.
+                return false;
+            }
 
         } catch (URISyntaxException e) {
             logger.error("Following error occured:{}", e);
@@ -412,7 +427,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            logger.debug(msg.toString());
+            logger.debug(msg.toString()); // Helpful to have this when getting users to try new features.
 
             if (msg instanceof HttpResponse) {
                 HttpResponse response = (HttpResponse) msg;
@@ -440,7 +455,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
 
                 if (content instanceof LastHttpContent) {
-                    // logger.debug("-------------- Binding closing the connection for ID {} --------------",
                     ctx.close();
                 }
 
@@ -453,6 +467,8 @@ public class IpCameraHandler extends BaseThingHandler {
                             }
                             lastSnapshot[bytesAlreadyRecieved++] = content.content().getByte(i);
                         }
+                        content.content().release();// must be here or a memory leak occurs.
+
                         // logger.debug("got {} bytes out of the total {}, so still waiting for {} more",
                         // bytesAlreadyRecieved, bytesToRecieve, bytesToRecieve - bytesAlreadyRecieved);
 
@@ -490,6 +506,7 @@ public class IpCameraHandler extends BaseThingHandler {
             logger.debug("!!! Camera may have closed the connection which can be normal. Cause reported is:{}", cause);
             ctx.close();
         }
+
     }
 
     public class FoscamHandler extends ChannelDuplexHandler {
@@ -557,10 +574,9 @@ public class IpCameraHandler extends BaseThingHandler {
         }
 
         // This method handles the Servers response, nothing specific to the camera should be in here //
-
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            logger.debug(msg.toString());
+            logger.debug(msg.toString()); // Helpful to have this when getting users to try new features.
 
             if (msg instanceof HttpResponse) {
                 HttpResponse response = (HttpResponse) msg;
@@ -588,7 +604,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
 
                 if (content instanceof LastHttpContent) {
-                    // logger.debug("-------------- Binding closing the connection for ID {} --------------",
                     ctx.close();
                 }
 
@@ -601,6 +616,8 @@ public class IpCameraHandler extends BaseThingHandler {
                             }
                             lastSnapshot[bytesAlreadyRecieved++] = content.content().getByte(i);
                         }
+                        content.content().release();// must be here or a memory leak occurs.
+
                         // logger.debug("got {} bytes out of the total {}, so still waiting for {} more",
                         // bytesAlreadyRecieved, bytesToRecieve, bytesToRecieve - bytesAlreadyRecieved);
 
@@ -979,8 +996,6 @@ public class IpCameraHandler extends BaseThingHandler {
         @Override
         public void run() {
 
-            logger.debug("!!!!!!!!!!!!!@#$& setting is:{}", updateImageEvents);
-
             if (snapshotUri != null && updateImageEvents.contains("1")) {
                 sendHttpRequest(snapshotUri);
             }
@@ -1023,7 +1038,6 @@ public class IpCameraHandler extends BaseThingHandler {
 
         cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 0, 30, TimeUnit.SECONDS);
 
-        // Currently using set MAVEN_OPTS=-Xms512m -Xmx1024m
         /////////////////////////
         // when testing code it is handy to shut down the Jobs and go straight online//
         // snapshotUri = "http://192.168.1.108/cgi-bin/snapshot.cgi?channel=1";
