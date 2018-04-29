@@ -16,13 +16,13 @@
 <label>Update the Image when:</label>
 <description>
 <![CDATA[
-The Image channel can be set Always Update in a number of ways to help reduce network traffic.</p>
+The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
 ]]>
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update</option>
-<option value="1">Always Update</option>
+<option value="0">Never Update Image</option>
+<option value="1">Always Update Image</option>
 </options>
 </parameter>
 
@@ -77,7 +77,6 @@ The Image channel can be set Always Update in a number of ways to help reduce ne
 </config-description>
 </thing-type>
 
-
     <thing-type id="ONVIF">
         <label>Generic IP camera with only ONVIF support.</label>
         <description>Use when the binding does not list your brand of ONVIF compatible Camera</description>
@@ -107,13 +106,13 @@ The Image channel can be set Always Update in a number of ways to help reduce ne
 <label>Update the Image when:</label>
 <description>
 <![CDATA[
-The Image channel can be set Always Update in a number of ways to help reduce network traffic.</p>
+The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
 ]]>
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update</option>
-<option value="1">Always Update</option>
+<option value="0">Never Update Image</option>
+<option value="1">Always Update Image</option>
 </options>
 </parameter>
 
@@ -208,13 +207,13 @@ The Image channel can be set Always Update in a number of ways to help reduce ne
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
 <label>Update the Image when:</label>
 <description><![CDATA[
-The Image channel can be set Always Update in a number of ways to help reduce network traffic.</p>
+The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
 ]]>
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update</option>
-<option value="1">Always Update</option>
+<option value="0">Never Update Image</option>
+<option value="1">Always Update Image</option>
 <option value="2">Start Motion Alarm</option>
 <option value="3">Start Audio Alarm</option>
 <option value="23">Start of Motion and Audio Alarms</option>
@@ -315,13 +314,13 @@ The Image channel can be set Always Update in a number of ways to help reduce ne
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
 <label>Update the Image when:</label>
 <description><![CDATA[
-The Image channel can be set Always Update in a number of ways to help reduce network traffic.</p>
+The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
 ]]>
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update</option>
-<option value="1">Always Update</option>
+<option value="0">Never Update Image</option>
+<option value="1">Always Update Image</option>
 <option value="2">Start Motion Alarm</option>
 <option value="3">Start Audio Alarm</option>
 <option value="23">Start of Motion and Audio Alarms</option>
@@ -418,13 +417,13 @@ The Image channel can be set Always Update in a number of ways to help reduce ne
 <label>Update the Image when:</label>
 <description>
 <![CDATA[
-The Image channel can be set Always Update in a number of ways to help reduce network traffic.</p>
+The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
 ]]>
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update</option>
-<option value="1">Always Update</option>
+<option value="0">Never Update Image</option>
+<option value="1">Always Update Image</option>
 </options>
 </parameter>
 

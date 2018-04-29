@@ -329,16 +329,19 @@ public class IpCameraHandler extends BaseThingHandler {
             mainChFuture.awaitUninterruptibly(3000);
 
             if (!mainChFuture.isSuccess()) {
-                logger.error(
-                        "Camera at {}:{} is not closing the connection or taking a very long time to reply. Check for stale.",
+                logger.warn("Camera at {}:{} is not closing the connection quick enough. Check for digest stale=.",
                         ipAddress, port);
                 ch.close();// force close to prevent the thread getting locked.
+                // cleanup then return
+                request = null;
+                uri = null;
                 return false;
             }
 
         } catch (URISyntaxException e) {
             logger.error("Following error occured:{}", e);
         }
+
         return true;
     }
 
@@ -499,6 +502,7 @@ public class IpCameraHandler extends BaseThingHandler {
         @Override
         public void handlerRemoved(ChannelHandlerContext ctx) {
             ctx.close();
+            authChecker = null;
         }
 
         @Override
@@ -892,9 +896,6 @@ public class IpCameraHandler extends BaseThingHandler {
 
             if (onvifCamera == null && !thing.getThingTypeUID().getId().equals("NON_ONVIF")) {
 
-                mainEventLoopGroup = new NioEventLoopGroup();
-                secondEventLoopGroup = new NioEventLoopGroup();
-
                 try {
                     logger.info("About to connect to IP Camera at IP:{}:{}", ipAddress,
                             config.get(CONFIG_ONVIF_PORT).toString());
@@ -1059,5 +1060,7 @@ public class IpCameraHandler extends BaseThingHandler {
             fetchCameraOutputJob.cancel(true);
             fetchCameraOutputJob = null;
         }
+        mainBootstrap = null;
+        secondBootstrap = null;
     }
 }
