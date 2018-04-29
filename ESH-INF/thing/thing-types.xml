@@ -7,6 +7,7 @@
         <label>Generic IP camera with only HTTP/S support.</label>
         <description>Use when your camera is not ONVIF compatible.</description>
         <channels>
+        <channel id="updateImageNow" typeId="updateImageNow" />
             <channel id="image" typeId="image" />
             <channel id="imageurl" typeId="imageurl" />        
         </channels>     
@@ -81,12 +82,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <label>Generic IP camera with only ONVIF support.</label>
         <description>Use when the binding does not list your brand of ONVIF compatible Camera</description>
         <channels>
+        <channel id="updateImageNow" typeId="updateImageNow" />
             <channel id="image" typeId="image" />
-            <channel id="videourl" typeId="videourl" />
-            <channel id="imageurl" typeId="imageurl" />
             <channel id="pan" typeId="pan" />
             <channel id="tilt" typeId="tilt" />
-            <channel id="zoom" typeId="zoom" />            
+            <channel id="zoom" typeId="zoom" />   
+            <channel id="videourl" typeId="videourl" />
+            <channel id="imageurl" typeId="imageurl" />         
         </channels>     
         <config-description>
         
@@ -179,16 +181,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <label>Amcrest ONVIF IP camera with API support.</label>
         <description>Use for all current Amcrest Cameras as they support an API as well as ONVIF.</description>
         <channels>
-            <channel id="testbutton" typeId="testbutton" />
-            <channel id="image" typeId="image" />
-            <channel id="videourl" typeId="videourl" />
-            <channel id="imageurl" typeId="imageurl" />
+            <channel id="updateImageNow" typeId="updateImageNow"/>          
+            <channel id="image" typeId="image" />            
+            <channel id="enableMotionAlarm" typeId="enableMotionAlarm" />
+            <channel id="motionAlarm" typeId="motionAlarm" />
+            <channel id="audioAlarm" typeId="audioAlarm" />               
             <channel id="pan" typeId="pan" />
             <channel id="tilt" typeId="tilt" />
             <channel id="zoom" typeId="zoom" />
-            <channel id="motionAlarm" typeId="motionAlarm" />
-            <channel id="audioAlarm" typeId="audioAlarm" />    
-            <channel id="enableMotionAlarm" typeId="enableMotionAlarm" />     
+            <channel id="videourl" typeId="videourl" />
+            <channel id="imageurl" typeId="imageurl" />     
         </channels>     
         <config-description>
         
@@ -285,17 +287,18 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <label>Foscam ONVIF IP camera with API support.</label>
         <description>Use for all current FOSCAM Cameras as they support an API as well as ONVIF.</description>
         <channels>
+        <channel id="updateImageNow" typeId="updateImageNow" />
             <channel id="image" typeId="image" />
-            <channel id="videourl" typeId="videourl" />
-            <channel id="imageurl" typeId="imageurl" />
+            <channel id="enableMotionAlarm" typeId="enableMotionAlarm" />               
+            <channel id="motionAlarm" typeId="motionAlarm" />
+            <channel id="enableAudioAlarm" typeId="enableAudioAlarm" />
+            <channel id="audioAlarm" typeId="audioAlarm" />
+            <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm" />
             <channel id="pan" typeId="pan" />
             <channel id="tilt" typeId="tilt" />
-            <channel id="zoom" typeId="zoom" />    
-            <channel id="motionAlarm" typeId="motionAlarm" />
-            <channel id="audioAlarm" typeId="audioAlarm" />
-            <channel id="enableMotionAlarm" typeId="enableMotionAlarm" /> 
-            <channel id="enableAudioAlarm" typeId="enableAudioAlarm" />
-            <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm" />          
+            <channel id="zoom" typeId="zoom" />
+            <channel id="videourl" typeId="videourl" />
+            <channel id="imageurl" typeId="imageurl" />          
         </channels>     
         <config-description>
         
@@ -392,6 +395,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <label>Axis ONVIF IP camera with API support.</label>
         <description>Use for all current Axis Cameras as they support an API as well as ONVIF.</description>
         <channels>
+        <channel id="updateImageNow" typeId="updateImageNow" />
             <channel id="image" typeId="image" />
             <channel id="videourl" typeId="videourl" />
             <channel id="imageurl" typeId="imageurl" />
@@ -481,15 +485,14 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>5000</default>
 </parameter>
-
 </config-description>
 </thing-type>
 
-        <channel-type id="testbutton">
-        <item-type>Switch</item-type>
-        <label>Button for testing reasons IGNORE ME</label>
-        <description>Ignore me, used for testing new code in development.</description>      
-        </channel-type>
+<channel-type id="updateImageNow">
+<item-type>Switch</item-type>
+<label>Update the Image</label>
+<description>Can be used to update the Image for each button press if you have the image settings selected to never update.</description>   
+</channel-type>
         
         <channel-type id="image">
         <item-type>Image</item-type>

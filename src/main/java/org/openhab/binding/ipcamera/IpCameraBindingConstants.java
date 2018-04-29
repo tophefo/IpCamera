@@ -46,7 +46,7 @@ public class IpCameraBindingConstants {
     public static final String CONFIG_IMAGE_UPDATE_EVENTS = "IMAGE_UPDATE_EVENTS";
 
     // List of all Channel ids
-    public static final String CHANNEL_1 = "testbutton";
+    public static final String CHANNEL_UPDATE_IMAGE_NOW = "updateImageNow";
     public static final String CHANNEL_IMAGE = "image";
     public static final String CHANNEL_VIDEO_URL = "videourl";
     public static final String CHANNEL_IMAGE_URL = "imageurl";

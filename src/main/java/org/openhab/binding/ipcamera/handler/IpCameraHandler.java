@@ -652,6 +652,7 @@ public class IpCameraHandler extends BaseThingHandler {
         @Override
         public void handlerRemoved(ChannelHandlerContext ctx) {
             ctx.close();
+            authChecker = null;
         }
 
         @Override
@@ -659,6 +660,7 @@ public class IpCameraHandler extends BaseThingHandler {
             logger.debug("!!! Camera may have closed the connection which can be normal. Cause reported is:{}", cause);
             ctx.close();
         }
+
     }
 
     public IpCameraHandler(Thing thing) {
@@ -737,12 +739,10 @@ public class IpCameraHandler extends BaseThingHandler {
         } // end of "REFRESH"
 
         switch (channelUID.getId()) {
-            case CHANNEL_1:
-
-                logger.debug(
-                        "You had to push the button. Go on do it again, nothing happens but it may make u feel better :)");
-                sendHttpRequest("http://192.168.1.50/cgi-bin/configManager.cgi?action=getConfig&name=AudioMutation");
-
+            case CHANNEL_UPDATE_IMAGE_NOW:
+                if (snapshotUri != null) {
+                    sendHttpRequest(snapshotUri);
+                }
                 break;
 
             case CHANNEL_THRESHOLD_AUDIO_ALARM:
