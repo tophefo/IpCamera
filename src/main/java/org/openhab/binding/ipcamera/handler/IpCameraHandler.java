@@ -286,7 +286,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         "Can not connect to the camera at {}:{} check your network for issues or change cameras settings.",
                         ipAddress, port);
                 dispose();
-                cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 10, 10,
+                cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 10, 60,
                         TimeUnit.SECONDS);
                 return false;
             }
@@ -522,12 +522,16 @@ public class IpCameraHandler extends BaseThingHandler {
         private void processResponseContent(String content) {
             logger.debug("HTTP Result back from camera is :{}:", content);
 
-            if (content.contains("<motionDetectAlarm>1</motionDetectAlarm>")) {
-                updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+            ////////////// Motion Alarm //////////////
+            if (content.contains("<motionDetectAlarm>0</motionDetectAlarm>")) {
                 updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
+            }
+            if (content.contains("<motionDetectAlarm>1</motionDetectAlarm>")) { // means it is enabled but no alarm
+                updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
                 firstMotionAlarm = false;
-                return;
-            } else if (content.contains("<motionDetectAlarm>2</motionDetectAlarm>")) {
+            }
+            if (content.contains("<motionDetectAlarm>2</motionDetectAlarm>")) {// means it is enabled and alarm on
                 updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("ON"));
                 updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
                 if (updateImageEvents.contains("2") && !firstMotionAlarm) {
@@ -536,43 +540,39 @@ public class IpCameraHandler extends BaseThingHandler {
                 } else if (updateImageEvents.contains("4")) {
                     sendHttpRequest(snapshotUri);
                 }
-                return;
-            } else if (content.contains("<motionDetectAlarm>0</motionDetectAlarm>")) {
-                logger.debug(
-                        "Camera is reporting the Motion Alarm is turned off in camera settings. Updating openhab ch.");
-                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                return;
-            } else if (content.contains("<soundAlarm>0</soundAlarm>")) {
+            }
+
+            ////////////// Sound Alarm //////////////
+            if (content.contains("<soundAlarm>0</soundAlarm>")) {
                 updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
-                return;
-            } else if (content.contains("<soundAlarm>1</soundAlarm>")) {
-                updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
                 firstAudioAlarm = false;
-                return;
-            } else if (content.contains("<soundAlarm>2</soundAlarm>")) {
+            }
+            if (content.contains("<soundAlarm>1</soundAlarm>")) {
+                updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
+                firstAudioAlarm = false;
+            }
+            if (content.contains("<soundAlarm>2</soundAlarm>")) {
                 updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("ON"));
+                updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
                 if (updateImageEvents.contains("3") && !firstAudioAlarm) {
                     sendHttpRequest(snapshotUri);
                     firstAudioAlarm = true;
                 } else if (updateImageEvents.contains("5")) {
                     sendHttpRequest(snapshotUri);
                 }
-                return;
-            } else if (content.contains("<sensitivity>0</sensitivity>")) {
+            }
+
+            ////////////// Sound Threshold //////////////
+            if (content.contains("<sensitivity>0</sensitivity>")) {
                 updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf("0"));
-                return;
-            } else if (content.contains("<sensitivity>1</sensitivity>")) {
+            }
+            if (content.contains("<sensitivity>1</sensitivity>")) {
                 updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf("50"));
-                return;
-            } else if (content.contains("<sensitivity>2</sensitivity>")) {
+            }
+            if (content.contains("<sensitivity>2</sensitivity>")) {
                 updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf("100"));
-                return;
-            } else if (content.contains("<isEnable>0</isEnable>")) {
-                updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
-                return;
-            } else if (content.contains("<isEnable>1</isEnable>")) {
-                updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
-                return;
             }
 
         }
@@ -660,7 +660,6 @@ public class IpCameraHandler extends BaseThingHandler {
             logger.debug("!!! Camera may have closed the connection which can be normal. Cause reported is:{}", cause);
             ctx.close();
         }
-
     }
 
     public IpCameraHandler(Thing thing) {
@@ -751,17 +750,21 @@ public class IpCameraHandler extends BaseThingHandler {
 
                     case "FOSCAM":
                         int value = Math.round(Float.valueOf(command.toString()));
-                        if (value <= 33) {
+                        if (value == 0) {
                             sendHttpRequest(
-                                    "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&sensitivity=0&usr="
+                                    "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=0&usr="
+                                            + username + "&pwd=" + password);
+                        } else if (value <= 33) {
+                            sendHttpRequest(
+                                    "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=0&usr="
                                             + username + "&pwd=" + password);
                         } else if (value <= 66) {
                             sendHttpRequest(
-                                    "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&sensitivity=1&usr="
+                                    "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=1&usr="
                                             + username + "&pwd=" + password);
                         } else {
                             sendHttpRequest(
-                                    "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&sensitivity=2&usr="
+                                    "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=2&usr="
                                             + username + "&pwd=" + password);
                         }
 
@@ -976,6 +979,10 @@ public class IpCameraHandler extends BaseThingHandler {
                     cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 30, 30,
                             TimeUnit.SECONDS);
                     updateStatus(ThingStatus.ONLINE);
+
+                    if (snapshotUri != null) {
+                        sendHttpRequest(snapshotUri);
+                    }
 
                     fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 5000,
                             Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
