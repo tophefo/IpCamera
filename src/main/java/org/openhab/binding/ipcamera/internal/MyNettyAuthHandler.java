@@ -35,14 +35,13 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private IpCameraHandler myHandler;
-    private String username;
-    private String password;
+    private String username, password;
+    private String httpMethod, httpURL;
 
     public MyNettyAuthHandler(String user, String pass, ThingHandler handle) {
         myHandler = (IpCameraHandler) handle;
         username = user;
         password = pass;
-        return;
     }
 
     private String calcMD5Hash(String toHash) {
@@ -55,7 +54,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
             }
             return stringBuffer.toString();
         } catch (java.security.NoSuchAlgorithmException e) {
-            logger.error("NoSuchAlgorithmException when calculating MD5 hash");
+            logger.error("NoSuchAlgorithmException error when calculating MD5 hash");
         }
         return null;
     }
@@ -97,48 +96,51 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
     // processAuth(challString, string, true) to auto send new packet
     // First run it should not have rawstring as null
     // nonce is reused if rawstring is null
-    public String processAuth(String rawString, String requestURI, boolean reSend) {
+    public String processAuth(String authenticate, String httpMethod, String requestURI, boolean reSend) {
         String digestString;
 
-        if (rawString != null) {
+        if (authenticate != null) {
 
-            myHandler.realm = searchString(rawString, "Basic realm=\"");
+            myHandler.realm = searchString(authenticate, "Basic realm=\"");
             if (myHandler.realm != null) {
                 if (myHandler.useDigestAuth == true) {
                     logger.error(
                             "Camera appears to be requesting Basic after Digest Auth has already been used, this could be a hacker so not going to reply.");
-                    return "Error";
+                    return "Error:Downgrade authenticate attack detected";
                 }
-                myHandler.useBasicAuth = true;
-                logger.debug("Using Basic Auth for this request");
+                logger.debug("Setting up the camera to use Basic Auth and resending last request with correct auth.");
+                myHandler.setBasicAuth();
+                myHandler.sendHttpRequest(httpMethod, requestURI, false);
                 return "Using Basic";
             }
 
-            myHandler.realm = searchString(rawString, "Digest realm=\"");
+            ///////////// Digest Authenticate method follows as Basic is already handled and returned ////////////////
+            myHandler.realm = searchString(authenticate, "Digest realm=\"");
             if (myHandler.realm == null) {
-                logger.debug("Could not find a valid WWW-Authenticate reponse in :{}", rawString);
+                logger.debug("Could not find a valid WWW-Authenticate reponse in :{}", authenticate);
                 return "Error";
             }
-            myHandler.nonce = searchString(rawString, "nonce=\"");
-            myHandler.opaque = searchString(rawString, "opaque=\"");
-            myHandler.qop = searchString(rawString, "qop=\"");
+            myHandler.nonce = searchString(authenticate, "nonce=\"");
+            myHandler.opaque = searchString(authenticate, "opaque=\"");
+            myHandler.qop = searchString(authenticate, "qop=\"");
         }
 
-        if (myHandler.opaque != null && myHandler.qop != null && myHandler.realm != null) {
+        if (myHandler.opaque != null && myHandler.qop != null && myHandler.realm != null)
+
+        {
             myHandler.useDigestAuth = true;
         }
 
         // create the MD5 hashes
         String ha1 = username + ":" + myHandler.realm + ":" + password;
         ha1 = calcMD5Hash(ha1);
-
         Random random = new Random();
         String cnonce = Integer.toHexString(random.nextInt());
         myHandler.ncCounter = (myHandler.ncCounter > 999999999) ? 1 : ++myHandler.ncCounter;
         String nc = String.format("%08X", myHandler.ncCounter); // 8 digit hex with uppercase
         // int nc = myHandler.ncCounter;
         // int nc = 1;
-        String ha2 = "GET:" + requestURI;
+        String ha2 = httpMethod + ":" + requestURI;
         ha2 = calcMD5Hash(ha2);
         String request = ha1 + ":" + myHandler.nonce + ":" + nc + ":" + cnonce + ":" + myHandler.qop + ":" + ha2;
         request = calcMD5Hash(request);
@@ -149,11 +151,8 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
         if (reSend) {
             myHandler.digestString = digestString;
-            if (!requestURI.contains(myHandler.fullRequestPath.toString())) {
-                logger.debug("!!!! we failed to get a match another request must have beaten us !!!!");
-            }
-            myHandler.sendHttpRequest(requestURI); // first channel//
-            // myHandler.sendHttpRequest(requestURI, digestString); // second channel//
+            myHandler.sendHttpRequest(httpMethod, requestURI, true);
+            // myHandler.sendHttpRequest(requestURI, digestString); // for testing second channel//
         }
         return digestString;
     }
@@ -172,8 +171,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                         for (CharSequence value : response.headers().getAll(name)) {
                             if (name.toString().equals("WWW-Authenticate")) {
                                 // logger.debug("Camera gave this string:{}", value.toString());
-                                // NONCE is very fresh so will be good,
-                                processAuth(value.toString(), myHandler.fullRequestPath, true);
+                                processAuth(value.toString(), httpMethod, httpURL, true);
                             }
                         }
                     }
@@ -182,5 +180,21 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
         }
         // Pass the Netty Message back to the pipeline for the next handler to process//
         super.channelRead(ctx, msg);
+    }
+
+    @Override
+    public void handlerAdded(ChannelHandlerContext ctx) {
+        this.httpURL = myHandler.correctedRequestURL;
+        this.httpMethod = myHandler.httpMethod;
+    }
+
+    @Override
+    public void handlerRemoved(ChannelHandlerContext ctx) {
+    }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+        logger.debug("!!! Camera may have closed the connection which can be normal. Cause reported is:{}", cause);
+        ctx.close();
     }
 }

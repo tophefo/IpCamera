@@ -114,17 +114,17 @@ public class IpCameraHandler extends BaseThingHandler {
     private EventLoopGroup mainEventLoopGroup = new NioEventLoopGroup();
     private EventLoopGroup secondEventLoopGroup = new NioEventLoopGroup();
 
-    public String fullRequestPath;
+    public String correctedRequestURL, httpMethod;
     private String scheme;
     private PTZVector ptzLocation;
     Channel ch;
     Channel digestChannel;
     ChannelFuture mainChFuture;
-    MyNettyAuthHandler authChecker;
     public int ncCounter = 0;
     public String opaque;
     public String qop;
     public String realm;
+    private String basicAuth = null;
 
     @NonNull
     private String channelCheckingNow = "NONE";
@@ -136,10 +136,11 @@ public class IpCameraHandler extends BaseThingHandler {
     private String ipAddress = "empty";
     private int port;
     private String profileToken = "empty";
+
     public boolean useDigestAuth = false;
-    public boolean useBasicAuth = false;
     public String digestString = "false";
     public String nonce;
+
     private String updateImageEvents;
     boolean firstAudioAlarm = false;
     boolean firstMotionAlarm = false;
@@ -156,9 +157,23 @@ public class IpCameraHandler extends BaseThingHandler {
     private float currentZoomPercentage = 0.0f;
 
     // Special note and thanks to authors of HttpSnoopClient which is sample code for the Netty library//
-    // I used it as a starting point and it is released under Apache License version 2.0//
+    // I used it as a starting point as it is released under Apache License version 2.0//
 
-    public void sendHttpRequest(String digestFullRequestPath, String newDigestString) {
+    public void setBasicAuth() {
+        String authString = username + ":" + password;
+        ByteBuf byteBuf = null;
+        try {
+            byteBuf = Base64.encode(Unpooled.wrappedBuffer(authString.getBytes(CharsetUtil.UTF_8)));
+            basicAuth = byteBuf.getCharSequence(0, byteBuf.capacity(), CharsetUtil.UTF_8).toString();
+        } finally {
+            if (byteBuf != null) {
+                byteBuf.release();
+                byteBuf = null;
+            }
+        }
+    }
+
+    public void sendHttpRequestOnCh2(String digestFullRequestPath, String newDigestString) {
         // Second channel as I may need to keep one for streaming and the other for commands//
         if (secondBootstrap == null) {
             secondBootstrap = new Bootstrap();
@@ -195,7 +210,6 @@ public class IpCameraHandler extends BaseThingHandler {
         HttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, digestFullRequestPath);
         request.headers().set(HttpHeaderNames.HOST, ipAddress);
         request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
-        // request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
         request.headers().set(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.GZIP);
         if (useDigestAuth) {
             request.headers().set(HttpHeaderNames.AUTHORIZATION, "Digest " + newDigestString);
@@ -210,7 +224,11 @@ public class IpCameraHandler extends BaseThingHandler {
         secondchfuture.awaitUninterruptibly(2000);
     }
 
-    public boolean sendHttpRequest(String httpRequest) {
+    // Always use this as sendHttpRequest(GET/POST/PUT/DELETE, http://192.168.7.6/foo/bar,false)//
+    // The authHandler will use this method with useAuth as true when needed.
+    public boolean sendHttpRequest(String httpMethod, String httpRequestURL, boolean useAuth) {
+
+        this.httpMethod = httpMethod; // AuthHandler needs this for when I switch to full async.
 
         if (mainBootstrap == null) {
             mainBootstrap = new Bootstrap();
@@ -225,12 +243,10 @@ public class IpCameraHandler extends BaseThingHandler {
 
                 @Override
                 public void initChannel(SocketChannel socketChannel) throws Exception {
-                    // RtspResponseDecoder //RtspRequestEncoder // to try in the pipeline soon//
-
+                    // RtspResponseDecoder //RtspRequestEncoder // try in the pipeline soon//
                     socketChannel.pipeline().addLast(new HttpClientCodec());
                     socketChannel.pipeline().addLast(new HttpContentDecompressor());
-                    socketChannel.pipeline()
-                            .addLast(authChecker = new MyNettyAuthHandler(username, password, thing.getHandler()));
+                    socketChannel.pipeline().addLast(new MyNettyAuthHandler(username, password, thing.getHandler()));
 
                     switch (thing.getThingTypeUID().getId()) {
                         case "AMCREST":
@@ -249,12 +265,12 @@ public class IpCameraHandler extends BaseThingHandler {
         }
 
         try {
-            URI uri = new URI(httpRequest);
+            URI uri = new URI(httpRequestURL);
 
             if (uri.getRawQuery() == null) {
-                fullRequestPath = uri.getPath();
+                correctedRequestURL = uri.getPath();
             } else {
-                fullRequestPath = uri.getPath() + "?" + uri.getRawQuery();
+                correctedRequestURL = uri.getPath() + "?" + uri.getRawQuery();
             }
 
             // Configure SSL context if necessary.
@@ -275,10 +291,8 @@ public class IpCameraHandler extends BaseThingHandler {
             }
 
             logger.debug("Trying to connect with new request for camera at IP:{}", ipAddress);
-            // Try to connect then catch any connection timeouts.
             mainChFuture = mainBootstrap.connect(new InetSocketAddress(ipAddress, port));
             mainChFuture.awaitUninterruptibly(10000);
-
             if (!mainChFuture.isSuccess()) {
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                         "Timeout occured when trying to reach the Cameras IP and PORT: Check your IP ADDRESS is correct and the camera can be reached.");
@@ -293,34 +307,24 @@ public class IpCameraHandler extends BaseThingHandler {
 
             ch = mainChFuture.channel();
 
-            HttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, fullRequestPath);
+            HttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, new HttpMethod(httpMethod),
+                    correctedRequestURL);
             request.headers().set(HttpHeaderNames.HOST, ipAddress);
             request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
-            // request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
             request.headers().set(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.GZIP);
 
-            logger.debug("++ The request is going to be :{}:", fullRequestPath);
+            logger.debug("++ The request is going to be :{}:", correctedRequestURL);
 
-            if (useDigestAuth) {
+            if (useDigestAuth && useAuth) {
                 // following line causes nc to increase by 2
                 // digestString = authChecker.processAuth(null, fullRequestPath, false);
                 // logger.debug("Send method using this header:{}", digestString);
                 request.headers().set(HttpHeaderNames.AUTHORIZATION, "Digest " + digestString);
             }
 
-            if (useBasicAuth) {
-                String authString = username + ":" + password;
-                ByteBuf byteBuf = null;
-                try {
-                    byteBuf = Base64.encode(Unpooled.wrappedBuffer(authString.getBytes(CharsetUtil.UTF_8)));
-                    request.headers().set(HttpHeaderNames.AUTHORIZATION,
-                            "Basic " + byteBuf.toString(CharsetUtil.UTF_8));
-                } finally {
-                    if (byteBuf != null) {
-                        byteBuf.release();
-                        byteBuf = null;
-                    }
-                }
+            if (basicAuth != null) {
+                logger.debug("Camera at IP:{} is using Basic Auth", ipAddress);
+                request.headers().set(HttpHeaderNames.AUTHORIZATION, "Basic " + basicAuth);
             }
 
             ch.writeAndFlush(request);
@@ -394,27 +398,27 @@ public class IpCameraHandler extends BaseThingHandler {
                     updateState(channelCheckingNow, OnOffType.valueOf("OFF"));
                     if (channelCheckingNow.contains("audio")) {
                         firstAudioAlarm = false;
-                    } else {
+                    } else if (channelCheckingNow.contains("motion")) {
                         firstMotionAlarm = false;
                     }
-                    return;
+                    break;
 
                 case "channels[0]=0\r\n":
                     updateState(channelCheckingNow, OnOffType.valueOf("ON"));
 
                     if (updateImageEvents.contains("3") && channelCheckingNow.contains("audio") && !firstAudioAlarm) {
-                        sendHttpRequest(snapshotUri);
+                        sendHttpRequest("GET", snapshotUri, false);
                         firstAudioAlarm = true;
                     } else if (updateImageEvents.contains("2") && channelCheckingNow.contains("motion")
                             && !firstMotionAlarm) {
-                        sendHttpRequest(snapshotUri);
+                        sendHttpRequest("GET", snapshotUri, false);
                         firstMotionAlarm = true;
                     } else if (updateImageEvents.contains("5") && channelCheckingNow.contains("audio")) {
-                        sendHttpRequest(snapshotUri);
+                        sendHttpRequest("GET", snapshotUri, false);
                     } else if (updateImageEvents.contains("4") && channelCheckingNow.contains("motion")) {
-                        sendHttpRequest(snapshotUri);
+                        sendHttpRequest("GET", snapshotUri, false);
                     }
-                    return;
+                    break;
             }
 
             if (searchString(content, "table.MotionDetect[0].Enable=false") != null) {
@@ -502,7 +506,7 @@ public class IpCameraHandler extends BaseThingHandler {
         @Override
         public void handlerRemoved(ChannelHandlerContext ctx) {
             ctx.close();
-            authChecker = null;
+            // authChecker = null;
         }
 
         @Override
@@ -535,10 +539,10 @@ public class IpCameraHandler extends BaseThingHandler {
                 updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("ON"));
                 updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
                 if (updateImageEvents.contains("2") && !firstMotionAlarm) {
-                    sendHttpRequest(snapshotUri);
+                    sendHttpRequest("GET", snapshotUri, false);
                     firstMotionAlarm = true;
                 } else if (updateImageEvents.contains("4")) {
-                    sendHttpRequest(snapshotUri);
+                    sendHttpRequest("GET", snapshotUri, false);
                 }
             }
 
@@ -557,10 +561,10 @@ public class IpCameraHandler extends BaseThingHandler {
                 updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("ON"));
                 updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
                 if (updateImageEvents.contains("3") && !firstAudioAlarm) {
-                    sendHttpRequest(snapshotUri);
+                    sendHttpRequest("GET", snapshotUri, false);
                     firstAudioAlarm = true;
                 } else if (updateImageEvents.contains("5")) {
-                    sendHttpRequest(snapshotUri);
+                    sendHttpRequest("GET", snapshotUri, false);
                 }
             }
 
@@ -652,7 +656,6 @@ public class IpCameraHandler extends BaseThingHandler {
         @Override
         public void handlerRemoved(ChannelHandlerContext ctx) {
             ctx.close();
-            authChecker = null;
         }
 
         @Override
@@ -675,16 +678,20 @@ public class IpCameraHandler extends BaseThingHandler {
                 case CHANNEL_THRESHOLD_AUDIO_ALARM:
                     switch (thing.getThingTypeUID().getId()) {
                         case "FOSCAM":
-                            sendHttpRequest("http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=getAudioAlarmConfig&usr="
-                                    + username + "&pwd=" + password);
+                            sendHttpRequest("GET",
+                                    "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=getAudioAlarmConfig&usr=" + username
+                                            + "&pwd=" + password,
+                                    false);
                             break;
                     }
                     break;
                 case CHANNEL_ENABLE_AUDIO_ALARM:
                     switch (thing.getThingTypeUID().getId()) {
                         case "FOSCAM":
-                            sendHttpRequest("http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=getAudioAlarmConfig&usr="
-                                    + username + "&pwd=" + password);
+                            sendHttpRequest("GET",
+                                    "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=getAudioAlarmConfig&usr=" + username
+                                            + "&pwd=" + password,
+                                    false);
                             break;
                     }
                     break;
@@ -692,13 +699,14 @@ public class IpCameraHandler extends BaseThingHandler {
                     switch (thing.getThingTypeUID().getId()) {
 
                         case "AMCREST":
-                            sendHttpRequest(
-                                    "http://192.168.1.108/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect");
+                            sendHttpRequest("GET",
+                                    "http://192.168.1.108/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect",
+                                    false);
                             break;
 
                         case "FOSCAM":
-                            sendHttpRequest("http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username
-                                    + "&pwd=" + password);
+                            sendHttpRequest("GET", "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr="
+                                    + username + "&pwd=" + password, false);
                             break;
                     }
 
@@ -740,7 +748,7 @@ public class IpCameraHandler extends BaseThingHandler {
         switch (channelUID.getId()) {
             case CHANNEL_UPDATE_IMAGE_NOW:
                 if (snapshotUri != null) {
-                    sendHttpRequest(snapshotUri);
+                    sendHttpRequest("GET", snapshotUri, false);
                 }
                 break;
 
@@ -751,21 +759,25 @@ public class IpCameraHandler extends BaseThingHandler {
                     case "FOSCAM":
                         int value = Math.round(Float.valueOf(command.toString()));
                         if (value == 0) {
-                            sendHttpRequest(
+                            sendHttpRequest("GET",
                                     "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=0&usr="
-                                            + username + "&pwd=" + password);
+                                            + username + "&pwd=" + password,
+                                    false);
                         } else if (value <= 33) {
-                            sendHttpRequest(
+                            sendHttpRequest("GET",
                                     "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=0&usr="
-                                            + username + "&pwd=" + password);
+                                            + username + "&pwd=" + password,
+                                    false);
                         } else if (value <= 66) {
-                            sendHttpRequest(
+                            sendHttpRequest("GET",
                                     "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=1&usr="
-                                            + username + "&pwd=" + password);
+                                            + username + "&pwd=" + password,
+                                    false);
                         } else {
-                            sendHttpRequest(
+                            sendHttpRequest("GET",
                                     "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=2&usr="
-                                            + username + "&pwd=" + password);
+                                            + username + "&pwd=" + password,
+                                    false);
                         }
 
                         break;
@@ -780,13 +792,15 @@ public class IpCameraHandler extends BaseThingHandler {
                     case "FOSCAM":
 
                         if ("ON".equals(command.toString())) {
-                            sendHttpRequest(
+                            sendHttpRequest("GET",
                                     "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&usr="
-                                            + username + "&pwd=" + password);
+                                            + username + "&pwd=" + password,
+                                    false);
                         } else {
-                            sendHttpRequest(
+                            sendHttpRequest("GET",
                                     "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=0&usr="
-                                            + username + "&pwd=" + password);
+                                            + username + "&pwd=" + password,
+                                    false);
                         }
                         break;
                 }
@@ -797,23 +811,27 @@ public class IpCameraHandler extends BaseThingHandler {
                 switch (thing.getThingTypeUID().getId()) {
                     case "AMCREST":
                         if ("ON".equals(command.toString())) {
-                            sendHttpRequest(
-                                    "http://192.168.1.108/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=true");
+                            sendHttpRequest("GET",
+                                    "http://192.168.1.108/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=true",
+                                    false);
                         } else {
-                            sendHttpRequest(
-                                    "http://192.168.1.108/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=false");
+                            sendHttpRequest("GET",
+                                    "http://192.168.1.108/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=false",
+                                    false);
                         }
                         break;
 
                     case "FOSCAM":
                         if ("ON".equals(command.toString())) {
-                            sendHttpRequest(
+                            sendHttpRequest("GET",
                                     "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig&isEnable=1&usr="
-                                            + username + "&pwd=" + password);
+                                            + username + "&pwd=" + password,
+                                    false);
                         } else {
-                            sendHttpRequest(
+                            sendHttpRequest("GET",
                                     "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig&isEnable=0&usr="
-                                            + username + "&pwd=" + password);
+                                            + username + "&pwd=" + password,
+                                    false);
                         }
                 }
 
@@ -877,7 +895,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
                 if (snapshotUri.toString() != null) {
                     logger.debug("Camera at {} has a snapshot address of:{}:", ipAddress, snapshotUri);
-                    if (sendHttpRequest(snapshotUri)) {
+                    if (sendHttpRequest("GET", snapshotUri, false)) {
                         updateStatus(ThingStatus.ONLINE);
                         cameraConnectionJob.cancel(true);
                         cameraConnectionJob = null;
@@ -976,12 +994,10 @@ public class IpCameraHandler extends BaseThingHandler {
                     updateState(CHANNEL_VIDEO_URL, new StringType(videoStreamUri));
                     cameraConnectionJob.cancel(true);
                     cameraConnectionJob = null;
-                    cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 30, 30,
-                            TimeUnit.SECONDS);
                     updateStatus(ThingStatus.ONLINE);
 
                     if (snapshotUri != null) {
-                        sendHttpRequest(snapshotUri);
+                        sendHttpRequest("GET", snapshotUri, false);
                     }
 
                     fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 5000,
@@ -1005,22 +1021,24 @@ public class IpCameraHandler extends BaseThingHandler {
         public void run() {
 
             if (snapshotUri != null && updateImageEvents.contains("1")) {
-                sendHttpRequest(snapshotUri);
+                sendHttpRequest("GET", snapshotUri, false);
             }
 
             switch (thing.getThingTypeUID().getId()) {
                 case "AMCREST":
                     channelCheckingNow = "motionAlarm";
-                    sendHttpRequest(
-                            "http://192.168.1.108/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion");
+                    sendHttpRequest("GET",
+                            "http://192.168.1.108/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion",
+                            false);
                     channelCheckingNow = "audioAlarm";
-                    sendHttpRequest(
-                            "http://192.168.1.108/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation");
+                    sendHttpRequest("GET",
+                            "http://192.168.1.108/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation",
+                            false);
                     break;
 
                 case "FOSCAM":
-                    sendHttpRequest("http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username
-                            + "&pwd=" + password);
+                    sendHttpRequest("GET", "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username
+                            + "&pwd=" + password, false);
                     break;
             }
         }
