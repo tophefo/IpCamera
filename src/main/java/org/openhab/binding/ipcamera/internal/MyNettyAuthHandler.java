@@ -92,12 +92,11 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
         return null;
     }
 
-    // Method can be used a few ways. processAuth(null, string, false) to return the digest on demand, and
-    // processAuth(challString, string, true) to auto send new packet
+    // Method can be used a few ways. processAuth(null, string,string, false) to return the digest on demand, and
+    // processAuth(challString, string,string, true) to auto send new packet
     // First run it should not have rawstring as null
-    // nonce is reused if rawstring is null
+    // nonce is reused if rawstring is null so the NC needs to increment to allow this//
     public String processAuth(String authenticate, String httpMethod, String requestURI, boolean reSend) {
-        String digestString;
 
         if (authenticate != null) {
 
@@ -125,10 +124,18 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
             myHandler.qop = searchString(authenticate, "qop=\"");
         }
 
-        if (myHandler.opaque != null && myHandler.qop != null && myHandler.realm != null)
-
-        {
+        if (!myHandler.qop.isEmpty() && !myHandler.realm.isEmpty()) {
             myHandler.useDigestAuth = true;
+        } else {
+            logger.warn("Something is missing? opaque:{}, qop:{}, realm:{}", myHandler.opaque, myHandler.qop,
+                    myHandler.realm);
+        }
+
+        String stale = searchString(authenticate, "stale=\"");
+        if ("false".equals(stale)) {
+            logger.debug("Camera reported stale=false which normally means an issue with the username or password.");
+        } else if ("true".equals(stale)) {
+            logger.debug("Camera reported stale=true which normally means the NONCE has expired.");
         }
 
         // create the MD5 hashes
@@ -137,17 +144,18 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
         Random random = new Random();
         String cnonce = Integer.toHexString(random.nextInt());
         myHandler.ncCounter = (myHandler.ncCounter > 999999999) ? 1 : ++myHandler.ncCounter;
-        String nc = String.format("%08X", myHandler.ncCounter); // 8 digit hex with uppercase
+        String nc = String.format("%08X", myHandler.ncCounter); // 8 digit hex number
         // int nc = myHandler.ncCounter;
         // int nc = 1;
         String ha2 = httpMethod + ":" + requestURI;
         ha2 = calcMD5Hash(ha2);
-        String request = ha1 + ":" + myHandler.nonce + ":" + nc + ":" + cnonce + ":" + myHandler.qop + ":" + ha2;
-        request = calcMD5Hash(request);
 
-        digestString = "username=\"" + username + "\", realm=\"" + myHandler.realm + "\", nonce=\"" + myHandler.nonce
-                + "\", uri=\"" + requestURI + "\", qop=" + myHandler.qop + ", nc=" + nc + ", cnonce=\"" + cnonce
-                + "\", response=\"" + request + "\", opaque=\"" + myHandler.opaque + "\"";
+        String response = ha1 + ":" + myHandler.nonce + ":" + nc + ":" + cnonce + ":" + myHandler.qop + ":" + ha2;
+        response = calcMD5Hash(response);
+
+        String digestString = "username=\"" + username + "\", realm=\"" + myHandler.realm + "\", nonce=\""
+                + myHandler.nonce + "\", uri=\"" + requestURI + "\", qop=\"" + myHandler.qop + "\", nc=\"" + nc
+                + "\", cnonce=\"" + cnonce + "\", response=\"" + response + "\", opaque=\"" + myHandler.opaque + "\"";
 
         if (reSend) {
             myHandler.digestString = digestString;
@@ -164,7 +172,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
         if (msg instanceof HttpResponse) {
             HttpResponse response = (HttpResponse) msg;
             if (response.status().code() == 401) {
-                logger.debug("!!! We got a 401 which is normal if camera needs auth details !!!");
+                logger.debug("401: This reply from the camera is normal if it needs Basic or Digest auth details.");
                 // Find WWW-Authenticate then process it //
                 if (!response.headers().isEmpty()) {
                     for (CharSequence name : response.headers().names()) {
@@ -172,6 +180,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                             if (name.toString().equals("WWW-Authenticate")) {
                                 // logger.debug("Camera gave this string:{}", value.toString());
                                 processAuth(value.toString(), httpMethod, httpURL, true);
+                                ctx.close();
                             }
                         }
                     }

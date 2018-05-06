@@ -32,6 +32,7 @@ public class IpCameraBindingConstants {
     public static final ThingTypeUID THING_TYPE_AMCREST = new ThingTypeUID(BINDING_ID, "AMCREST");
     public static final ThingTypeUID THING_TYPE_AXIS = new ThingTypeUID(BINDING_ID, "AXIS");
     public static final ThingTypeUID THING_TYPE_FOSCAM = new ThingTypeUID(BINDING_ID, "FOSCAM");
+    public static final ThingTypeUID THING_TYPE_HIKVISION = new ThingTypeUID(BINDING_ID, "HIKVISION");
 
     // List of all Thing Config items
     public static final String CONFIG_IPADDRESS = "IPADDRESS";

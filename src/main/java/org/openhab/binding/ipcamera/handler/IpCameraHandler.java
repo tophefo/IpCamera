@@ -93,8 +93,9 @@ import io.netty.util.CharsetUtil;
 
 public class IpCameraHandler extends BaseThingHandler {
 
-    public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<ThingTypeUID>(Arrays
-            .asList(THING_TYPE_ONVIF, THING_TYPE_NON_ONVIF, THING_TYPE_AMCREST, THING_TYPE_AXIS, THING_TYPE_FOSCAM));
+    public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<ThingTypeUID>(
+            Arrays.asList(THING_TYPE_ONVIF, THING_TYPE_NON_ONVIF, THING_TYPE_AMCREST, THING_TYPE_AXIS,
+                    THING_TYPE_FOSCAM, THING_TYPE_HIKVISION));
     private Configuration config;
     private OnvifDevice onvifCamera;
     private List<Profile> profiles;
@@ -109,7 +110,6 @@ public class IpCameraHandler extends BaseThingHandler {
     private Bootstrap mainBootstrap;
     private Bootstrap secondBootstrap;
     ChannelFuture secondchfuture;
-    int nettyNumHandlers = 0;
 
     private EventLoopGroup mainEventLoopGroup = new NioEventLoopGroup();
     private EventLoopGroup secondEventLoopGroup = new NioEventLoopGroup();
@@ -117,14 +117,18 @@ public class IpCameraHandler extends BaseThingHandler {
     public String correctedRequestURL, httpMethod;
     private String scheme;
     private PTZVector ptzLocation;
-    Channel ch;
-    Channel digestChannel;
-    ChannelFuture mainChFuture;
+    private Channel ch;
+    private Channel digestChannel;
+    private ChannelFuture mainChFuture;
+    // Following used for digest Auth as it is allowed to reuse a NONCE to speed up comms if a camera supports this.//
     public int ncCounter = 0;
     public String opaque;
     public String qop;
     public String realm;
     private String basicAuth = null;
+    public boolean useDigestAuth = false;
+    public String digestString = "false";
+    public String nonce;
 
     @NonNull
     private String channelCheckingNow = "NONE";
@@ -136,10 +140,6 @@ public class IpCameraHandler extends BaseThingHandler {
     private String ipAddress = "empty";
     private int port;
     private String profileToken = "empty";
-
-    public boolean useDigestAuth = false;
-    public String digestString = "false";
-    public String nonce;
 
     private String updateImageEvents;
     boolean firstAudioAlarm = false;
@@ -247,6 +247,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     socketChannel.pipeline().addLast(new HttpClientCodec());
                     socketChannel.pipeline().addLast(new HttpContentDecompressor());
                     socketChannel.pipeline().addLast(new MyNettyAuthHandler(username, password, thing.getHandler()));
+                    socketChannel.pipeline().addLast(new CommonCameraHandler());
 
                     switch (thing.getThingTypeUID().getId()) {
                         case "AMCREST":
@@ -254,6 +255,9 @@ public class IpCameraHandler extends BaseThingHandler {
                             break;
                         case "FOSCAM":
                             socketChannel.pipeline().addLast(new FoscamHandler());
+                            break;
+                        case "HIKVISION":
+                            socketChannel.pipeline().addLast(new HikvisionHandler());
                             break;
                         default:
                             // Use the most tested one for now as default.
@@ -313,12 +317,10 @@ public class IpCameraHandler extends BaseThingHandler {
             request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
             request.headers().set(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.GZIP);
 
-            logger.debug("++ The request is going to be :{}:", correctedRequestURL);
+            logger.debug("+ The request is going to be {}:{}:", httpMethod, correctedRequestURL);
 
             if (useDigestAuth && useAuth) {
-                // following line causes nc to increase by 2
-                // digestString = authChecker.processAuth(null, fullRequestPath, false);
-                // logger.debug("Send method using this header:{}", digestString);
+                // logger.debug("Send using this header:{}", digestString);
                 request.headers().set(HttpHeaderNames.AUTHORIZATION, "Digest " + digestString);
             }
 
@@ -330,10 +332,13 @@ public class IpCameraHandler extends BaseThingHandler {
             ch.writeAndFlush(request);
             // wait for camera to reply and close the connection for 3 seconds//
             mainChFuture = ch.closeFuture();
-            mainChFuture.awaitUninterruptibly(3000);
+            mainChFuture.awaitUninterruptibly(5000);
+
+            // Get the handler instance to retrieve the answer.
+            // ChannelHandler handler = ch.pipeline().last();
 
             if (!mainChFuture.isSuccess()) {
-                logger.warn("Camera at {}:{} is not closing the connection quick enough. Check for digest stale=.",
+                logger.warn("Camera at {}:{} is not closing the connection quick enough. Check for digest stale=?",
                         ipAddress, port);
                 ch.close();// force close to prevent the thread getting locked.
                 // cleanup then return
@@ -382,15 +387,95 @@ public class IpCameraHandler extends BaseThingHandler {
         return null;
     }
 
-    public class AmcrestHandler extends ChannelDuplexHandler {
+    // These methods handle the response from all Camera brands, nothing specific to any brand should be in here //
+    private class CommonCameraHandler extends ChannelDuplexHandler {
         private int bytesToRecieve = 0;
         private int bytesAlreadyRecieved = 0;
         private byte[] lastSnapshot;
         private String contentType;
 
-        // Any camera specific changes are to be in here to make this easier to maintain//
-        private void processResponseContent(String content) {
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            logger.debug(msg.toString()); // Helpful to have this when getting users to try new features.
 
+            if (msg instanceof HttpResponse) {
+                HttpResponse response = (HttpResponse) msg;
+                if (!response.headers().isEmpty()) {
+                    for (CharSequence name : response.headers().names()) {
+                        for (CharSequence value : response.headers().getAll(name)) {
+                            if (name.toString().equalsIgnoreCase("Content-Type")) {
+                                contentType = value.toString();
+                            } else if (name.toString().equalsIgnoreCase("Content-Length")) {
+                                bytesToRecieve = Integer.parseInt(value.toString());
+                            }
+                        }
+                    }
+                }
+            }
+            if (msg instanceof HttpContent) {
+                HttpContent content = (HttpContent) msg;
+
+                // Process the contents of a response if it is not an image//
+                if (!"image/jpeg".equalsIgnoreCase(contentType)) {
+                    Object reply = content.content().toString(CharsetUtil.UTF_8);
+                    content.content().release();
+                    bytesAlreadyRecieved = 0;
+                    lastSnapshot = null;
+                    super.channelRead(ctx, reply);
+                }
+
+                if (content instanceof LastHttpContent) {
+                    ctx.close();
+                }
+
+                if (content instanceof DefaultHttpContent) {
+                    if ("image/jpeg".equalsIgnoreCase(contentType)) {
+                        for (int i = 0; i < content.content().capacity(); i++) {
+                            if (lastSnapshot == null) {
+                                lastSnapshot = new byte[bytesToRecieve];
+                            }
+                            lastSnapshot[bytesAlreadyRecieved++] = content.content().getByte(i);
+                        }
+                        content.content().release();// must be here or a memory leak occurs.
+                        if (bytesAlreadyRecieved >= bytesToRecieve) {
+                            if (bytesToRecieve != bytesAlreadyRecieved) {
+                                logger.error(
+                                        "We got too many packets back from the camera for some reason, please report this.");
+                            }
+                            updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
+                            bytesAlreadyRecieved = 0;
+                            lastSnapshot = null;
+                            ctx.close();
+                        }
+                    }
+                }
+            }
+        }
+
+        @Override
+        public void channelReadComplete(ChannelHandlerContext ctx) {
+        }
+
+        @Override
+        public void handlerAdded(ChannelHandlerContext ctx) {
+        }
+
+        @Override
+        public void handlerRemoved(ChannelHandlerContext ctx) {
+        }
+
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+            logger.debug("!!! Camera may have closed the connection which can be normal. Cause reported is:{}", cause);
+            ctx.close();
+        }
+    }
+
+    public class AmcrestHandler extends ChannelDuplexHandler {
+
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            String content = msg.toString();
             logger.debug("HTTP Result back from camera is :{}:", content);
 
             switch (content) {
@@ -423,107 +508,18 @@ public class IpCameraHandler extends BaseThingHandler {
 
             if (searchString(content, "table.MotionDetect[0].Enable=false") != null) {
                 updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                return;
             } else if (searchString(content, "table.MotionDetect[0].Enable=true") != null) {
                 updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
-                return;
             }
-        }
-
-        // These methods handle the Servers response, nothing specific to the camera should be in here //
-
-        @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            logger.debug(msg.toString()); // Helpful to have this when getting users to try new features.
-
-            if (msg instanceof HttpResponse) {
-                HttpResponse response = (HttpResponse) msg;
-                if (!response.headers().isEmpty()) {
-                    for (CharSequence name : response.headers().names()) {
-                        for (CharSequence value : response.headers().getAll(name)) {
-                            if (name.toString().equalsIgnoreCase("Content-Type")) {
-                                contentType = value.toString();
-                            } else if (name.toString().equalsIgnoreCase("Content-Length")) {
-                                bytesToRecieve = Integer.parseInt(value.toString());
-                            }
-                        }
-                    }
-                }
-            }
-            if (msg instanceof HttpContent) {
-                HttpContent content = (HttpContent) msg;
-
-                // Process the contents of a response if it is not an image//
-                if (!"image/jpeg".equalsIgnoreCase(contentType)) {
-                    processResponseContent(content.content().toString(CharsetUtil.UTF_8));
-                    content.content().release(); // stop memory leak?
-                    bytesAlreadyRecieved = 0;
-                    lastSnapshot = null;
-                }
-
-                if (content instanceof LastHttpContent) {
-                    ctx.close();
-                }
-
-                if (content instanceof DefaultHttpContent) {
-                    if ("image/jpeg".equalsIgnoreCase(contentType)) {
-
-                        for (int i = 0; i < content.content().capacity(); i++) {
-                            if (lastSnapshot == null) {
-                                lastSnapshot = new byte[bytesToRecieve];
-                            }
-                            lastSnapshot[bytesAlreadyRecieved++] = content.content().getByte(i);
-                        }
-                        content.content().release();// must be here or a memory leak occurs.
-
-                        // logger.debug("got {} bytes out of the total {}, so still waiting for {} more",
-                        // bytesAlreadyRecieved, bytesToRecieve, bytesToRecieve - bytesAlreadyRecieved);
-
-                        if (bytesAlreadyRecieved >= bytesToRecieve) {
-                            if (bytesToRecieve != bytesAlreadyRecieved) {
-                                logger.error(
-                                        "We got too many packets back from the camera for some reason, please report this.");
-                            }
-                            // logger.debug("Updating the image channel now with {} Bytes.", bytesAlreadyRecieved);
-                            updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
-                            bytesAlreadyRecieved = 0;
-                            lastSnapshot = null;
-                        }
-                    }
-                }
-            }
-        }
-
-        @Override
-        public void channelReadComplete(ChannelHandlerContext ctx) {
-            // logger.debug("* readcompleted for connection ID:{}", ctx.channel().id().toString());
-        }
-
-        @Override
-        public void handlerAdded(ChannelHandlerContext ctx) {
-        }
-
-        @Override
-        public void handlerRemoved(ChannelHandlerContext ctx) {
-            ctx.close();
-            // authChecker = null;
-        }
-
-        @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            logger.debug("!!! Camera may have closed the connection which can be normal. Cause reported is:{}", cause);
             ctx.close();
         }
-
     }
 
     public class FoscamHandler extends ChannelDuplexHandler {
-        private int bytesToRecieve = 0;
-        private int bytesAlreadyRecieved = 0;
-        private byte[] lastSnapshot;
-        private String contentType;
 
-        private void processResponseContent(String content) {
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            String content = msg.toString();
             logger.debug("HTTP Result back from camera is :{}:", content);
 
             ////////////// Motion Alarm //////////////
@@ -578,89 +574,26 @@ public class IpCameraHandler extends BaseThingHandler {
             if (content.contains("<sensitivity>2</sensitivity>")) {
                 updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf("100"));
             }
-
-        }
-
-        // This method handles the Servers response, nothing specific to the camera should be in here //
-        @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            logger.debug(msg.toString()); // Helpful to have this when getting users to try new features.
-
-            if (msg instanceof HttpResponse) {
-                HttpResponse response = (HttpResponse) msg;
-                if (!response.headers().isEmpty()) {
-                    for (CharSequence name : response.headers().names()) {
-                        for (CharSequence value : response.headers().getAll(name)) {
-                            if (name.toString().equalsIgnoreCase("Content-Type")) {
-                                contentType = value.toString();
-                            } else if (name.toString().equalsIgnoreCase("Content-Length")) {
-                                bytesToRecieve = Integer.parseInt(value.toString());
-                            }
-                        }
-                    }
-                }
-            }
-            if (msg instanceof HttpContent) {
-                HttpContent content = (HttpContent) msg;
-
-                // Process the contents of a response if it is not an image//
-                if (!"image/jpeg".equalsIgnoreCase(contentType)) {
-                    processResponseContent(content.content().toString(CharsetUtil.UTF_8));
-                    content.content().release(); // stop memory leak?
-                    bytesAlreadyRecieved = 0;
-                    lastSnapshot = null;
-                }
-
-                if (content instanceof LastHttpContent) {
-                    ctx.close();
-                }
-
-                if (content instanceof DefaultHttpContent) {
-                    if ("image/jpeg".equalsIgnoreCase(contentType)) {
-
-                        for (int i = 0; i < content.content().capacity(); i++) {
-                            if (lastSnapshot == null) {
-                                lastSnapshot = new byte[bytesToRecieve];
-                            }
-                            lastSnapshot[bytesAlreadyRecieved++] = content.content().getByte(i);
-                        }
-                        content.content().release();// must be here or a memory leak occurs.
-
-                        // logger.debug("got {} bytes out of the total {}, so still waiting for {} more",
-                        // bytesAlreadyRecieved, bytesToRecieve, bytesToRecieve - bytesAlreadyRecieved);
-
-                        if (bytesAlreadyRecieved >= bytesToRecieve) {
-                            if (bytesToRecieve != bytesAlreadyRecieved) {
-                                logger.error(
-                                        "We got too many packets back from the camera for some reason, please report this.");
-                            }
-                            // logger.debug("Updating the image channel now with {} Bytes.", bytesAlreadyRecieved);
-                            updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
-                            bytesAlreadyRecieved = 0;
-                            lastSnapshot = null;
-                        }
-                    }
-                }
-            }
-        }
-
-        @Override
-        public void channelReadComplete(ChannelHandlerContext ctx) {
-            // logger.debug("* readcompleted for connection ID:{}", ctx.channel().id().toString());
-        }
-
-        @Override
-        public void handlerAdded(ChannelHandlerContext ctx) {
-        }
-
-        @Override
-        public void handlerRemoved(ChannelHandlerContext ctx) {
             ctx.close();
         }
+    }
+
+    public class HikvisionHandler extends ChannelDuplexHandler {
 
         @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            logger.debug("!!! Camera may have closed the connection which can be normal. Cause reported is:{}", cause);
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            String content = msg.toString();
+            logger.debug("HTTP Result back from camera is :{}:", content);
+
+            if (content.contains("<eventType>VMD</eventType>\r\n" + "<eventState>active</eventState>\r\n"
+                    + "<eventDescription>Motion alarm</eventDescription>")) {// means it is enabled and alarm on
+                updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("ON"));
+            }
+            if (content.contains("<eventType>VMD</eventType>\r\n" + "<eventState>inactive</eventState>\r\n"
+                    + "<eventDescription>Motion alarm</eventDescription>")) {// means it is enabled and alarm on
+                updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+            }
+
             ctx.close();
         }
     }
@@ -831,6 +764,17 @@ public class IpCameraHandler extends BaseThingHandler {
                             sendHttpRequest("GET",
                                     "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig&isEnable=0&usr="
                                             + username + "&pwd=" + password,
+                                    false);
+                        }
+                        break;
+                    case "HIKVISION":
+                        if ("ON".equals(command.toString())) {
+                            sendHttpRequest("GET", "http://192.168.1.108/MotionDetection/1", false);
+                            // sendHttpRequest("GET", "http://192.168.1.108/ISAPI/Event/notification/alertStream",
+                            // false);
+
+                        } else {
+                            sendHttpRequest("GET", "http://192.168.1.108/ISAPI/Event/schedules/motionDetections",
                                     false);
                         }
                 }
@@ -1039,6 +983,11 @@ public class IpCameraHandler extends BaseThingHandler {
                 case "FOSCAM":
                     sendHttpRequest("GET", "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username
                             + "&pwd=" + password, false);
+                    break;
+                case "HIKVISION":
+
+                    sendHttpRequest("GET", "http://192.168.1.108/ISAPI/Event/triggers", false);
+
                     break;
             }
         }
