@@ -354,39 +354,6 @@ public class IpCameraHandler extends BaseThingHandler {
         return true;
     }
 
-    private String searchString(String rawString, String searchedString) {
-        String result = "";
-        int index = 0;
-        index = rawString.indexOf(searchedString);
-        if (index != -1) // -1 means "not found"
-        {
-            result = rawString.substring(index + searchedString.length(), rawString.length());
-            index = result.indexOf(',');
-            if (index == -1) {
-                index = result.indexOf('"');
-                if (index == -1) {
-                    index = result.indexOf('}');
-                    if (index == -1) {
-                        return result;
-                    } else {
-                        return result.substring(0, index);
-                    }
-                } else {
-                    return result.substring(0, index);
-                }
-            } else {
-                result = result.substring(0, index);
-                index = result.indexOf('"');
-                if (index == -1) {
-                    return result;
-                } else {
-                    return result.substring(0, index);
-                }
-            }
-        }
-        return null;
-    }
-
     // These methods handle the response from all Camera brands, nothing specific to any brand should be in here //
     private class CommonCameraHandler extends ChannelDuplexHandler {
         private int bytesToRecieve = 0;
@@ -480,35 +447,27 @@ public class IpCameraHandler extends BaseThingHandler {
 
             switch (content) {
                 case "Error: No Events\r\n":
-                    updateState(channelCheckingNow, OnOffType.valueOf("OFF"));
-                    if (channelCheckingNow.contains("audio")) {
-                        firstAudioAlarm = false;
-                    } else if (channelCheckingNow.contains("motion")) {
+                    if (channelCheckingNow.contains("motion")) {
+                        updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
                         firstMotionAlarm = false;
+                    } else {
+                        updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                        firstAudioAlarm = false;
                     }
                     break;
 
                 case "channels[0]=0\r\n":
-                    updateState(channelCheckingNow, OnOffType.valueOf("ON"));
-
-                    if (updateImageEvents.contains("3") && channelCheckingNow.contains("audio") && !firstAudioAlarm) {
-                        sendHttpRequest("GET", snapshotUri, false);
-                        firstAudioAlarm = true;
-                    } else if (updateImageEvents.contains("2") && channelCheckingNow.contains("motion")
-                            && !firstMotionAlarm) {
-                        sendHttpRequest("GET", snapshotUri, false);
-                        firstMotionAlarm = true;
-                    } else if (updateImageEvents.contains("5") && channelCheckingNow.contains("audio")) {
-                        sendHttpRequest("GET", snapshotUri, false);
-                    } else if (updateImageEvents.contains("4") && channelCheckingNow.contains("motion")) {
-                        sendHttpRequest("GET", snapshotUri, false);
+                    if (channelCheckingNow.contains("motion")) {
+                        motionDetected();
+                    } else {
+                        audioDetected();
                     }
                     break;
             }
 
-            if (searchString(content, "table.MotionDetect[0].Enable=false") != null) {
+            if (content.contains("table.MotionDetect[0].Enable=false")) {
                 updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
-            } else if (searchString(content, "table.MotionDetect[0].Enable=true") != null) {
+            } else if (content.contains("table.MotionDetect[0].Enable=true")) {
                 updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
             }
             ctx.close();
@@ -586,12 +545,13 @@ public class IpCameraHandler extends BaseThingHandler {
             logger.debug("HTTP Result back from camera is :{}:", content);
 
             if (content.contains("<eventType>VMD</eventType>\r\n" + "<eventState>active</eventState>\r\n"
-                    + "<eventDescription>Motion alarm</eventDescription>")) {// means it is enabled and alarm on
-                updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("ON"));
+                    + "<eventDescription>Motion alarm</eventDescription>")) {
+                motionDetected();
             }
             if (content.contains("<eventType>VMD</eventType>\r\n" + "<eventState>inactive</eventState>\r\n"
-                    + "<eventDescription>Motion alarm</eventDescription>")) {// means it is enabled and alarm on
+                    + "<eventDescription>Motion alarm</eventDescription>")) {
                 updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                firstMotionAlarm = false;
             }
 
             ctx.close();
@@ -600,6 +560,26 @@ public class IpCameraHandler extends BaseThingHandler {
 
     public IpCameraHandler(Thing thing) {
         super(thing);
+    }
+
+    private void motionDetected() {
+        updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("ON"));
+        if (updateImageEvents.contains("2") && !firstMotionAlarm) {
+            sendHttpRequest("GET", snapshotUri, false);
+            firstMotionAlarm = true;
+        } else if (updateImageEvents.contains("4")) {
+            sendHttpRequest("GET", snapshotUri, false);
+        }
+    }
+
+    private void audioDetected() {
+        updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("ON"));
+        if (updateImageEvents.contains("3") && !firstAudioAlarm) {
+            sendHttpRequest("GET", snapshotUri, false);
+            firstAudioAlarm = true;
+        } else if (updateImageEvents.contains("5")) {
+            sendHttpRequest("GET", snapshotUri, false);
+        }
     }
 
     @Override
@@ -683,6 +663,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 if (snapshotUri != null) {
                     sendHttpRequest("GET", snapshotUri, false);
                 }
+
                 break;
 
             case CHANNEL_THRESHOLD_AUDIO_ALARM:
