@@ -30,7 +30,7 @@ https://wikiold.instar.de/index.php/List_of_CGI_commands_(HD)
 
 If doing manual text configuration and/or when needing to setup HABPANEL or your sitemap you are going to need to know what your camera has as a "thing name". These are listed in BOLD below. 
 
-NON_ONVIF: For any camera that is not ONVIF compatible, and has the ability to fetch a snapshot with a url.
+HTTPONLY: For any camera that is not ONVIF compatible, and has the ability to fetch a snapshot with a url.
 
 ONVIF: Use for all ONVIF Cameras from any brand that do not have an API.
 
@@ -132,4 +132,4 @@ Thing ipcamera:AMCREST:001 [ IPADDRESS="192.168.1.2", PASSWORD="suitcase123456",
 
 ## Roadmap for further development
 
-If you need a feature added that is in an API, please raise an issue ticket here at this github project if you are not able to copy what I have already done and create a push request. I am looking at 2 way audio and how it can be best added to the binding, if you have ideas then please see the issue ticket I created to discuss how this can be done and how the features will work. If you wish to contribute then please create an issue ticket first to discuss how things will work before doing any coding on large amounts of changes. I am trying to setup the backend code to allow people that actually own a particular brand of camera to easily add new features and to insulate other brands from bugs. Any feedback and ideas are welcome.
+If you need a feature added that is in an API, please raise an issue ticket here at this github project if you are not able to copy what I have already done and create a push request. I am looking at 2 way audio and how it can be best added to the binding, if you have ideas then please see the issue ticket I created to discuss how this can be done and how the features will work. If you wish to contribute then please create an issue ticket first to discuss how things will work before doing any coding on large amounts of changes. I am currently trying to setup the backend code to allow people that actually own a particular brand of camera to easily add new features and to insulate other brands from bugs. Any feedback and ideas are welcome.

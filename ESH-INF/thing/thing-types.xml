@@ -3,8 +3,8 @@
 	xmlns:thing="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0"
 	xsi:schemaLocation="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0 http://eclipse.org/smarthome/schemas/thing-description-1.0.0.xsd">
 
-    <thing-type id="NON_ONVIF">
-        <label>Generic IP camera with only HTTP/S support.</label>
+    <thing-type id="HTTPONLY">
+        <label>"HTTPONLY" Generic IP camera with only HTTP/S support.</label>
         <description>Use when your camera is not ONVIF compatible.</description>
         <channels>
         <channel id="updateImageNow" typeId="updateImageNow" />
@@ -41,14 +41,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>80</default>
 </parameter>
 
-<parameter name="USE_HTTPS" type="boolean" required="true" groupName="Settings">
-<label>NOT WORKING: Use HTTPS instead of HTTP.</label>
-<description>NOT WORKING: Use HTTPS to increase the security of poorly protected passwords
-</description>
-<default>false</default>
-</parameter>
-
-<parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="true">
+<parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="true" groupName="Settings">
 <context>url</context>
 <label>Snapshot http address for your camera.</label>
 <description>Full http address to where a snapshot can be seen from your camera if entered into any browser.
@@ -68,7 +61,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 </parameter>
 
-<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="10000" groupName="Image Settings">
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
 </description>
@@ -79,7 +72,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </thing-type>
 
     <thing-type id="ONVIF">
-        <label>Generic IP camera with only ONVIF support.</label>
+        <label>"ONVIF" Generic IP camera with ONVIF support.</label>
         <description>Use when the binding does not list your brand of ONVIF compatible Camera</description>
         <channels>
         <channel id="updateImageNow" typeId="updateImageNow" />
@@ -118,6 +111,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </options>
 </parameter>
 
+<parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="false" groupName="Settings">
+<context>url</context>
+<label>Over-ride the auto detected snapshot http address for your camera.</label>
+<description>Recommend you leave this empty to use the auto detected snapshot method. Only enter a http address if you wish to over-ride with a different address.
+</description>        
+</parameter>
+
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
 <context>network-address</context>
 <label>IP Address</label>
@@ -130,13 +130,6 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>This port will be used for http/https as the binding will not change between the two.
 </description>
 <default>80</default>
-</parameter>
-
-<parameter name="USE_HTTPS" type="boolean" required="true" groupName="Settings">
-<label>NOT WORKING: Use HTTPS instead of HTTP.</label>
-<description>NOT WORKING: Use HTTPS to increase the security of poorly protected passwords
-</description>
-<default>false</default>
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
@@ -166,7 +159,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>0</default>
 </parameter>
 
-<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="10000" groupName="Image Settings">
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
 </description>
@@ -180,14 +173,15 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 
    <thing-type id="AMCREST">
-        <label>Amcrest ONVIF IP camera with API support.</label>
-        <description>Use for all current Amcrest Cameras as they support an API as well as ONVIF.</description>
+        <label>"AMCREST" IP camera with ONVIF and API support.</label>
+        <description>Use for all current Amcrest Cameras, as they support an API as well as ONVIF.</description>
         <channels>
             <channel id="updateImageNow" typeId="updateImageNow"/>          
             <channel id="image" typeId="image" />            
             <channel id="enableMotionAlarm" typeId="enableMotionAlarm" />
             <channel id="motionAlarm" typeId="motionAlarm" />
-            <channel id="audioAlarm" typeId="audioAlarm" />               
+            <channel id="audioAlarm" typeId="audioAlarm" />   
+            <channel id="alphaTest" typeId="alphaTest" />             
             <channel id="pan" typeId="pan" />
             <channel id="tilt" typeId="tilt" />
             <channel id="zoom" typeId="zoom" />
@@ -241,6 +235,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>80</default>
 </parameter>
 
+<parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="false" groupName="Settings">
+<context>url</context>
+<label>Over-ride the auto detected snapshot http address for your camera.</label>
+<description>Recommend you leave this empty to use the auto detected snapshot method. Only enter a http address if you wish to over-ride with a different address.
+</description>        
+</parameter>
+
 <parameter name="USE_HTTPS" type="boolean" required="true" groupName="Settings">
 <label>NOT WORKING: Use HTTPS instead of HTTP.</label>
 <description>NOT WORKING: Use HTTPS to increase the security of poorly protected passwords
@@ -275,7 +276,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>0</default>
 </parameter>
 
-<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="15000" groupName="Image Settings">
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="15000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
 </description>
@@ -287,8 +288,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 
   <thing-type id="FOSCAM">
-        <label>Foscam ONVIF IP camera with API support.</label>
-        <description>Use for all current FOSCAM Cameras as they support an API as well as ONVIF.</description>
+        <label>"FOSCAM" IP camera with ONVIF and API support.</label>
+        <description>Use for all current HD FOSCAM Cameras as they support an API as well as ONVIF.</description>
         <channels>
         <channel id="updateImageNow" typeId="updateImageNow" />
             <channel id="image" typeId="image" />
@@ -350,11 +351,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>88</default>
 </parameter>
 
-<parameter name="USE_HTTPS" type="boolean" required="true" groupName="Settings">
-<label>NOT WORKING: Use HTTPS instead of HTTP.</label>
-<description>NOT WORKING: Use HTTPS to increase the security of poorly protected passwords
-</description>
-<default>false</default>
+<parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="false" groupName="Settings">
+<context>url</context>
+<label>Over-ride the auto detected snapshot http address for your camera.</label>
+<description>Recommend you leave this empty to use the auto detected snapshot method. Only enter a http address if you wish to over-ride with a different address.
+</description>        
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
@@ -384,7 +385,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>0</default>
 </parameter>
 
-<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="60000" groupName="Image Settings">
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
 </description>
@@ -395,13 +396,14 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </thing-type>
 
   <thing-type id="HIKVISION">
-        <label>Hikvision ONVIF IP camera with API support.</label>
+        <label>"HIKVISION" IP camera with ONVIF and API support.</label>
         <description>Use for all current Hikvision Cameras as they support an API as well as ONVIF.</description>
         <channels>
             <channel id="updateImageNow" typeId="updateImageNow"/>          
             <channel id="image" typeId="image" />            
             <channel id="enableMotionAlarm" typeId="enableMotionAlarm" />
-            <channel id="motionAlarm" typeId="motionAlarm" />        
+            <channel id="motionAlarm" typeId="motionAlarm" />   
+            <channel id="alphaTest" typeId="alphaTest" />                     
             <channel id="pan" typeId="pan" />
             <channel id="tilt" typeId="tilt" />
             <channel id="zoom" typeId="zoom" />
@@ -451,11 +453,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>80</default>
 </parameter>
 
-<parameter name="USE_HTTPS" type="boolean" required="true" groupName="Settings">
-<label>NOT WORKING: Use HTTPS instead of HTTP.</label>
-<description>NOT WORKING: Use HTTPS to increase the security of poorly protected passwords
-</description>
-<default>false</default>
+<parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="false" groupName="Settings">
+<context>url</context>
+<label>Over-ride the auto detected snapshot http address for your camera.</label>
+<description>Recommend you leave this empty to use the auto detected snapshot method. Only enter a http address if you wish to over-ride with a different address.
+</description>        
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
@@ -485,7 +487,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>0</default>
 </parameter>
 
-<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="15000" groupName="Image Settings">
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
 </description>
@@ -497,7 +499,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 
   <thing-type id="AXIS">
-        <label>Axis ONVIF IP camera with API support.</label>
+        <label>"AXIS" IP camera with ONVIF and API support.</label>
         <description>Use for all current Axis Cameras as they support an API as well as ONVIF.</description>
         <channels>
         <channel id="updateImageNow" typeId="updateImageNow" />
@@ -550,11 +552,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>80</default>
 </parameter>
 
-<parameter name="USE_HTTPS" type="boolean" required="true" groupName="Settings">
-<label>NOT WORKING: Use HTTPS instead of HTTP.</label>
-<description>NOT WORKING: Use HTTPS to increase the security of poorly protected passwords
-</description>
-<default>false</default>
+<parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="false" groupName="Settings">
+<context>url</context>
+<label>Over-ride the auto detected snapshot http address for your camera.</label>
+<description>Recommend you leave this empty to use the auto detected snapshot method. Only enter a http address if you wish to over-ride with a different address.
+</description>        
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
@@ -584,7 +586,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>0</default>
 </parameter>
 
-<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="100" max="10000" groupName="Image Settings">
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
 </description>
@@ -592,6 +594,12 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 </config-description>
 </thing-type>
+
+<channel-type id="alphaTest">
+<item-type>Switch</item-type>
+<label>Button to test new code</label>
+<description>Pressing this will trigger new code that is not fully tested.</description>   
+</channel-type>
 
 <channel-type id="updateImageNow">
 <item-type>Switch</item-type>

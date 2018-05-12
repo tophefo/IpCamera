@@ -52,6 +52,8 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
             for (int i = 0; i < array.length; ++i) {
                 stringBuffer.append(Integer.toHexString((array[i] & 0xFF) | 0x100).substring(1, 3));
             }
+            messageDigest = null;
+            array = null;
             return stringBuffer.toString();
         } catch (java.security.NoSuchAlgorithmException e) {
             logger.error("NoSuchAlgorithmException error when calculating MD5 hash");
@@ -108,8 +110,8 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                     return "Error:Downgrade authenticate attack detected";
                 }
                 logger.debug("Setting up the camera to use Basic Auth and resending last request with correct auth.");
-                myHandler.setBasicAuth();
-                myHandler.sendHttpRequest(httpMethod, requestURI, false);
+                myHandler.setBasicAuth(true);
+                // myHandler.sendHttpRequest(httpMethod, requestURI, false);
                 return "Using Basic";
             }
 
@@ -143,6 +145,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
         ha1 = calcMD5Hash(ha1);
         Random random = new Random();
         String cnonce = Integer.toHexString(random.nextInt());
+        random = null;
         myHandler.ncCounter = (myHandler.ncCounter > 999999999) ? 1 : ++myHandler.ncCounter;
         String nc = String.format("%08X", myHandler.ncCounter); // 8 digit hex number
         // int nc = myHandler.ncCounter;
@@ -160,8 +163,8 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
         if (reSend) {
             myHandler.digestString = digestString;
             myHandler.sendHttpRequest(httpMethod, requestURI, true);
-            // myHandler.sendHttpRequest(requestURI, digestString); // for testing second channel//
         }
+
         return digestString;
     }
 
@@ -199,6 +202,8 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) {
+        myHandler = null;
+        username = password = httpMethod = httpURL = null;
     }
 
     @Override

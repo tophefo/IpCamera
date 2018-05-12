@@ -27,7 +27,7 @@ public class IpCameraBindingConstants {
     private static final String BINDING_ID = "ipcamera";
 
     // List of all Thing Type UIDs
-    public static final ThingTypeUID THING_TYPE_NON_ONVIF = new ThingTypeUID(BINDING_ID, "NON_ONVIF");
+    public static final ThingTypeUID THING_TYPE_HTTPONLY = new ThingTypeUID(BINDING_ID, "HTTPONLY");
     public static final ThingTypeUID THING_TYPE_ONVIF = new ThingTypeUID(BINDING_ID, "ONVIF");
     public static final ThingTypeUID THING_TYPE_AMCREST = new ThingTypeUID(BINDING_ID, "AMCREST");
     public static final ThingTypeUID THING_TYPE_AXIS = new ThingTypeUID(BINDING_ID, "AXIS");
@@ -59,5 +59,6 @@ public class IpCameraBindingConstants {
     public static final String CHANNEL_ENABLE_MOTION_ALARM = "enableMotionAlarm";
     public static final String CHANNEL_ENABLE_AUDIO_ALARM = "enableAudioAlarm";
     public static final String CHANNEL_THRESHOLD_AUDIO_ALARM = "thresholdAudioAlarm";
+    public static final String CHANNEL_ALPHA_TEST = "alphaTest";
 
 }
