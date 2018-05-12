@@ -30,7 +30,6 @@ import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLException;
 import javax.xml.soap.SOAPException;
 
-import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.PercentType;
@@ -101,9 +100,6 @@ public class IpCameraHandler extends BaseThingHandler {
     private List<Profile> profiles;
     private String username;
     private String password;
-    private FloatRange panRange;
-    private FloatRange tiltRange;
-    private PtzDevices ptzDevices;
     private ScheduledFuture<?> cameraConnectionJob = null;
     private ScheduledFuture<?> fetchCameraOutputJob = null;
     private int selectedMediaProfile = 0;
@@ -127,7 +123,6 @@ public class IpCameraHandler extends BaseThingHandler {
     public String digestString = "false";
     public String nonce;
 
-    @NonNull
     private String channelCheckingNow = "NONE";
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final ScheduledExecutorService cameraConnection = Executors.newSingleThreadScheduledExecutor();
@@ -142,6 +137,9 @@ public class IpCameraHandler extends BaseThingHandler {
     boolean firstAudioAlarm = false;
     boolean firstMotionAlarm = false;
 
+    private FloatRange panRange;
+    private FloatRange tiltRange;
+    private PtzDevices ptzDevices;
     // These hold the cameras PTZ position in the range that the camera uses, ie mine is -1 to +1
     private float currentPanCamValue = 0.0f;
     private float currentTiltCamValue = 0.0f;
@@ -189,8 +187,8 @@ public class IpCameraHandler extends BaseThingHandler {
             mainBootstrap.channel(NioSocketChannel.class);
             mainBootstrap.option(ChannelOption.SO_KEEPALIVE, true);
             mainBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000);
-            // mainBootstrap.option(ChannelOption.SO_SNDBUF, 1024 * 128);
-            // mainBootstrap.option(ChannelOption.SO_RCVBUF, 1024 * 1024);
+            mainBootstrap.option(ChannelOption.SO_SNDBUF, 1024 * 128);
+            mainBootstrap.option(ChannelOption.SO_RCVBUF, 1024 * 1024);
             mainBootstrap.option(ChannelOption.TCP_NODELAY, true);
             mainBootstrap.handler(new ChannelInitializer<SocketChannel>() {
 
@@ -211,10 +209,6 @@ public class IpCameraHandler extends BaseThingHandler {
                             break;
                         case "HIKVISION":
                             socketChannel.pipeline().addLast(new HikvisionHandler());
-                            break;
-                        default:
-                            // Use the most tested one for now as default.
-                            socketChannel.pipeline().addLast(new AmcrestHandler());
                             break;
                     }
                 }
@@ -818,7 +812,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
 
                 return;
-            } /////////////// end of non onvif connection maker//
+            } /////////////// end of HTTPONLY connection maker//
 
             if (onvifCamera == null && !thing.getThingTypeUID().getId().equals("HTTPONLY")) {
 
@@ -914,11 +908,11 @@ public class IpCameraHandler extends BaseThingHandler {
                 } catch (ConnectException e) {
                     updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
                             "Can not access camera: Check that your IP ADDRESS, USERNAME and PASSWORD are correct and the camera can be reached.");
-                    logger.error(e.toString());
+                    logger.error("Can not connect to camera at IP:{}, fault was {}", ipAddress, e.toString());
                 } catch (SOAPException e) {
                     updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                             "Camera gave a SOAP exception during initial connection attempt");
-                    logger.error(e.toString());
+                    logger.error("Can not connect to camera at IP:{}, fault was {}", ipAddress, e.toString());
                 }
             }
         }
