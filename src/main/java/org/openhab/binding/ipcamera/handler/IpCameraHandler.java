@@ -817,7 +817,7 @@ public class IpCameraHandler extends BaseThingHandler {
             if (onvifCamera == null && !thing.getThingTypeUID().getId().equals("HTTPONLY")) {
 
                 try {
-                    logger.info("About to connect to IP Camera at IP:{}:{}", ipAddress,
+                    logger.info("About to connect to IP Camera using ONVIF at IP:{}:{}", ipAddress,
                             config.get(CONFIG_ONVIF_PORT).toString());
 
                     if (username != null && password != null) {
