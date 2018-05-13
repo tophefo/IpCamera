@@ -814,10 +814,10 @@ public class IpCameraHandler extends BaseThingHandler {
                 return;
             } /////////////// end of HTTPONLY connection maker//
 
-            if (onvifCamera == null && !thing.getThingTypeUID().getId().equals("HTTPONLY")) {
+            if (onvifCamera == null) {
 
                 try {
-                    logger.info("About to connect to IP Camera using ONVIF at IP:{}:{}", ipAddress,
+                    logger.info("About to connect to the IP Camera using the ONVIF PORT at IP:{}:{}", ipAddress,
                             config.get(CONFIG_ONVIF_PORT).toString());
 
                     if (username != null && password != null) {
@@ -826,7 +826,8 @@ public class IpCameraHandler extends BaseThingHandler {
                     } else {
                         onvifCamera = new OnvifDevice(ipAddress + ":" + config.get(CONFIG_ONVIF_PORT).toString());
                     }
-                    logger.info("About to fetch the Media Profile list from the camera");
+
+                    logger.info("Checking the selected Media Profile is a valid number.");
                     profiles = onvifCamera.getDevices().getProfiles();
 
                     if (selectedMediaProfile > profiles.size()) {
@@ -835,6 +836,13 @@ public class IpCameraHandler extends BaseThingHandler {
                         selectedMediaProfile = 0;
                     }
 
+                    logger.info("Fetching the snapshot URL for the selected Media Profile.");
+                    profileToken = profiles.get(selectedMediaProfile).getToken();
+                    if (snapshotUri == null) {
+                        snapshotUri = onvifCamera.getMedia().getSnapshotUri(profileToken);
+                    }
+
+                    logger.info("About to fetch some information about the Media Profiles from the camera");
                     for (int x = 0; x < profiles.size(); x++) {
                         VideoEncoderConfiguration result = profiles.get(x).getVideoEncoderConfiguration();
                         logger.info(
@@ -853,20 +861,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                 result.getRateControl().getBitrateLimit());
                     }
 
-                    profileToken = profiles.get(selectedMediaProfile).getToken();
-                    if (snapshotUri == null) {
-                        snapshotUri = onvifCamera.getMedia().getSnapshotUri(profileToken);
-                    }
-                    videoStreamUri = onvifCamera.getMedia().getRTSPStreamUri(profileToken);
-
-                    if (logger.isDebugEnabled()) {
-                        logger.debug(
-                                "This camera supports the following Video links. NOTE: The camera may report a link or error that does not match the header, this is the camera not a bug in the binding.");
-                        logger.debug("HTTP Stream:{}", onvifCamera.getMedia().getHTTPStreamUri(profileToken));
-                        logger.debug("TCP Stream:{}", onvifCamera.getMedia().getTCPStreamUri(profileToken));
-                        logger.debug("RTSP Stream:{}", onvifCamera.getMedia().getRTSPStreamUri(profileToken));
-                        logger.debug("UDP Stream:{}", onvifCamera.getMedia().getUDPStreamUri(profileToken));
-                    }
+                    logger.info("About to interrogate the camera to see if it supports PTZ.");
 
                     ptzDevices = onvifCamera.getPtz();
                     if (ptzDevices.isPtzOperationsSupported(profileToken)
@@ -891,29 +886,55 @@ public class IpCameraHandler extends BaseThingHandler {
                         ptzDevices = null;
                     }
 
-                    updateState(CHANNEL_IMAGE_URL, new StringType(snapshotUri));
-                    updateState(CHANNEL_VIDEO_URL, new StringType(videoStreamUri));
-                    cameraConnectionJob.cancel(true);
-                    cameraConnectionJob = null;
-                    updateStatus(ThingStatus.ONLINE);
+                    logger.info(
+                            "Finished with PTZ, now reporting what Video URL's the camera supports which can only be seen in DEBUG logging.");
+                    videoStreamUri = onvifCamera.getMedia().getRTSPStreamUri(profileToken);
 
-                    if (snapshotUri != null) {
-                        sendHttpRequest("GET", snapshotUri, false);
-                        sendHttpRequest("GET", snapshotUri, false);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(
+                                "This camera supports the following Video links. NOTE: The camera may report a link or error that does not match the header, this is the camera not a bug in the binding.");
+                        logger.debug("HTTP Stream:{}", onvifCamera.getMedia().getHTTPStreamUri(profileToken));
+                        logger.debug("TCP Stream:{}", onvifCamera.getMedia().getTCPStreamUri(profileToken));
+                        logger.debug("RTSP Stream:{}", onvifCamera.getMedia().getRTSPStreamUri(profileToken));
+                        logger.debug("UDP Stream:{}", onvifCamera.getMedia().getUDPStreamUri(profileToken));
                     }
-
-                    fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 5000,
-                            Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
 
                 } catch (ConnectException e) {
                     updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
                             "Can not access camera: Check that your IP ADDRESS, USERNAME and PASSWORD are correct and the camera can be reached.");
                     logger.error("Can not connect to camera at IP:{}, fault was {}", ipAddress, e.toString());
                 } catch (SOAPException e) {
-                    updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                            "Camera gave a SOAP exception during initial connection attempt");
-                    logger.error("Can not connect to camera at IP:{}, fault was {}", ipAddress, e.toString());
+                    logger.error(
+                            "The camera connection had a SOAP error, this may indicate your camera does not fully ONVIF or is an older version. Not to worry, we will still try and connect. Camera at IP:{}, fault was {}",
+                            ipAddress, e.toString());
                 }
+
+                if (snapshotUri != null) {
+
+                    // Disable PTZ if it failed during setting up PTZ
+                    if (ptzLocation == null) {
+                        ptzDevices = null;
+                    }
+
+                    updateState(CHANNEL_IMAGE_URL, new StringType(snapshotUri));
+                    if (videoStreamUri != null) {
+                        updateState(CHANNEL_VIDEO_URL, new StringType(videoStreamUri));
+                    }
+                    cameraConnectionJob.cancel(true);
+                    cameraConnectionJob = null;
+                    updateStatus(ThingStatus.ONLINE);
+
+                    sendHttpRequest("GET", snapshotUri, false);
+                    sendHttpRequest("GET", snapshotUri, false);
+
+                    fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 5000,
+                            Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
+                } else {
+                    updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
+                            "Camera gave a SOAP exception before it could gain the Snaphot URL.");
+                    logger.error("Camera gave a SOAP exception, try over-riding the Snapshot URL auto detection.");
+                }
+
             }
         }
     };
