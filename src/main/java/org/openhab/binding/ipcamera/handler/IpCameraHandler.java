@@ -934,8 +934,9 @@ public class IpCameraHandler extends BaseThingHandler {
 
                 } else {
                     updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                            "Camera gave a SOAP exception before it could gain the Snaphot URL.");
-                    logger.error("Camera gave a SOAP exception, try over-riding the Snapshot URL auto detection.");
+                            "Camera failed to connect with ONVIF before it could gain the Snaphot URL, try over-riding the Snapshot URL auto detection.");
+                    logger.error(
+                            "Camera failed to connect with ONVIF before it could gain the Snaphot URL, try over-riding the Snapshot URL auto detection.");
                 }
 
             }
@@ -995,7 +996,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 : Integer.parseInt(config.get(CONFIG_ONVIF_PROFILE_NUMBER).toString());
         updateImageEvents = config.get(CONFIG_IMAGE_UPDATE_EVENTS).toString();
 
-        cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 0, 30, TimeUnit.SECONDS);
+        cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 0, 60, TimeUnit.SECONDS);
     }
 
     @Override
