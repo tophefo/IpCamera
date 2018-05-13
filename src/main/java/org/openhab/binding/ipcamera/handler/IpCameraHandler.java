@@ -902,7 +902,9 @@ public class IpCameraHandler extends BaseThingHandler {
                 } catch (ConnectException e) {
                     updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
                             "Can not access camera: Check that your IP ADDRESS, USERNAME and PASSWORD are correct and the camera can be reached.");
-                    logger.error("Can not connect to camera at IP:{}, fault was {}", ipAddress, e.toString());
+                    logger.error(
+                            "Can not connect to camera with ONVIF at IP:{}, it may be the wrong ONVIF_PORT. Fault was {}",
+                            ipAddress, e.toString());
                 } catch (SOAPException e) {
                     logger.error(
                             "The camera connection had a SOAP error, this may indicate your camera does not fully ONVIF or is an older version. Not to worry, we will still try and connect. Camera at IP:{}, fault was {}",
@@ -924,11 +926,12 @@ public class IpCameraHandler extends BaseThingHandler {
                     cameraConnectionJob = null;
                     updateStatus(ThingStatus.ONLINE);
 
+                    fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 5000,
+                            Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
+
                     sendHttpRequest("GET", snapshotUri, false);
                     sendHttpRequest("GET", snapshotUri, false);
 
-                    fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 5000,
-                            Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
                 } else {
                     updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                             "Camera gave a SOAP exception before it could gain the Snaphot URL.");
