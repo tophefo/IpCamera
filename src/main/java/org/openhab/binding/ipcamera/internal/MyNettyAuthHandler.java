@@ -102,8 +102,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
         if (authenticate != null) {
 
-            myHandler.realm = searchString(authenticate, "Basic realm=\"");
-            if (myHandler.realm != null) {
+            if (authenticate.contains("Basic realm=\"")) {
                 if (myHandler.useDigestAuth == true) {
                     logger.error(
                             "Camera appears to be requesting Basic after Digest Auth has already been used, this could be a hacker so not going to reply.");
@@ -116,28 +115,31 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
             }
 
             ///////////// Digest Authenticate method follows as Basic is already handled and returned ////////////////
-            myHandler.realm = searchString(authenticate, "Digest realm=\"");
-            if (myHandler.realm == null) {
-                logger.debug("Could not find a valid WWW-Authenticate reponse in :{}", authenticate);
-                return "Error";
+            if (authenticate.contains("Digest ")) {
+                myHandler.realm = searchString(authenticate, "realm=\"");
+                if (myHandler.realm == null) {
+                    logger.debug("Could not find a valid WWW-Authenticate reponse in :{}", authenticate);
+                    return "Error";
+                }
+                myHandler.nonce = searchString(authenticate, "nonce=\"");
+                myHandler.opaque = searchString(authenticate, "opaque=\"");
+                myHandler.qop = searchString(authenticate, "qop=\"");
+
+                if (!myHandler.qop.isEmpty() && !myHandler.realm.isEmpty()) {
+                    myHandler.useDigestAuth = true;
+                } else {
+                    logger.warn("Something is missing? opaque:{}, qop:{}, realm:{}", myHandler.opaque, myHandler.qop,
+                            myHandler.realm);
+                }
+
+                String stale = searchString(authenticate, "stale=\"");
+                if ("false".equals(stale)) {
+                    logger.debug(
+                            "Camera reported stale=false which normally means an issue with the username or password.");
+                } else if ("true".equals(stale)) {
+                    logger.debug("Camera reported stale=true which normally means the NONCE has expired.");
+                }
             }
-            myHandler.nonce = searchString(authenticate, "nonce=\"");
-            myHandler.opaque = searchString(authenticate, "opaque=\"");
-            myHandler.qop = searchString(authenticate, "qop=\"");
-        }
-
-        if (!myHandler.qop.isEmpty() && !myHandler.realm.isEmpty()) {
-            myHandler.useDigestAuth = true;
-        } else {
-            logger.warn("Something is missing? opaque:{}, qop:{}, realm:{}", myHandler.opaque, myHandler.qop,
-                    myHandler.realm);
-        }
-
-        String stale = searchString(authenticate, "stale=\"");
-        if ("false".equals(stale)) {
-            logger.debug("Camera reported stale=false which normally means an issue with the username or password.");
-        } else if ("true".equals(stale)) {
-            logger.debug("Camera reported stale=true which normally means the NONCE has expired.");
         }
 
         // create the MD5 hashes
