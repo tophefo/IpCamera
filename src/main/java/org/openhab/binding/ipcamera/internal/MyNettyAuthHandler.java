@@ -104,9 +104,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
             if (authenticate.contains("Basic realm=\"")) {
                 if (myHandler.useDigestAuth == true) {
-                    logger.error(
-                            "Camera appears to be requesting Basic after Digest Auth has already been used, this could be a hacker so not going to reply.");
-                    return "Error:Downgrade authenticate attack detected";
+                    return "Error:Downgrade authenticate avoided";
                 }
                 logger.debug("Setting up the camera to use Basic Auth and resending last request with correct auth.");
                 myHandler.setBasicAuth(true);
@@ -118,7 +116,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
             if (authenticate.contains("Digest ")) {
                 myHandler.realm = searchString(authenticate, "realm=\"");
                 if (myHandler.realm == null) {
-                    logger.debug("Could not find a valid WWW-Authenticate reponse in :{}", authenticate);
+                    logger.debug("Could not find a valid WWW-Authenticate response in :{}", authenticate);
                     return "Error";
                 }
                 myHandler.nonce = searchString(authenticate, "nonce=\"");
@@ -185,7 +183,6 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                             if (name.toString().equals("WWW-Authenticate")) {
                                 // logger.debug("Camera gave this string:{}", value.toString());
                                 processAuth(value.toString(), httpMethod, httpURL, true);
-                                ctx.close();
                             }
                         }
                     }

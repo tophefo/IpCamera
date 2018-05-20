@@ -45,6 +45,8 @@ import org.eclipse.smarthome.core.types.Command;
 import org.onvif.ver10.schema.FloatRange;
 import org.onvif.ver10.schema.PTZVector;
 import org.onvif.ver10.schema.Profile;
+import org.onvif.ver10.schema.Vector1D;
+import org.onvif.ver10.schema.Vector2D;
 import org.onvif.ver10.schema.VideoEncoderConfiguration;
 import org.openhab.binding.ipcamera.internal.MyNettyAuthHandler;
 import org.slf4j.Logger;
@@ -539,6 +541,24 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     }
 
+    private PTZVector getPosition() {
+        try {
+            ptzLocation = ptzDevices.getPosition(profileToken);
+            if (ptzLocation != null) {
+                return ptzLocation;
+            } else {
+                logger.error("Camera replied with null when asked what its position was");
+            }
+        } catch (NullPointerException e) {
+            logger.error("NPE occured when trying to fetch the cameras PTZ position");
+        }
+
+        PTZVector pv = new PTZVector();
+        pv.setPanTilt(new Vector2D());
+        pv.setZoom(new Vector1D());
+        return pv;
+    }
+
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
 
@@ -829,6 +849,9 @@ public class IpCameraHandler extends BaseThingHandler {
 
                     logger.info("Checking the selected Media Profile is a valid number.");
                     profiles = onvifCamera.getDevices().getProfiles();
+                    if (profiles == null) {
+                        logger.error("Camera replied with NULL when trying to get a list of the media profiles");
+                    }
 
                     if (selectedMediaProfile > profiles.size()) {
                         logger.warn(
@@ -838,6 +861,10 @@ public class IpCameraHandler extends BaseThingHandler {
 
                     logger.info("Fetching the snapshot URL for the selected Media Profile.");
                     profileToken = profiles.get(selectedMediaProfile).getToken();
+                    if (profileToken == null) {
+                        logger.error("Camera replied with NULL when trying to get a media profile token.");
+                    }
+
                     if (snapshotUri == null) {
                         snapshotUri = onvifCamera.getMedia().getSnapshotUri(profileToken);
                     }
@@ -864,44 +891,38 @@ public class IpCameraHandler extends BaseThingHandler {
                     logger.info("About to interrogate the camera to see if it supports PTZ.");
 
                     ptzDevices = onvifCamera.getPtz();
-                    if (ptzDevices.isPtzOperationsSupported(profileToken)
-                            && ptzDevices.isAbsoluteMoveSupported(profileToken)) {
+                    if (ptzDevices != null) {
 
-                        panRange = ptzDevices.getPanSpaces(profileToken);
-                        tiltRange = ptzDevices.getTiltSpaces(profileToken);
-                        zoomMin = ptzDevices.getZoomSpaces(profileToken).getMin();
-                        zoomMax = ptzDevices.getZoomSpaces(profileToken).getMax();
+                        if (ptzDevices.isPtzOperationsSupported(profileToken)
+                                && ptzDevices.isAbsoluteMoveSupported(profileToken)) {
 
-                        logger.info("Camera is reporting it supports PTZ controls via ONVIF");
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("The camera can Pan  from {} to {}", panRange.getMin(), panRange.getMax());
-                            logger.debug("The camera can Tilt from {} to {}", tiltRange.getMin(), tiltRange.getMax());
-                            logger.debug("The camera can Zoom from {} to {}", zoomMin, zoomMax);
+                            panRange = ptzDevices.getPanSpaces(profileToken);
+                            tiltRange = ptzDevices.getTiltSpaces(profileToken);
+                            zoomMin = ptzDevices.getZoomSpaces(profileToken).getMin();
+                            zoomMax = ptzDevices.getZoomSpaces(profileToken).getMax();
+
+                            logger.info("Camera is reporting it supports PTZ controls via ONVIF");
+                            if (logger.isDebugEnabled()) {
+                                logger.debug("The camera can Pan  from {} to {}", panRange.getMin(), panRange.getMax());
+                                logger.debug("The camera can Tilt from {} to {}", tiltRange.getMin(),
+                                        tiltRange.getMax());
+                                logger.debug("The camera can Zoom from {} to {}", zoomMin, zoomMax);
+                            }
+                            ptzLocation = getPosition();
+
+                        } else {
+                            logger.info("Camera is reporting that it does NOT support Absolute PTZ controls via ONVIF");
+                            // null will stop code from running on cameras that do not support PTZ features.
+                            ptzDevices = null;
                         }
-                        ptzLocation = ptzDevices.getPosition(profileToken);
-
-                    } else {
-                        logger.info("Camera is reporting that it does NOT support Absolute PTZ controls via ONVIF");
-                        // null will stop code from running on cameras that do not support PTZ features.
-                        ptzDevices = null;
                     }
-
                     logger.info(
                             "Finished with PTZ, now reporting what Video URL's the camera supports which can only be seen in DEBUG logging.");
                     videoStreamUri = onvifCamera.getMedia().getRTSPStreamUri(profileToken);
 
-                    if (logger.isDebugEnabled()) {
-                        logger.debug(
-                                "This camera supports the following Video links. NOTE: The camera may report a link or error that does not match the header, this is the camera not a bug in the binding.");
-                        logger.debug("HTTP Stream:{}", onvifCamera.getMedia().getHTTPStreamUri(profileToken));
-                        logger.debug("TCP Stream:{}", onvifCamera.getMedia().getTCPStreamUri(profileToken));
-                        logger.debug("RTSP Stream:{}", onvifCamera.getMedia().getRTSPStreamUri(profileToken));
-                        logger.debug("UDP Stream:{}", onvifCamera.getMedia().getUDPStreamUri(profileToken));
-                    }
-
                 } catch (ConnectException e) {
                     updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
-                            "Can not access camera: Check that your IP ADDRESS, USERNAME and PASSWORD are correct and the camera can be reached.");
+                            "Can not connect to camera with ONVIF: Check that IP ADDRESS, ONVIF PORT, USERNAME and PASSWORD are correct.");
                     logger.error(
                             "Can not connect to camera with ONVIF at IP:{}, it may be the wrong ONVIF_PORT. Fault was {}",
                             ipAddress, e.toString());
@@ -909,14 +930,16 @@ public class IpCameraHandler extends BaseThingHandler {
                     logger.error(
                             "The camera connection had a SOAP error, this may indicate your camera does not fully ONVIF or is an older version. Not to worry, we will still try and connect. Camera at IP:{}, fault was {}",
                             ipAddress, e.toString());
+                } catch (NullPointerException e) {
+                    logger.error("NPE occured when trying to connect to the camera with ONVIF");
                 }
 
                 if (snapshotUri != null) {
 
                     // Disable PTZ if it failed during setting up PTZ
-                    if (ptzLocation == null) {
-                        ptzDevices = null;
-                    }
+                    // if (ptzLocation == null) {
+                    // ptzDevices = null;
+                    // }
 
                     updateState(CHANNEL_IMAGE_URL, new StringType(snapshotUri));
                     if (videoStreamUri != null) {
@@ -924,19 +947,19 @@ public class IpCameraHandler extends BaseThingHandler {
                     }
                     cameraConnectionJob.cancel(true);
                     cameraConnectionJob = null;
+                    sendHttpRequest("GET", snapshotUri, false);
+                    sendHttpRequest("GET", snapshotUri, false);
                     updateStatus(ThingStatus.ONLINE);
 
                     fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 5000,
                             Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
 
-                    sendHttpRequest("GET", snapshotUri, false);
-                    sendHttpRequest("GET", snapshotUri, false);
-
                 } else {
-                    updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                            "Camera failed to connect with ONVIF before it could gain the Snaphot URL, try over-riding the Snapshot URL auto detection.");
+                    updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
+                            "Camera failed to report a valid Snaphot URL, try over-riding the Snapshot URL auto detection by entering a known URL.");
                     logger.error(
-                            "Camera failed to connect with ONVIF before it could gain the Snaphot URL, try over-riding the Snapshot URL auto detection.");
+                            "Camera failed to report a valid Snaphot URL, try over-riding the Snapshot URL auto detection by entering a known URL.");
+
                 }
 
             }
@@ -978,12 +1001,13 @@ public class IpCameraHandler extends BaseThingHandler {
 
     @Override
     public void initialize() {
+        config = thing.getConfiguration();
+        ipAddress = config.get(CONFIG_IPADDRESS).toString();
+
         logger.debug("Getting configuration to initialize a new IP Camera at IP {}", ipAddress);
         updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_PENDING,
                 "Making a new connection to the camera now.");
 
-        config = thing.getConfiguration();
-        ipAddress = config.get(CONFIG_IPADDRESS).toString();
         port = Integer.parseInt(config.get(CONFIG_PORT).toString());
         username = (config.get(CONFIG_USERNAME) == null) ? null : config.get(CONFIG_USERNAME).toString();
         password = (config.get(CONFIG_PASSWORD) == null) ? null : config.get(CONFIG_PASSWORD).toString();
