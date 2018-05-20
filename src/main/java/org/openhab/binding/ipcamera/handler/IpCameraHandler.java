@@ -498,20 +498,33 @@ public class IpCameraHandler extends BaseThingHandler {
 
     public class HikvisionHandler extends ChannelDuplexHandler {
 
+        // this fetches what Alarms the camera supports//
+        // sendHttpRequest("GET", "http://192.168.1.108/ISAPI/Event/triggers", false);
+
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
             String content = msg.toString();
             logger.debug("HTTP Result back from camera is :{}:", content);
 
-            if (content.contains("<eventType>VMD</eventType>\r\n" + "<eventState>active</eventState>\r\n"
-                    + "<eventDescription>Motion alarm</eventDescription>")) {
+            if (content.contains("<eventType>VMD</eventType>\r\n<eventState>active</eventState>\r\n")) {
                 motionDetected();
             }
-            if (content.contains("<eventType>VMD</eventType>\r\n" + "<eventState>inactive</eventState>\r\n"
-                    + "<eventDescription>Motion alarm</eventDescription>")) {
+            if (content.contains("<eventType>VMD</eventType>\r\n<eventState>inactive</eventState>\r\n")) {
                 updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
                 firstMotionAlarm = false;
             }
+            // determine if the motion detection is turned on or off.
+            if (content.contains("<MotionDetection version=\"")) {
+
+                if (content.contains("<enabled>true</enabled>")) {
+                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
+
+                } else if (content.contains("<enabled>false</enabled>")) {
+                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
+
+                }
+            }
+
             ctx.close();
             content = null;
         }
@@ -649,7 +662,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             false);
 
                 } else if (thing.getThingTypeUID().getId().contentEquals("HIKVISION")) {
-                    sendHttpRequest("GET", "http://192.168.1.108/ISAPI/Event/triggers", false);
+                    sendHttpRequest("GET", "http://192.168.1.108/ISAPI/Event/notification/alertStream", false);
                 }
 
                 break;
@@ -746,12 +759,9 @@ public class IpCameraHandler extends BaseThingHandler {
                     case "HIKVISION":
                         if ("ON".equals(command.toString())) {
                             sendHttpRequest("GET", "http://192.168.1.108/MotionDetection/1", false);
-                            // sendHttpRequest("GET", "http://192.168.1.108/ISAPI/Event/notification/alertStream",
-                            // false);
 
                         } else {
-                            sendHttpRequest("GET", "http://192.168.1.108/ISAPI/Event/schedules/motionDetections",
-                                    false);
+                            sendHttpRequest("GET", "http://192.168.1.108/MotionDetection/1", false);
                         }
                 }
 
@@ -991,8 +1001,8 @@ public class IpCameraHandler extends BaseThingHandler {
                             + "&pwd=" + password, false);
                     break;
                 case "HIKVISION":
-
-                    // sendHttpRequest("GET", "http://192.168.1.108/ISAPI/Event/triggers", false);
+                    // check to see if motion alarm is turned on or off
+                    sendHttpRequest("GET", "http://192.168.1.108/MotionDetection/1", false);
 
                     break;
             }
