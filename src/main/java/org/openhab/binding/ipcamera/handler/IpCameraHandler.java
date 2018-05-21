@@ -95,8 +95,8 @@ import io.netty.util.CharsetUtil;
 public class IpCameraHandler extends BaseThingHandler {
 
     public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<ThingTypeUID>(
-            Arrays.asList(THING_TYPE_ONVIF, THING_TYPE_HTTPONLY, THING_TYPE_AMCREST, THING_TYPE_AXIS, THING_TYPE_FOSCAM,
-                    THING_TYPE_HIKVISION));
+            Arrays.asList(THING_TYPE_ONVIF, THING_TYPE_HTTPONLY, THING_TYPE_AMCREST, THING_TYPE_INSTAR, THING_TYPE_AXIS,
+                    THING_TYPE_FOSCAM, THING_TYPE_HIKVISION));
     private Configuration config;
     private OnvifDevice onvifCamera;
     private List<Profile> profiles;
@@ -555,17 +555,18 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     private PTZVector getPosition() {
+
         try {
             ptzLocation = ptzDevices.getPosition(profileToken);
             if (ptzLocation != null) {
                 return ptzLocation;
-            } else {
-                logger.error("Camera replied with null when asked what its position was");
             }
         } catch (NullPointerException e) {
             logger.error("NPE occured when trying to fetch the cameras PTZ position");
         }
 
+        logger.warn(
+                "Camera replied with null when asked what its position was, going to fake the position so PTZ still works.");
         PTZVector pv = new PTZVector();
         pv.setPanTilt(new Vector2D());
         pv.setZoom(new Vector1D());
@@ -652,19 +653,22 @@ public class IpCameraHandler extends BaseThingHandler {
 
             case CHANNEL_ALPHA_TEST:
 
-                if (thing.getThingTypeUID().getId().contentEquals("AMCREST")) {
-                    // Used to test if a forgotten stream is auto closed
-                    sendHttpRequest("GET", "http://192.168.1.50/cgi-bin/configManager.cgi?action=getConfig&name=Snap",
-                            false);
+                switch (thing.getThingTypeUID().getId()) {
 
-                    sendHttpRequest("GET",
-                            "http://192.168.1.50/cgi-bin/audio.cgi?action=getAudio&httptype=singlepart&channel=1",
-                            false);
+                    case "AMCREST":
+                        // Used to test if a forgotten stream is auto closed
+                        sendHttpRequest("GET",
+                                "http://192.168.1.50/cgi-bin/configManager.cgi?action=getConfig&name=Snap", false);
+                        break;
 
-                } else if (thing.getThingTypeUID().getId().contentEquals("HIKVISION")) {
-                    sendHttpRequest("GET", "http://192.168.1.108/ISAPI/Event/notification/alertStream", false);
+                    case "HIKVISION":
+                        sendHttpRequest("GET", "http://192.168.1.108/ISAPI/Event/notification/alertStream", false);
+                        break;
+                    case "INSTAR":
+                        sendHttpRequest("GET", "http://192.168.178.88/cgi-bin/hi3510/param.cgi?cmd=getaudioalarmattr",
+                                false);
+                        break;
                 }
-
                 break;
 
             case CHANNEL_UPDATE_IMAGE_NOW:
@@ -703,6 +707,14 @@ public class IpCameraHandler extends BaseThingHandler {
                         }
 
                         break;
+
+                    case "INSTAR":
+                        sendHttpRequest("GET",
+                                "http://192.168.178.88/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1&-aa_value="
+                                        + command.toString(),
+                                false);
+
+                        break;
                 }
 
                 break;
@@ -722,6 +734,19 @@ public class IpCameraHandler extends BaseThingHandler {
                             sendHttpRequest("GET",
                                     "http://192.168.1.108/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=0&usr="
                                             + username + "&pwd=" + password,
+                                    false);
+                        }
+                        break;
+
+                    case "INSTAR":
+
+                        if ("ON".equals(command.toString())) {
+                            sendHttpRequest("GET",
+                                    "http://192.168.178.88/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1",
+                                    false);
+                        } else {
+                            sendHttpRequest("GET",
+                                    "http://192.168.178.88/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=0",
                                     false);
                         }
                         break;
@@ -763,6 +788,17 @@ public class IpCameraHandler extends BaseThingHandler {
                         } else {
                             sendHttpRequest("GET", "http://192.168.1.108/MotionDetection/1", false);
                         }
+                        break;
+
+                    case "INSTAR":
+                        if ("ON".equals(command.toString())) {
+                            sendHttpRequest("GET",
+                                    "http://192.168.1.2/cgi-bin/hi3510/param.cgi?cmd=setmdattr&-enable=1", false);
+                        } else {
+                            sendHttpRequest("GET",
+                                    "http://192.168.1.2/cgi-bin/hi3510/param.cgi?cmd=setmdattr&-enable=0", false);
+                        }
+                        break;
                 }
 
                 break;
@@ -946,11 +982,6 @@ public class IpCameraHandler extends BaseThingHandler {
 
                 if (snapshotUri != null) {
 
-                    // Disable PTZ if it failed during setting up PTZ
-                    // if (ptzLocation == null) {
-                    // ptzDevices = null;
-                    // }
-
                     updateState(CHANNEL_IMAGE_URL, new StringType(snapshotUri));
                     if (videoStreamUri != null) {
                         updateState(CHANNEL_VIDEO_URL, new StringType(videoStreamUri));
@@ -1003,6 +1034,12 @@ public class IpCameraHandler extends BaseThingHandler {
                 case "HIKVISION":
                     // check to see if motion alarm is turned on or off
                     sendHttpRequest("GET", "http://192.168.1.108/MotionDetection/1", false);
+
+                    break;
+                case "INSTAR":
+                    // check to see if audio alarm is turned on or off
+                    // sendHttpRequest("GET", "http://192.168.178.88/cgi-bin/hi3510/param.cgi?cmd=getaudioalarmattr",
+                    // false);
 
                     break;
             }
