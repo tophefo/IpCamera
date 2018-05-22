@@ -678,7 +678,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>ONVIF Port</label>
 <description>The port your camera uses for ONVIF connections.
 </description>        
-<default>80</default>
+<default>8080</default>
 </parameter>
 
 <parameter name="USERNAME" type="text" required="false" groupName="Settings">

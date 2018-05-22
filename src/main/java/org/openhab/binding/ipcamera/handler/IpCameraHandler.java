@@ -212,6 +212,9 @@ public class IpCameraHandler extends BaseThingHandler {
                         case "HIKVISION":
                             socketChannel.pipeline().addLast(new HikvisionHandler());
                             break;
+                        case "INSTAR":
+                            socketChannel.pipeline().addLast(new InstarHandler());
+                            break;
                     }
                 }
             });
@@ -496,6 +499,18 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     }
 
+    public class InstarHandler extends ChannelDuplexHandler {
+
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            String content = msg.toString();
+            logger.debug("HTTP Result back from camera is :{}:", content);
+
+            ctx.close();
+            content = null;
+        }
+    }
+
     public class HikvisionHandler extends ChannelDuplexHandler {
 
         // this fetches what Alarms the camera supports//
@@ -506,13 +521,19 @@ public class IpCameraHandler extends BaseThingHandler {
             String content = msg.toString();
             logger.debug("HTTP Result back from camera is :{}:", content);
 
-            if (content.contains("<eventType>VMD</eventType>\r\n<eventState>active</eventState>\r\n")) {
-                motionDetected();
+            // Alarm checking goes in here//
+            if (content.contains("<EventNotificationAlert version=")) {
+
+                if (content.contains("<eventType>VMD</eventType>\r\n<eventState>active</eventState>\r\n")) {
+                    motionDetected();
+                }
+
+                if (content.contains("<eventType>VMD</eventType>\r\n<eventState>inactive</eventState>\r\n")) {
+                    updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                    firstMotionAlarm = false;
+                }
             }
-            if (content.contains("<eventType>VMD</eventType>\r\n<eventState>inactive</eventState>\r\n")) {
-                updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                firstMotionAlarm = false;
-            }
+
             // determine if the motion detection is turned on or off.
             if (content.contains("<MotionDetection version=\"")) {
 
@@ -664,6 +685,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     case "HIKVISION":
                         sendHttpRequest("GET", "http://192.168.1.108/ISAPI/Event/notification/alertStream", false);
                         break;
+
                     case "INSTAR":
                         sendHttpRequest("GET", "http://192.168.178.88/cgi-bin/hi3510/param.cgi?cmd=getaudioalarmattr",
                                 false);
@@ -1034,6 +1056,9 @@ public class IpCameraHandler extends BaseThingHandler {
                 case "HIKVISION":
                     // check to see if motion alarm is turned on or off
                     sendHttpRequest("GET", "http://192.168.1.108/MotionDetection/1", false);
+                    // Check if any alarms are going off
+                    // sendHttpRequest("GET", "http://192.168.1.108/ISAPI/Event/notification/alertStream", false);
+                    sendHttpRequest("GET", "http://192.168.1.108/Event/notification/alertStream", false);
 
                     break;
                 case "INSTAR":
