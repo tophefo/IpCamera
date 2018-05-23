@@ -42,6 +42,8 @@ FOSCAM: Use for all current FOSCAM Cameras as they support an API as well as ONV
 
 HIKVISION: Use for all current HIKVISION Cameras as they support an API as well as ONVIF.
 
+INSTAR: Use for all current INSTAR Cameras as they support an API as well as ONVIF.
+
 
 ## Discovery
 

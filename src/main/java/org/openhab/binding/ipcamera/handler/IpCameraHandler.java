@@ -164,16 +164,20 @@ public class IpCameraHandler extends BaseThingHandler {
             return;
         }
         logger.debug("Setting up the BASIC auth now, this should only happen once.");
-        String authString = username + ":" + password;
-        ByteBuf byteBuf = null;
-        try {
-            byteBuf = Base64.encode(Unpooled.wrappedBuffer(authString.getBytes(CharsetUtil.UTF_8)));
-            basicAuth = byteBuf.getCharSequence(0, byteBuf.capacity(), CharsetUtil.UTF_8).toString();
-        } finally {
-            if (byteBuf != null) {
-                byteBuf.release();
-                byteBuf = null;
+        if (username != null && password != null) {
+            String authString = username + ":" + password;
+            ByteBuf byteBuf = null;
+            try {
+                byteBuf = Base64.encode(Unpooled.wrappedBuffer(authString.getBytes(CharsetUtil.UTF_8)));
+                basicAuth = byteBuf.getCharSequence(0, byteBuf.capacity(), CharsetUtil.UTF_8).toString();
+            } finally {
+                if (byteBuf != null) {
+                    byteBuf.release();
+                    byteBuf = null;
+                }
             }
+        } else {
+            logger.error("Camera is asking for Basic Auth when you have not provided a username and/or password !");
         }
     }
 
@@ -526,9 +530,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
                 if (content.contains("<eventType>VMD</eventType>\r\n<eventState>active</eventState>\r\n")) {
                     motionDetected();
-                }
-
-                if (content.contains("<eventType>VMD</eventType>\r\n<eventState>inactive</eventState>\r\n")) {
+                } else {
                     updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
                 }
@@ -637,34 +639,14 @@ public class IpCameraHandler extends BaseThingHandler {
 
                     break;
 
-                case CHANNEL_ABSOLUTE_PAN:
-                    if (ptzDevices != null) {
-                        currentPanPercentage = (((panRange.getMin() - ptzLocation.getPanTilt().getX()) * -1)
-                                / ((panRange.getMin() - panRange.getMax()) * -1)) * 100;
-                        currentPanCamValue = ((((panRange.getMin() - panRange.getMax()) * -1) / 100)
-                                * currentPanPercentage + panRange.getMin());
-                        logger.debug("Pan is updating to:{}", Math.round(currentPanPercentage));
-                        updateState(CHANNEL_ABSOLUTE_PAN, new PercentType(Math.round(currentPanPercentage)));
-                    }
+                case CHANNEL_PAN:
+                    getAbsolutePan();
                     break;
-                case CHANNEL_ABSOLUTE_TILT:
-                    if (ptzDevices != null) {
-                        currentTiltPercentage = (((tiltRange.getMin() - ptzLocation.getPanTilt().getY()) * -1)
-                                / ((tiltRange.getMin() - tiltRange.getMax()) * -1)) * 100;
-                        currentTiltCamValue = ((((tiltRange.getMin() - tiltRange.getMax()) * -1) / 100)
-                                * currentTiltPercentage + tiltRange.getMin());
-                        logger.debug("Tilt is updating to:{}", Math.round(currentTiltPercentage));
-                        updateState(CHANNEL_ABSOLUTE_TILT, new PercentType(Math.round(currentTiltPercentage)));
-                    }
+                case CHANNEL_TILT:
+                    getAbsoluteTilt();
                     break;
-                case CHANNEL_ABSOLUTE_ZOOM:
-                    if (ptzDevices != null) {
-                        currentZoomPercentage = (((zoomMin - ptzLocation.getZoom().getX()) * -1)
-                                / ((zoomMin - zoomMax) * -1)) * 100;
-                        currentZoomCamValue = ((((zoomMin - zoomMax) * -1) / 100) * currentZoomPercentage + zoomMin);
-                        logger.debug("Zoom is updating to:{}", Math.round(currentZoomPercentage));
-                        updateState(CHANNEL_ABSOLUTE_ZOOM, new PercentType(Math.round(currentZoomPercentage)));
-                    }
+                case CHANNEL_ZOOM:
+                    getAbsoluteZoom();
                     break;
             }
             return; // Return as we have handled the refresh command above and don't need to continue further.
@@ -825,53 +807,97 @@ public class IpCameraHandler extends BaseThingHandler {
 
                 break;
 
-            case CHANNEL_ABSOLUTE_PAN:
-                if (ptzDevices != null) {
-                    currentPanCamValue = ((((panRange.getMin() - panRange.getMax()) * -1) / 100)
-                            * Float.valueOf(command.toString()) + panRange.getMin());
-                    logger.debug("Cameras Pan  has changed to:{}", currentPanCamValue);
-                    if (onvifCamera != null && panRange != null && tiltRange != null) {
-                        try {
-                            ptzDevices.absoluteMove(profileToken, currentPanCamValue, currentTiltCamValue,
-                                    currentZoomCamValue);
-                        } catch (SOAPException e) {
-                            logger.error("SOAP exception occured");
-                        }
-                    }
-                }
+            case CHANNEL_PAN:
+                setAbsolutePan(Float.valueOf(command.toString()));
                 break;
 
-            case CHANNEL_ABSOLUTE_TILT:
-                if (ptzDevices != null) {
-                    currentTiltCamValue = ((((tiltRange.getMin() - tiltRange.getMax()) * -1) / 100)
-                            * Float.valueOf(command.toString()) + tiltRange.getMin());
-                    logger.debug("Cameras Tilt has changed to:{}", currentTiltCamValue);
-                    if (onvifCamera != null && panRange != null && tiltRange != null) {
-                        try {
-                            ptzDevices.absoluteMove(profileToken, currentPanCamValue, currentTiltCamValue,
-                                    currentZoomCamValue);
-                        } catch (SOAPException e) {
-                            logger.error("SOAP exception occured");
-                        }
-                    }
-                }
+            case CHANNEL_TILT:
+                setAbsoluteTilt(Float.valueOf(command.toString()));
                 break;
 
-            case CHANNEL_ABSOLUTE_ZOOM:
-                if (ptzDevices != null) {
-                    currentZoomCamValue = ((((zoomMin - zoomMax) * -1) / 100) * Float.valueOf(command.toString())
-                            + zoomMin);
-                    logger.debug("Cameras Zoom has changed to:{}", currentZoomCamValue);
-                    if (onvifCamera != null && panRange != null && tiltRange != null) {
-                        try {
-                            ptzDevices.absoluteMove(profileToken, currentPanCamValue, currentTiltCamValue,
-                                    currentZoomCamValue);
-                        } catch (SOAPException e) {
-                            logger.error("SOAP exception occured");
-                        }
-                    }
-                }
+            case CHANNEL_ZOOM:
+                setAbsoluteZoom(Float.valueOf(command.toString()));
                 break;
+        }
+    }
+
+    void getAbsolutePan() {
+        if (ptzDevices != null) {
+            currentPanPercentage = (((panRange.getMin() - ptzLocation.getPanTilt().getX()) * -1)
+                    / ((panRange.getMin() - panRange.getMax()) * -1)) * 100;
+            currentPanCamValue = ((((panRange.getMin() - panRange.getMax()) * -1) / 100) * currentPanPercentage
+                    + panRange.getMin());
+            logger.debug("Pan is updating to:{}", Math.round(currentPanPercentage));
+            updateState(CHANNEL_PAN, new PercentType(Math.round(currentPanPercentage)));
+        }
+    }
+
+    void getAbsoluteTilt() {
+        if (ptzDevices != null) {
+            currentTiltPercentage = (((tiltRange.getMin() - ptzLocation.getPanTilt().getY()) * -1)
+                    / ((tiltRange.getMin() - tiltRange.getMax()) * -1)) * 100;
+            currentTiltCamValue = ((((tiltRange.getMin() - tiltRange.getMax()) * -1) / 100) * currentTiltPercentage
+                    + tiltRange.getMin());
+            logger.debug("Tilt is updating to:{}", Math.round(currentTiltPercentage));
+            updateState(CHANNEL_TILT, new PercentType(Math.round(currentTiltPercentage)));
+        }
+
+    }
+
+    void getAbsoluteZoom() {
+        if (ptzDevices != null) {
+            currentZoomPercentage = (((zoomMin - ptzLocation.getZoom().getX()) * -1) / ((zoomMin - zoomMax) * -1))
+                    * 100;
+            currentZoomCamValue = ((((zoomMin - zoomMax) * -1) / 100) * currentZoomPercentage + zoomMin);
+            logger.debug("Zoom is updating to:{}", Math.round(currentZoomPercentage));
+            updateState(CHANNEL_ZOOM, new PercentType(Math.round(currentZoomPercentage)));
+        }
+    }
+
+    void setAbsolutePan(Float panValue) {
+
+        if (ptzDevices != null) {
+            currentPanCamValue = ((((panRange.getMin() - panRange.getMax()) * -1) / 100) * panValue
+                    + panRange.getMin());
+            logger.debug("Cameras Pan  has changed to:{}", currentPanCamValue);
+            if (onvifCamera != null && panRange != null && tiltRange != null) {
+                try {
+                    ptzDevices.absoluteMove(profileToken, currentPanCamValue, currentTiltCamValue, currentZoomCamValue);
+                } catch (SOAPException e) {
+                    logger.error("SOAP exception occured");
+                }
+            }
+        }
+    }
+
+    void setAbsoluteTilt(Float tiltValue) {
+        if (ptzDevices != null) {
+            currentTiltCamValue = ((((tiltRange.getMin() - tiltRange.getMax()) * -1) / 100) * tiltValue
+                    + tiltRange.getMin());
+            logger.debug("Cameras Tilt has changed to:{}", currentTiltCamValue);
+            if (onvifCamera != null && panRange != null && tiltRange != null) {
+                try {
+                    ptzDevices.absoluteMove(profileToken, currentPanCamValue, currentTiltCamValue, currentZoomCamValue);
+                } catch (SOAPException e) {
+                    logger.error("SOAP exception occured");
+                }
+            }
+        }
+
+    }
+
+    void setAbsoluteZoom(Float zoomValue) {
+
+        if (ptzDevices != null) {
+            currentZoomCamValue = ((((zoomMin - zoomMax) * -1) / 100) * zoomValue + zoomMin);
+            logger.debug("Cameras Zoom has changed to:{}", currentZoomCamValue);
+            if (onvifCamera != null && panRange != null && tiltRange != null) {
+                try {
+                    ptzDevices.absoluteMove(profileToken, currentPanCamValue, currentTiltCamValue, currentZoomCamValue);
+                } catch (SOAPException e) {
+                    logger.error("SOAP exception occured");
+                }
+            }
         }
     }
 
@@ -915,45 +941,49 @@ public class IpCameraHandler extends BaseThingHandler {
                         onvifCamera = new OnvifDevice(ipAddress + ":" + config.get(CONFIG_ONVIF_PORT).toString());
                     }
 
-                    logger.info("Checking the selected Media Profile is a valid number.");
+                    logger.info("Fetching the number of Media Profile this camera supports.");
                     profiles = onvifCamera.getDevices().getProfiles();
                     if (profiles == null) {
                         logger.error("Camera replied with NULL when trying to get a list of the media profiles");
                     }
-
+                    logger.info("Checking the selected Media Profile is a valid number.");
                     if (selectedMediaProfile > profiles.size()) {
                         logger.warn(
                                 "The selected Media Profile in the binding is higher than the max supported profiles. Changing to use Media Profile 0.");
                         selectedMediaProfile = 0;
                     }
 
-                    logger.info("Fetching the snapshot URL for the selected Media Profile.");
+                    logger.info("Fetching a Token for the selected Media Profile.");
                     profileToken = profiles.get(selectedMediaProfile).getToken();
                     if (profileToken == null) {
                         logger.error("Camera replied with NULL when trying to get a media profile token.");
                     }
 
                     if (snapshotUri == null) {
+                        logger.info("Auto fetching the snapshot URL for the selected Media Profile.");
                         snapshotUri = onvifCamera.getMedia().getSnapshotUri(profileToken);
                     }
 
-                    logger.info("About to fetch some information about the Media Profiles from the camera");
-                    for (int x = 0; x < profiles.size(); x++) {
-                        VideoEncoderConfiguration result = profiles.get(x).getVideoEncoderConfiguration();
-                        logger.info(
-                                "********************* Media Profile {} details reported by camera at IP:{} *********************",
-                                x, ipAddress);
-                        if (selectedMediaProfile == x) {
-                            logger.info(
-                                    "Camera will use this Media Profile unless you change it in the binding by pressing on the pencil icon in PaperUI.");
+                    if (logger.isDebugEnabled()) {
+
+                        logger.debug("About to fetch some information about the Media Profiles from the camera");
+                        for (int x = 0; x < profiles.size(); x++) {
+                            VideoEncoderConfiguration result = profiles.get(x).getVideoEncoderConfiguration();
+                            logger.debug(
+                                    "********************* Media Profile {} details reported by camera at IP:{} *********************",
+                                    x, ipAddress);
+                            if (selectedMediaProfile == x) {
+                                logger.debug(
+                                        "Camera will use this Media Profile unless you change it in the binding by pressing on the pencil icon in PaperUI.");
+                            }
+                            logger.debug("Media Profile {} is named:{}", x, result.getName());
+                            logger.debug("Media Profile {} uses video encoder\t:{}", x, result.getEncoding());
+                            logger.debug("Media Profile {} uses video quality\t:{}", x, result.getQuality());
+                            logger.debug("Media Profile {} uses video resoltion\t:{} x {}", x,
+                                    result.getResolution().getWidth(), result.getResolution().getHeight());
+                            logger.debug("Media Profile {} uses video bitrate\t:{}", x,
+                                    result.getRateControl().getBitrateLimit());
                         }
-                        logger.info("Media Profile {} is named:{}", x, result.getName());
-                        logger.info("Media Profile {} uses video encoder\t:{}", x, result.getEncoding());
-                        logger.info("Media Profile {} uses video quality\t:{}", x, result.getQuality());
-                        logger.info("Media Profile {} uses video resoltion\t:{} x {}", x,
-                                result.getResolution().getWidth(), result.getResolution().getHeight());
-                        logger.info("Media Profile {} uses video bitrate\t:{}", x,
-                                result.getRateControl().getBitrateLimit());
                     }
 
                     logger.info("About to interrogate the camera to see if it supports PTZ.");
@@ -984,8 +1014,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             ptzDevices = null;
                         }
                     }
-                    logger.info(
-                            "Finished with PTZ, now reporting what Video URL's the camera supports which can only be seen in DEBUG logging.");
+                    logger.info("Finished with PTZ, now fetching the Video URL's the camera supports.");
                     videoStreamUri = onvifCamera.getMedia().getRTSPStreamUri(profileToken);
 
                 } catch (ConnectException e) {
@@ -996,7 +1025,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             ipAddress, e.toString());
                 } catch (SOAPException e) {
                     logger.error(
-                            "The camera connection had a SOAP error, this may indicate your camera does not fully ONVIF or is an older version. Not to worry, we will still try and connect. Camera at IP:{}, fault was {}",
+                            "The camera connection had a SOAP error, this may indicate your camera does not fully support ONVIF, check for an updated firmware for your camera. Not to worry, we will still try and connect. Camera at IP:{}, fault was {}",
                             ipAddress, e.toString());
                 } catch (NullPointerException e) {
                     logger.error("NPE occured when trying to connect to the camera with ONVIF");
@@ -1097,9 +1126,11 @@ public class IpCameraHandler extends BaseThingHandler {
 
     @Override
     public void dispose() {
-        logger.debug("Camera dispose called, about to remove/change or fix a Cameras connection or settings.");
+        logger.debug("Camera dispose called, about to remove/change a Cameras settings.");
 
         onvifCamera = null;
+        basicAuth = null; // clear out stored hash
+        useDigestAuth = false;
 
         if (cameraConnectionJob != null) {
             cameraConnectionJob.cancel(true);

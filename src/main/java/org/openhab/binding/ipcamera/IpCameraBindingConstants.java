@@ -52,9 +52,9 @@ public class IpCameraBindingConstants {
     public static final String CHANNEL_IMAGE = "image";
     public static final String CHANNEL_VIDEO_URL = "videourl";
     public static final String CHANNEL_IMAGE_URL = "imageurl";
-    public static final String CHANNEL_ABSOLUTE_PAN = "pan";
-    public static final String CHANNEL_ABSOLUTE_TILT = "tilt";
-    public static final String CHANNEL_ABSOLUTE_ZOOM = "zoom";
+    public static final String CHANNEL_PAN = "pan";
+    public static final String CHANNEL_TILT = "tilt";
+    public static final String CHANNEL_ZOOM = "zoom";
     public static final String CHANNEL_MOTION_ALARM = "motionAlarm";
     public static final String CHANNEL_AUDIO_ALARM = "audioAlarm";
     public static final String CHANNEL_ENABLE_MOTION_ALARM = "enableMotionAlarm";
