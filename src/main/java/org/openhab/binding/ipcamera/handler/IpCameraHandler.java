@@ -577,7 +577,7 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     }
 
-    private PTZVector getPosition() {
+    private PTZVector getPtzPosition() {
 
         try {
             ptzLocation = ptzDevices.getPosition(profileToken);
@@ -1006,7 +1006,8 @@ public class IpCameraHandler extends BaseThingHandler {
                                         tiltRange.getMax());
                                 logger.debug("The camera can Zoom from {} to {}", zoomMin, zoomMax);
                             }
-                            ptzLocation = getPosition();
+
+                            getPtzPosition();
 
                         } else {
                             logger.info("Camera is reporting that it does NOT support Absolute PTZ controls via ONVIF");
