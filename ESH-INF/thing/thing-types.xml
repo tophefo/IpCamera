@@ -400,9 +400,10 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <description>Use for all current Hikvision Cameras as they support an API as well as ONVIF.</description>
         <channels>
             <channel id="updateImageNow" typeId="updateImageNow"/>          
-            <channel id="image" typeId="image" />            
-            <channel id="enableMotionAlarm" typeId="enableMotionAlarm" />
-            <channel id="motionAlarm" typeId="motionAlarm" />   
+            <channel id="image" typeId="image"/>            
+            <channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>
+            <channel id="motionAlarm" typeId="motionAlarm"/>
+            <channel id="lineCrossingAlarm" typeId="lineCrossingAlarm"/>              
             <channel id="alphaTest" typeId="alphaTest" />                     
             <channel id="pan" typeId="pan" />
             <channel id="tilt" typeId="tilt" />
@@ -773,6 +774,14 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <channel-type id="motionAlarm">
         <item-type>Switch</item-type>
         <label>Motion Alarm</label>
+        <description>Motion has been detected.</description>
+        <category>Motion</category>
+        <state readOnly="true" />
+        </channel-type>
+        
+        <channel-type id="lineCrossingAlarm">
+        <item-type>Switch</item-type>
+        <label>Line Crossing Alarm</label>
         <description>Motion has been detected.</description>
         <category>Motion</category>
         <state readOnly="true" />

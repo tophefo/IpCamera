@@ -411,7 +411,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
             switch (content) {
                 case "Error: No Events\r\n":
-                    if (channelCheckingNow.contains("motion")) {
+                    if (channelCheckingNow.equals(CHANNEL_MOTION_ALARM)) {
                         updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
                         firstMotionAlarm = false;
                     } else {
@@ -421,8 +421,8 @@ public class IpCameraHandler extends BaseThingHandler {
                     break;
 
                 case "channels[0]=0\r\n":
-                    if (channelCheckingNow.contains("motion")) {
-                        motionDetected();
+                    if (channelCheckingNow.equals(CHANNEL_MOTION_ALARM)) {
+                        motionDetected(CHANNEL_MOTION_ALARM);
                     } else {
                         audioDetected();
                     }
@@ -529,10 +529,15 @@ public class IpCameraHandler extends BaseThingHandler {
             if (content.contains("<EventNotificationAlert version=")) {
 
                 if (content.contains("<eventType>VMD</eventType>\r\n<eventState>active</eventState>\r\n")) {
-                    motionDetected();
+                    motionDetected(CHANNEL_MOTION_ALARM);
                 } else {
                     updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
+                }
+                if (content.contains("<eventType>linedetection</eventType>\r\n<eventState>active</eventState>\r\n")) {
+                    motionDetected(CHANNEL_LINE_CROSSING_ALARM);
+                } else {
+                    updateState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
                 }
             }
 
@@ -557,8 +562,8 @@ public class IpCameraHandler extends BaseThingHandler {
         super(thing);
     }
 
-    private void motionDetected() {
-        updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("ON"));
+    private void motionDetected(String thisAlarmsChannel) {
+        updateState(thisAlarmsChannel.toString(), OnOffType.valueOf("ON"));
         if (updateImageEvents.contains("2") && !firstMotionAlarm) {
             sendHttpRequest("GET", snapshotUri, false);
             firstMotionAlarm = true;
@@ -883,7 +888,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
             }
         }
-
     }
 
     void setAbsoluteZoom(Float zoomValue) {
@@ -1069,11 +1073,11 @@ public class IpCameraHandler extends BaseThingHandler {
 
             switch (thing.getThingTypeUID().getId()) {
                 case "AMCREST":
-                    channelCheckingNow = "motionAlarm";
+                    channelCheckingNow = CHANNEL_MOTION_ALARM;
                     sendHttpRequest("GET",
                             "http://192.168.1.108/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion",
                             false);
-                    channelCheckingNow = "audioAlarm";
+                    channelCheckingNow = CHANNEL_AUDIO_ALARM;
                     sendHttpRequest("GET",
                             "http://192.168.1.108/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation",
                             false);
