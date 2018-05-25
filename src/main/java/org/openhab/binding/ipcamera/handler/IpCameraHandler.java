@@ -503,12 +503,62 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     }
 
+    private String searchString(String rawString, String searchedString) {
+        String result = "";
+        int index = 0;
+        index = rawString.indexOf(searchedString);
+        if (index != -1) // -1 means "not found"
+        {
+            result = rawString.substring(index + searchedString.length(), rawString.length());
+            index = result.indexOf(',');
+            if (index == -1) {
+                index = result.indexOf('"');
+                if (index == -1) {
+                    index = result.indexOf('}');
+                    if (index == -1) {
+                        return result;
+                    } else {
+                        return result.substring(0, index);
+                    }
+                } else {
+                    return result.substring(0, index);
+                }
+            } else {
+                result = result.substring(0, index);
+                index = result.indexOf('"');
+                if (index == -1) {
+                    return result;
+                } else {
+                    return result.substring(0, index);
+                }
+            }
+        }
+        return null;
+    }
+
     public class InstarHandler extends ChannelDuplexHandler {
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
             String content = msg.toString();
             logger.debug("HTTP Result back from camera is :{}:", content);
+
+            // Audio Alarm
+            String aa_enable = searchString(content, "var aa_enable = \"");
+            if (aa_enable.contains("1")) {
+                updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
+                String aa_value = searchString(content, "var aa_value = \"");
+                // String aa_time = searchString(content, "var aa_time = \"");
+                if (!aa_value.isEmpty()) {
+                    logger.debug("Threshold is chaning to {}", aa_value);
+                    updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf(aa_value));
+                }
+            } else {
+                updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+            }
+
+            // Motion Alarm
+            // String m1_enable =searchString(content, "var m1_enable = \"");
 
             ctx.close();
             content = null;
@@ -718,10 +768,20 @@ public class IpCameraHandler extends BaseThingHandler {
                         break;
 
                     case "INSTAR":
-                        sendHttpRequest("GET",
-                                "http://192.168.178.88/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1&-aa_value="
-                                        + command.toString(),
-                                false);
+                        value = Math.round(Float.valueOf(command.toString()));
+                        if (value == 0) {
+                            sendHttpRequest("GET",
+                                    "http://192.168.178.88/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=0",
+                                    false);
+                        } else {
+                            sendHttpRequest("GET",
+                                    "http://192.168.178.88/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1",
+                                    false);
+                            sendHttpRequest("GET",
+                                    "http://192.168.178.88/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1&-aa_value="
+                                            + command.toString(),
+                                    false);
+                        }
 
                         break;
                 }
@@ -802,10 +862,12 @@ public class IpCameraHandler extends BaseThingHandler {
                     case "INSTAR":
                         if ("ON".equals(command.toString())) {
                             sendHttpRequest("GET",
-                                    "http://192.168.1.2/cgi-bin/hi3510/param.cgi?cmd=setmdattr&-enable=1", false);
+                                    "http://192.168.1.108/cgi-bin/hi3510/param.cgi?cmd=setmdattr&-enable=1&-name=1&cmd=setmdattr&-enable=1&-name=2&cmd=setmdattr&-enable=1&-name=3&cmd=setmdattr&-enable=1&-name=4",
+                                    false);
                         } else {
                             sendHttpRequest("GET",
-                                    "http://192.168.1.2/cgi-bin/hi3510/param.cgi?cmd=setmdattr&-enable=0", false);
+                                    "http://192.168.1.108/cgi-bin/hi3510/param.cgi?cmd=setmdattr&-enable=0&-name=1&cmd=setmdattr&-enable=0&-name=2&cmd=setmdattr&-enable=0&-name=3&cmd=setmdattr&-enable=0&-name=4",
+                                    false);
                         }
                         break;
                 }
@@ -1096,9 +1158,11 @@ public class IpCameraHandler extends BaseThingHandler {
 
                     break;
                 case "INSTAR":
-                    // check to see if audio alarm is turned on or off
-                    // sendHttpRequest("GET", "http://192.168.178.88/cgi-bin/hi3510/param.cgi?cmd=getaudioalarmattr",
-                    // false);
+                    // Poll the audio alarm on/off/threshold/...
+                    sendHttpRequest("GET", "http://192.168.178.88/cgi-bin/hi3510/param.cgi?cmd=getaudioalarmattr",
+                            false);
+                    // Poll the motion alarm on/off/settings/...
+                    sendHttpRequest("GET", "http://192.168.178.88/cgi-bin/hi3510/param.cgi?cmd=getmdattr", false);
 
                     break;
             }
