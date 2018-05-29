@@ -36,12 +36,15 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private IpCameraHandler myHandler;
     private String username, password;
-    private String httpMethod, httpURL;
+    private String httpMethod, httpUrl;
+    private byte ncCounter = 0;
 
-    public MyNettyAuthHandler(String user, String pass, ThingHandler handle) {
+    public MyNettyAuthHandler(String user, String pass, String method, String url, ThingHandler handle) {
         myHandler = (IpCameraHandler) handle;
         username = user;
         password = pass;
+        httpUrl = url;
+        httpMethod = method;
     }
 
     private String calcMD5Hash(String toHash) {
@@ -99,6 +102,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
     // First run it should not have rawstring as null
     // nonce is reused if rawstring is null so the NC needs to increment to allow this//
     public String processAuth(String authenticate, String httpMethod, String requestURI, boolean reSend) {
+        String nonce = "empty", opaque = "empty", qop = "empty", realm = "empty";
 
         if (authenticate != null) {
 
@@ -108,101 +112,98 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                 }
                 logger.debug("Setting up the camera to use Basic Auth and resending last request with correct auth.");
                 myHandler.setBasicAuth(true);
-                // myHandler.sendHttpRequest(httpMethod, requestURI, false);
+                myHandler.sendHttpRequest(httpMethod, requestURI, null);
                 return "Using Basic";
             }
 
             ///////////// Digest Authenticate method follows as Basic is already handled and returned ////////////////
             if (authenticate.contains("Digest ")) {
-                myHandler.realm = searchString(authenticate, "realm=\"");
-                if (myHandler.realm == null) {
+                realm = searchString(authenticate, "realm=\"");
+                if (realm == null) {
                     logger.debug("Could not find a valid WWW-Authenticate response in :{}", authenticate);
                     return "Error";
                 }
-                myHandler.nonce = searchString(authenticate, "nonce=\"");
-                myHandler.opaque = searchString(authenticate, "opaque=\"");
-                myHandler.qop = searchString(authenticate, "qop=\"");
+                nonce = searchString(authenticate, "nonce=\"");
+                opaque = searchString(authenticate, "opaque=\"");
+                qop = searchString(authenticate, "qop=\"");
 
-                if (!myHandler.qop.isEmpty() && !myHandler.realm.isEmpty()) {
+                if (!qop.isEmpty() && !realm.isEmpty()) {
                     myHandler.useDigestAuth = true;
                 } else {
-                    logger.warn("Something is missing? opaque:{}, qop:{}, realm:{}", myHandler.opaque, myHandler.qop,
-                            myHandler.realm);
+                    logger.warn("Something is missing? opaque:{}, qop:{}, realm:{}", opaque, qop, realm);
                 }
 
                 String stale = searchString(authenticate, "stale=\"");
                 if ("false".equals(stale)) {
                     logger.debug(
-                            "Camera reported stale=false which normally means an issue with the username or password.");
+                            "!!!!! Camera reported stale=false which normally means an issue with the username or password. !!!!!");
                 } else if ("true".equals(stale)) {
-                    logger.debug("Camera reported stale=true which normally means the NONCE has expired.");
+                    logger.debug("!!!!! Camera reported stale=true which normally means the NONCE has expired. !!!!!");
                 }
             }
         }
 
         // create the MD5 hashes
-        String ha1 = username + ":" + myHandler.realm + ":" + password;
+        String ha1 = username + ":" + realm + ":" + password;
         ha1 = calcMD5Hash(ha1);
         Random random = new Random();
         String cnonce = Integer.toHexString(random.nextInt());
         random = null;
-        myHandler.ncCounter = (myHandler.ncCounter > 999999999) ? 1 : ++myHandler.ncCounter;
-        String nc = String.format("%08X", myHandler.ncCounter); // 8 digit hex number
-        // int nc = myHandler.ncCounter;
+        ncCounter = (ncCounter > 125) ? 1 : ++ncCounter;
+        String nc = String.format("%08X", ncCounter); // 8 digit hex number
         // int nc = 1;
         String ha2 = httpMethod + ":" + requestURI;
         ha2 = calcMD5Hash(ha2);
 
-        String response = ha1 + ":" + myHandler.nonce + ":" + nc + ":" + cnonce + ":" + myHandler.qop + ":" + ha2;
+        String response = ha1 + ":" + nonce + ":" + nc + ":" + cnonce + ":" + qop + ":" + ha2;
         response = calcMD5Hash(response);
 
-        String digestString = "username=\"" + username + "\", realm=\"" + myHandler.realm + "\", nonce=\""
-                + myHandler.nonce + "\", uri=\"" + requestURI + "\", qop=\"" + myHandler.qop + "\", nc=\"" + nc
-                + "\", cnonce=\"" + cnonce + "\", response=\"" + response + "\", opaque=\"" + myHandler.opaque + "\"";
-
+        String digestString = "username=\"" + username + "\", realm=\"" + realm + "\", nonce=\"" + nonce + "\", uri=\""
+                + requestURI + "\", cnonce=\"" + cnonce + "\", nc=" + nc + ", qop=\"" + qop + "\", response=\""
+                + response + "\", opaque=\"" + opaque + "\"";
+        // logger.debug("digest string is this {}", digestString);
         if (reSend) {
-            myHandler.digestString = digestString;
-            myHandler.sendHttpRequest(httpMethod, requestURI, true);
+            myHandler.sendHttpRequest(httpMethod, requestURI, digestString);
+            return null;
         }
 
         return digestString;
     }
 
-    // This method handles the Servers response
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-
         if (msg instanceof HttpResponse) {
             HttpResponse response = (HttpResponse) msg;
             if (response.status().code() == 401) {
-                logger.debug("401: This reply from the camera is normal if it needs Basic or Digest auth details.");
-                // Find WWW-Authenticate then process it //
+                logger.debug("401: This is normal for basic and digest authentication. Request {}:{}", httpMethod,
+                        httpUrl);
                 if (!response.headers().isEmpty()) {
                     for (CharSequence name : response.headers().names()) {
                         for (CharSequence value : response.headers().getAll(name)) {
                             if (name.toString().equals("WWW-Authenticate")) {
-                                // logger.debug("Camera gave this string:{}", value.toString());
-                                processAuth(value.toString(), httpMethod, httpURL, true);
+                                processAuth(value.toString(), httpMethod, httpUrl, true);
+                                ctx.close();
                             }
                         }
                     }
                 }
             }
         }
-        // Pass the Netty Message back to the pipeline for the next handler to process//
+        // Pass the Message back to the pipeline for the next handler to process//
         super.channelRead(ctx, msg);
     }
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) {
-        this.httpURL = myHandler.correctedRequestURL;
-        this.httpMethod = myHandler.httpMethod;
+        logger.debug("++++++++ Auth Handler created ++++++++ {}", httpUrl);
+        // this.httpUrl = myHandler.correctedRequestURL;
+        // this.httpMethod = myHandler.httpMethod;
     }
 
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) {
         myHandler = null;
-        username = password = httpMethod = httpURL = null;
+        username = password = httpMethod = httpUrl = null;
     }
 
     @Override
