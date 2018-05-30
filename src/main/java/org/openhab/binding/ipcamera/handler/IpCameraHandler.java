@@ -97,8 +97,8 @@ import io.netty.util.CharsetUtil;
 public class IpCameraHandler extends BaseThingHandler {
 
     public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<ThingTypeUID>(
-            Arrays.asList(THING_TYPE_ONVIF, THING_TYPE_HTTPONLY, THING_TYPE_AMCREST, THING_TYPE_INSTAR, THING_TYPE_AXIS,
-                    THING_TYPE_FOSCAM, THING_TYPE_HIKVISION));
+            Arrays.asList(THING_TYPE_ONVIF, THING_TYPE_HTTPONLY, THING_TYPE_AMCREST, THING_TYPE_DAHUA,
+                    THING_TYPE_INSTAR, THING_TYPE_AXIS, THING_TYPE_FOSCAM, THING_TYPE_HIKVISION));
 
     private Configuration config;
     private OnvifDevice onvifCamera;
@@ -111,8 +111,8 @@ public class IpCameraHandler extends BaseThingHandler {
     private Bootstrap mainBootstrap;
     CommonCameraHandler commonHandler;
     byte countHandlers = 0;
-    String globalMethod;
-    String globalUrl;
+    private String globalMethod;
+    private String globalUrl;
 
     private EventLoopGroup mainEventLoopGroup = new NioEventLoopGroup();
 
@@ -213,10 +213,10 @@ public class IpCameraHandler extends BaseThingHandler {
             mainBootstrap = new Bootstrap();
             mainBootstrap.group(mainEventLoopGroup);
             mainBootstrap.channel(NioSocketChannel.class);
-            // mainBootstrap.option(ChannelOption.SO_KEEPALIVE, true);
+            mainBootstrap.option(ChannelOption.SO_KEEPALIVE, true);
             mainBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000);
-            // mainBootstrap.option(ChannelOption.SO_SNDBUF, 1024 * 128);
-            // mainBootstrap.option(ChannelOption.SO_RCVBUF, 1024 * 1024);
+            mainBootstrap.option(ChannelOption.SO_SNDBUF, 1024 * 128);
+            mainBootstrap.option(ChannelOption.SO_RCVBUF, 1024 * 1024);
             mainBootstrap.option(ChannelOption.TCP_NODELAY, true);
             mainBootstrap.handler(new ChannelInitializer<SocketChannel>() {
 
@@ -243,6 +243,9 @@ public class IpCameraHandler extends BaseThingHandler {
                             break;
                         case "INSTAR":
                             socketChannel.pipeline().addLast(new InstarHandler());
+                            break;
+                        case "DAHUA":
+                            socketChannel.pipeline().addLast(new DahuaHandler());
                             break;
                     }
                 }
@@ -639,6 +642,26 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     }
 
+    private class DahuaHandler extends ChannelDuplexHandler {
+
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            String content = msg.toString();
+            logger.debug("HTTP Result back from camera is :{}:", content);
+
+            // determine if the motion detection is turned on or off.
+            if (content.contains("table.Alarm[0].Enable=true")) {
+                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
+
+            } else if (content.contains("table.Alarm[0].Enable=false")) {
+                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
+
+            }
+            ctx.close();
+            content = null;
+        }
+    }
+
     public IpCameraHandler(Thing thing) {
         super(thing);
     }
@@ -912,6 +935,16 @@ public class IpCameraHandler extends BaseThingHandler {
                                     null);
                         }
                         break;
+
+                    case "DAHUA":
+                        if ("ON".equals(command.toString())) {
+                            sendHttpRequest("GET",
+                                    "/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=true", null);
+                        } else {
+                            sendHttpRequest("GET",
+                                    "/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=false", null);
+                        }
+                        break;
                 }
 
                 break;
@@ -1017,14 +1050,14 @@ public class IpCameraHandler extends BaseThingHandler {
 
                 if (!snapshotUri.isEmpty()) {
                     logger.debug("Camera at {} has a snapshot address of:{}:", ipAddress, snapshotUri);
-                    if (sendHttpRequest("GET", snapshotUri, null)) {
+                    if (sendHttpRequest("GET", getCorrectUrlFormat(snapshotUri), null)) {
                         updateStatus(ThingStatus.ONLINE);
                         cameraConnectionJob.cancel(true);
                         cameraConnectionJob = null;
 
                         fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 5000,
                                 Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
-                        sendHttpRequest("GET", snapshotUri, null);
+                        sendHttpRequest("GET", getCorrectUrlFormat(snapshotUri), null);
                         updateState(CHANNEL_IMAGE_URL, new StringType(snapshotUri));
                     }
                 } else {
@@ -1192,14 +1225,19 @@ public class IpCameraHandler extends BaseThingHandler {
                     // Check if any alarms are going off
                     // sendHttpRequest("GET", "/ISAPI/Event/notification/alertStream", false);
                     sendHttpRequest("GET", "/Event/notification/alertStream", null);
-
                     break;
                 case "INSTAR":
                     // Poll the audio alarm on/off/threshold/...
                     sendHttpRequest("GET", "/cgi-bin/hi3510/param.cgi?cmd=getaudioalarmattr", null);
                     // Poll the motion alarm on/off/settings/...
                     sendHttpRequest("GET", "/cgi-bin/hi3510/param.cgi?cmd=getmdattr", null);
-
+                    break;
+                case "DAHUA":
+                    // Poll the alarm configs ie on/off/...
+                    sendHttpRequest("GET", "/cgi-bin/configManager.cgi?action=getConfig&name=Alarm", null);
+                    // Not sure if this reports if the alarm is happening or not ?
+                    sendHttpRequest("GET",
+                            "/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect[0].EventHandler", null);
                     break;
             }
         }

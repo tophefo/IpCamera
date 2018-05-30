@@ -28,7 +28,7 @@ https://wikiold.instar.de/index.php/List_of_CGI_commands_(HD)
 
 ## Supported Things
 
-If doing manual text configuration and/or when needing to setup HABPANEL or your sitemap you are going to need to know what your camera has as a "thing name". These are listed in BOLD below. 
+If doing manual text configuration and/or when needing to setup HABPANEL or your sitemap you are going to need to know what your camera has as a "thing name". These are listed in BOLD below and are only a single word. Example the thing type for a generic onvif camera is "ONVIF". 
 
 HTTPONLY: For any camera that is not ONVIF compatible, and has the ability to fetch a snapshot with a url.
 
@@ -37,6 +37,8 @@ ONVIF: Use for all ONVIF Cameras from any brand that do not have an API.
 AMCREST: Use for all current Amcrest Cameras as they support an API as well as ONVIF.
 
 AXIS: Use for all current Axis Cameras as they support an API as well as ONVIF.
+
+DAHUA: Use for all current Dahua Cameras as they support an API as well as ONVIF.
 
 FOSCAM: Use for all current FOSCAM Cameras as they support an API as well as ONVIF.
 
