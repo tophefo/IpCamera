@@ -169,9 +169,6 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </config-description>
 </thing-type>
 
-
-
-
    <thing-type id="AMCREST">
         <label>"AMCREST" IP camera with ONVIF and API support.</label>
         <description>Use for all current Amcrest Cameras, as they support an API as well as ONVIF.</description>
@@ -336,6 +333,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>IP Address</label>
 <description>Use this format 192.168.1.2 and do not include the port number.
 </description>        
+</parameter>
+
+<parameter name="NVR_CHANNEL" type="integer" required="true" min="0" max="16" groupName="Settings">
+<label>Cameras NVR channel.</label>
+<description>Set this to 0 if it is a stand alone Dahua camera, or to the channel number of the camera if you have a Dahua NVR.
+</description>
+<default>0</default>
 </parameter>
 
 <parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">

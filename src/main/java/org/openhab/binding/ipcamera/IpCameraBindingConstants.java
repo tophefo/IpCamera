@@ -47,6 +47,7 @@ public class IpCameraBindingConstants {
     public static final String CONFIG_POLL_CAMERA_MS = "POLL_CAMERA_MS";
     public static final String CONFIG_SNAPSHOT_URL_OVERIDE = "SNAPSHOT_URL_OVERIDE";
     public static final String CONFIG_IMAGE_UPDATE_EVENTS = "IMAGE_UPDATE_EVENTS";
+    public static final String CONFIG_NVR_CHANNEL = "NVR_CHANNEL";
 
     // List of all Channel ids
     public static final String CHANNEL_UPDATE_IMAGE_NOW = "updateImageNow";

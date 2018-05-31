@@ -324,7 +324,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
     // These methods handle the response from all Camera brands, nothing specific to any brand should be in here //
     private class CommonCameraHandler extends ChannelDuplexHandler {
-        private int bytesToRecieve = 0;
+        private int bytesToRecieve = 0; // default to 0.5Mb for cameras that do not send a Content-Length
         private int bytesAlreadyRecieved = 0;
         private byte[] lastSnapshot;
         private String contentType;
@@ -367,11 +367,20 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
 
                 if (content instanceof LastHttpContent) {
+                    if (bytesAlreadyRecieved != 0) {
+                        logger.debug(
+                                "Camera did not report a Content-Length header so there is a picture still waiting to be processed.");
+                        updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
+                    }
+
                     ctx.close();
                 }
 
                 if (content instanceof DefaultHttpContent) {
                     if ("image/jpeg".equalsIgnoreCase(contentType)) {
+                        if (bytesToRecieve == 0) {
+                            bytesToRecieve = 512000; // default to 0.5Mb for cameras that do not send a Content-Length
+                        }
                         for (int i = 0; i < content.content().capacity(); i++) {
                             if (lastSnapshot == null) {
                                 lastSnapshot = new byte[bytesToRecieve];
@@ -565,37 +574,47 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     private class InstarHandler extends ChannelDuplexHandler {
+        String content;
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            String content = msg.toString();
+            content = msg.toString();
             logger.debug("HTTP Result back from camera is :{}:", content);
 
-            // Audio Alarm
-            String aa_enable = searchString(content, "var aa_enable = \"");
-            if (aa_enable.contains("1")) {
-                updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
-                String aa_value = searchString(content, "var aa_value = \"");
-                // String aa_time = searchString(content, "var aa_time = \"");
-                if (!aa_value.isEmpty()) {
-                    logger.debug("Threshold is chaning to {}", aa_value);
-                    updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf(aa_value));
+            if (!content.isEmpty()) {
+                // Audio Alarm
+                String aa_enable = searchString(content, "var aa_enable = \"");
+                if ("1".equals(aa_enable)) {
+                    updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
+                    String aa_value = searchString(content, "var aa_value = \"");
+                    // String aa_time = searchString(content, "var aa_time = \"");
+                    if (!aa_value.isEmpty()) {
+                        logger.debug("Threshold is chaning to {}", aa_value);
+                        updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf(aa_value));
+                    }
+                } else {
+                    updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
                 }
-            } else {
-                updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+
+                // Motion Alarm
+                String m1_enable = searchString(content, "var m1_enable=\"");
+                if ("1".equals(m1_enable)) {
+                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
+                } else {
+                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                }
             }
 
-            // Motion Alarm
-            String m1_enable = searchString(content, "var m1_enable=\"");
-            if (m1_enable.contains("1")) {
-                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
-            } else {
-                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
-            }
-
-            content = null;
             ctx.close();
+        }
 
+        @Override
+        public void handlerAdded(ChannelHandlerContext ctx) {
+        }
+
+        @Override
+        public void handlerRemoved(ChannelHandlerContext ctx) {
+            content = null;
         }
     }
 
@@ -657,6 +676,16 @@ public class IpCameraHandler extends BaseThingHandler {
                 updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
 
             }
+
+            // Handle motion alarm
+            if (content.contains("Code=VideoMotion;action=Start;index=")) {
+                motionDetected(CHANNEL_MOTION_ALARM);
+
+            } else if (content.contains("Code=VideoMotion;action=Stop;index=")) {
+                updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                firstMotionAlarm = false;
+            }
+
             ctx.close();
             content = null;
         }
@@ -720,11 +749,11 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     private PTZVector getPtzPosition() {
-
+        PTZVector pv;
         try {
-            ptzLocation = ptzDevices.getPosition(profileToken);
-            if (ptzLocation != null) {
-                return ptzLocation;
+            pv = ptzDevices.getPosition(profileToken);
+            if (pv != null) {
+                return pv;
             }
         } catch (NullPointerException e) {
             logger.error("NPE occured when trying to fetch the cameras PTZ position");
@@ -732,7 +761,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
         logger.warn(
                 "Camera replied with null when asked what its position was, going to fake the position so PTZ still works.");
-        PTZVector pv = new PTZVector();
+        pv = new PTZVector();
         pv.setPanTilt(new Vector2D());
         pv.setZoom(new Vector1D());
         return pv;
@@ -1148,7 +1177,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                 logger.debug("The camera can Zoom from {} to {}", zoomMin, zoomMax);
                             }
 
-                            getPtzPosition();
+                            ptzLocation = getPtzPosition();
 
                         } else {
                             logger.info("Camera is reporting that it does NOT support Absolute PTZ controls via ONVIF");
@@ -1235,9 +1264,11 @@ public class IpCameraHandler extends BaseThingHandler {
                 case "DAHUA":
                     // Poll the alarm configs ie on/off/...
                     sendHttpRequest("GET", "/cgi-bin/configManager.cgi?action=getConfig&name=Alarm", null);
-                    // Not sure if this reports if the alarm is happening or not ?
+                    // Check for alarms, channel is for a NVR and not a single cam.
                     sendHttpRequest("GET",
-                            "/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect[0].EventHandler", null);
+                            "/cgi-bin/eventManager.cgi?action=attach&codes=[VideoMotion,MDResult,VideoBlind,VideoLoss,CrossLineDetection]&channel=["
+                                    + config.get(CONFIG_NVR_CHANNEL).toString() + "]",
+                            null);
                     break;
             }
         }
