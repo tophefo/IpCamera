@@ -38,6 +38,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
     private String username, password;
     private String httpMethod, httpUrl;
     private byte ncCounter = 0;
+    String nonce = "empty", opaque = "empty", qop = "empty", realm = "empty";
 
     public MyNettyAuthHandler(String user, String pass, String method, String url, ThingHandler handle) {
         myHandler = (IpCameraHandler) handle;
@@ -45,6 +46,18 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
         password = pass;
         httpUrl = url;
         httpMethod = method;
+    }
+
+    public MyNettyAuthHandler(String user, String pass, ThingHandler handle) {
+        myHandler = (IpCameraHandler) handle;
+        username = user;
+        password = pass;
+    }
+
+    public void setURL(String url) {
+        httpMethod = "GET";
+        httpUrl = url;
+        logger.debug("Url is set in authHandler:{}", url);
     }
 
     private String calcMD5Hash(String toHash) {
@@ -99,10 +112,10 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
     // Method can be used a few ways. processAuth(null, string,string, false) to return the digest on demand, and
     // processAuth(challString, string,string, true) to auto send new packet
-    // First run it should not have rawstring as null
-    // nonce is reused if rawstring is null so the NC needs to increment to allow this//
-    public String processAuth(String authenticate, String httpMethod, String requestURI, boolean reSend) {
-        String nonce = "empty", opaque = "empty", qop = "empty", realm = "empty";
+    // First run it should not have authenticate as null
+    // nonce is reused if authenticate is null so the NC needs to increment to allow this//
+    public String processAuth(String authenticate, String httpMethod, String requestURI, boolean reSend,
+            boolean useNewChannel) {
 
         if (authenticate != null) {
 
@@ -112,34 +125,33 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                 }
                 logger.debug("Setting up the camera to use Basic Auth and resending last request with correct auth.");
                 myHandler.setBasicAuth(true);
-                myHandler.sendHttpRequest(httpMethod, requestURI, null);
+                myHandler.sendHttpRequest(httpMethod, requestURI, null, false);
                 return "Using Basic";
             }
 
-            ///////////// Digest Authenticate method follows as Basic is already handled and returned ////////////////
-            if (authenticate.contains("Digest ")) {
-                realm = searchString(authenticate, "realm=\"");
-                if (realm == null) {
-                    logger.debug("Could not find a valid WWW-Authenticate response in :{}", authenticate);
-                    return "Error";
-                }
-                nonce = searchString(authenticate, "nonce=\"");
-                opaque = searchString(authenticate, "opaque=\"");
-                qop = searchString(authenticate, "qop=\"");
+            /////// Fresh Digest Authenticate method follows as Basic is already handled and returned ////////
+            realm = searchString(authenticate, "realm=\"");
+            if (realm == null) {
+                logger.warn("Could not find a valid WWW-Authenticate response in :{}", authenticate);
+                return "Error";
+            }
+            nonce = searchString(authenticate, "nonce=\"");
+            opaque = searchString(authenticate, "opaque=\"");
+            qop = searchString(authenticate, "qop=\"");
 
-                if (!qop.isEmpty() && !realm.isEmpty()) {
-                    myHandler.useDigestAuth = true;
-                } else {
-                    logger.warn("Something is missing? opaque:{}, qop:{}, realm:{}", opaque, qop, realm);
-                }
+            if (!qop.isEmpty() && !realm.isEmpty()) {
+                myHandler.useDigestAuth = true;
+            } else {
+                logger.warn("Something is missing? opaque:{}, qop:{}, realm:{}", opaque, qop, realm);
+            }
 
-                String stale = searchString(authenticate, "stale=\"");
-                if ("false".equals(stale)) {
-                    logger.debug(
-                            "!!!!! Camera reported stale=false which normally means an issue with the username or password. !!!!!");
-                } else if ("true".equals(stale)) {
-                    logger.debug("!!!!! Camera reported stale=true which normally means the NONCE has expired. !!!!!");
-                }
+            String stale = searchString(authenticate, "stale=\"");
+            if (stale == null) {
+            } else if ("false".equals(stale)) {
+                logger.debug(
+                        "Camera reported stale=false which normally means an issue with the username or password.");
+            } else if ("true".equals(stale)) {
+                logger.debug("Camera reported stale=true which normally means the NONCE has expired.");
             }
         }
 
@@ -151,7 +163,6 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
         random = null;
         ncCounter = (ncCounter > 125) ? 1 : ++ncCounter;
         String nc = String.format("%08X", ncCounter); // 8 digit hex number
-        // int nc = 1;
         String ha2 = httpMethod + ":" + requestURI;
         ha2 = calcMD5Hash(ha2);
 
@@ -163,7 +174,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                 + response + "\", opaque=\"" + opaque + "\"";
         // logger.debug("digest string is this {}", digestString);
         if (reSend) {
-            myHandler.sendHttpRequest(httpMethod, requestURI, digestString);
+            myHandler.sendHttpRequest(httpMethod, requestURI, digestString, useNewChannel);
             return null;
         }
 
@@ -172,19 +183,31 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        boolean closeConnection = false;
+        String authenticate = null;
         if (msg instanceof HttpResponse) {
             HttpResponse response = (HttpResponse) msg;
             if (response.status().code() == 401) {
-                logger.debug("401: This is normal for basic and digest authentication. Request {}:{}", httpMethod,
-                        httpUrl);
+                logger.debug("401: This is normal for digest authentication. Request is {}:{}", httpMethod, httpUrl);
                 if (!response.headers().isEmpty()) {
                     for (CharSequence name : response.headers().names()) {
                         for (CharSequence value : response.headers().getAll(name)) {
                             if (name.toString().equals("WWW-Authenticate")) {
-                                processAuth(value.toString(), httpMethod, httpUrl, true);
-                                ctx.close();
+                                authenticate = value.toString();
+                            }
+                            if (name.toString().equals("Connection")) {
+                                if (value.toString().contains("close")) {
+                                    closeConnection = true;
+                                }
                             }
                         }
+                    }
+                    if (authenticate != null) {
+                        processAuth(authenticate, httpMethod, httpUrl, true, closeConnection);
+                    }
+                    if (closeConnection) {
+                        // logger.debug("401: Connection closing.");
+                        ctx.close();// needs to be here
                     }
                 }
             }
@@ -195,9 +218,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) {
-        logger.debug("++++++++ Auth Handler created ++++++++ {}", httpUrl);
-        // this.httpUrl = myHandler.correctedRequestURL;
-        // this.httpMethod = myHandler.httpMethod;
+        // logger.debug("++++++++ Auth Handler created ++++++++ {}", httpUrl);
     }
 
     @Override
@@ -208,7 +229,9 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        logger.debug("!!! Camera may have closed the connection which can be normal. Cause reported is:{}", cause);
+        logger.debug(
+                "Camera may have closed the connection which can be normal. Do not report this unless it happens to every request. Cause reported is:{}",
+                cause);
         ctx.close();
     }
 }
