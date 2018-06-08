@@ -509,12 +509,12 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     private class AmcrestHandler extends ChannelDuplexHandler {
-        String content;
-        String requestUrl;
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            content = msg.toString();
+            String content = msg.toString();
+            String requestUrl = "Empty";
+
             if (!content.isEmpty()) {
                 logger.debug("HTTP Result back from camera is :{}:", content);
             }
@@ -522,25 +522,27 @@ public class IpCameraHandler extends BaseThingHandler {
             byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
             if (indexInLists >= 0) {
                 requestUrl = listOfRequests.get(indexInLists);
+            } else {
+                logger.warn("Amcrest handler could not find the request URL");
             }
 
             switch (content) {
                 case "Error: No Events\r\n":
-                    if (requestUrl.equals("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion")) {
+                    if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion".equals(requestUrl)) {
                         updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
                         firstMotionAlarm = false;
-                    } else if (requestUrl
-                            .equals("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation")) {
+                    } else if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation"
+                            .equals(requestUrl)) {
                         updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
                         firstAudioAlarm = false;
                     }
                     break;
 
                 case "channels[0]=0\r\n":
-                    if (requestUrl.equals("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion")) {
+                    if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion".equals(requestUrl)) {
                         motionDetected(CHANNEL_MOTION_ALARM);
-                    } else if (requestUrl
-                            .equals("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation")) {
+                    } else if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation"
+                            .equals(requestUrl)) {
                         audioDetected();
                     }
                     break;
@@ -551,16 +553,6 @@ public class IpCameraHandler extends BaseThingHandler {
             } else if (content.contains("table.MotionDetect[0].Enable=true")) {
                 updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
             }
-        }
-
-        @Override
-        public void handlerAdded(ChannelHandlerContext ctx) {
-            logger.debug("++++++++ Amcrest Handler created. ++++++++ :{}", requestUrl);
-        }
-
-        @Override
-        public void handlerRemoved(ChannelHandlerContext ctx) {
-            content = null;
         }
     }
 
