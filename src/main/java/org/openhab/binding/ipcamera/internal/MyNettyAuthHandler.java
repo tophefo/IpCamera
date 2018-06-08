@@ -147,10 +147,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
             String stale = searchString(authenticate, "stale=\"");
             if (stale == null) {
-            } else if ("false".equals(stale)) {
-                logger.debug(
-                        "Camera reported stale=false which normally means an issue with the username or password.");
-            } else if ("true".equals(stale)) {
+            } else if (stale.equalsIgnoreCase("true")) {
                 logger.debug("Camera reported stale=true which normally means the NONCE has expired.");
             }
         }
@@ -172,7 +169,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
         String digestString = "username=\"" + username + "\", realm=\"" + realm + "\", nonce=\"" + nonce + "\", uri=\""
                 + requestURI + "\", cnonce=\"" + cnonce + "\", nc=" + nc + ", qop=\"" + qop + "\", response=\""
                 + response + "\", opaque=\"" + opaque + "\"";
-        // logger.debug("digest string is this {}", digestString);
+
         if (reSend) {
             myHandler.sendHttpRequest(httpMethod, requestURI, digestString, useNewChannel);
             return null;
@@ -198,6 +195,13 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                             if (name.toString().equals("Connection")) {
                                 if (value.toString().contains("close")) {
                                     closeConnection = true;
+                                    byte indexInLists = (byte) myHandler.listOfChannels.indexOf(ctx.channel());
+                                    if (indexInLists >= 0) {
+                                        logger.debug("401: Channel closing shortly.");
+                                        myHandler.listOfRequests.set(indexInLists, "closing");
+                                    } else {
+                                        logger.debug("!!!!!!!!!!!!!!!!!!!!! Could not find the channel to close");
+                                    }
                                 }
                             }
                         }
@@ -206,7 +210,6 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                         processAuth(authenticate, httpMethod, httpUrl, true, closeConnection);
                     }
                     if (closeConnection) {
-                        // logger.debug("401: Connection closing.");
                         ctx.close();// needs to be here
                     }
                 }
@@ -218,7 +221,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) {
-        // logger.debug("++++++++ Auth Handler created ++++++++ {}", httpUrl);
+        logger.debug("++++ Auth Handler created for GET:{}", httpUrl);
     }
 
     @Override

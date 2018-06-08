@@ -232,11 +232,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>80</default>
 </parameter>
 
-<parameter name="NVR_CHANNEL" type="integer" required="true" min="1" max="64" groupName="Settings">
+<parameter name="NVR_CHANNEL" type="integer" required="true" min="0" max="64" groupName="Settings">
 <label>NVR input channel.</label>
-<description>Set this to 1 if it is a stand alone camera, or to the input channel number of your NVR that the camera is connected to.
+<description>Set this to 0 if it is a stand alone camera, or to the input channel number of your NVR that the camera is connected to.
 </description>
-<default>1</default>
+<default>0</default>
 </parameter>
 
 <parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="false" groupName="Settings">
@@ -568,9 +568,9 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>80</default>
 </parameter>
 
-<parameter name="NVR_CHANNEL" type="integer" required="true" min="1" max="64" groupName="Settings">
+<parameter name="NVR_CHANNEL" type="integer" required="true" min="1" max="9" groupName="Settings">
 <label>NVR input channel.</label>
-<description>Set this to 1 if it is a stand alone camera, or to the input channel number of your NVR that the camera is connected to.
+<description>Set this to 1 if it is a stand alone camera, or to the input channel number if you use a compatible NVR.
 </description>
 <default>1</default>
 </parameter>
@@ -580,7 +580,6 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>Over-ride the auto detected snapshot http address for your camera.</label>
 <description>Leave this empty to use the auto detected snapshot method, or enter a http address if you wish to over-ride with a different address to connect faster.
 </description>  
-<default>http://192.168.1.64/ISAPI/Streaming/channels/1/picture</default>    
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
