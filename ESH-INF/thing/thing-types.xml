@@ -517,7 +517,10 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="image" typeId="image"/>            
             <channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>
             <channel id="motionAlarm" typeId="motionAlarm"/>
-            <channel id="lineCrossingAlarm" typeId="lineCrossingAlarm"/>              
+            <channel id="lineCrossingAlarm" typeId="lineCrossingAlarm"/>
+            <channel id="itemLeft" typeId="itemLeft"/> 
+            <channel id="itemTaken" typeId="itemTaken"/> 
+            <channel id="faceDetected" typeId="faceDetected"/>              
             <channel id="alphaTest" typeId="alphaTest" />                     
             <channel id="pan" typeId="pan" />
             <channel id="tilt" typeId="tilt" />
@@ -907,6 +910,30 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <state readOnly="true" />
         </channel-type>
         
+        <channel-type id="faceDetected">
+        <item-type>Switch</item-type>
+        <label>Face Detected Alarm</label>
+        <description>A face has been detected.</description>
+        <category>Motion</category>
+        <state readOnly="true" />
+        </channel-type>
+        
+        <channel-type id="itemLeft">
+        <item-type>Switch</item-type>
+        <label>Item Left Alarm</label>
+        <description>An item has been left.</description>
+        <category>Motion</category>
+        <state readOnly="true" />
+        </channel-type>
+        
+        <channel-type id="itemTaken">
+        <item-type>Switch</item-type>
+        <label>Item Taken Alarm</label>
+        <description>An item may have been stolen.</description>
+        <category>Motion</category>
+        <state readOnly="true" />
+        </channel-type>
+                
         <channel-type id="audioAlarm">
         <item-type>Switch</item-type>
         <label>Audio Alarm</label>
@@ -936,5 +963,6 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <category>SoundVolume</category>
         </channel-type>
                   
+
        
 </thing:thing-descriptions>

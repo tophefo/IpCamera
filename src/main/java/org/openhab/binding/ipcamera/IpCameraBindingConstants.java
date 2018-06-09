@@ -59,6 +59,9 @@ public class IpCameraBindingConstants {
     public static final String CHANNEL_ZOOM = "zoom";
     public static final String CHANNEL_MOTION_ALARM = "motionAlarm";
     public static final String CHANNEL_LINE_CROSSING_ALARM = "lineCrossingAlarm";
+    public static final String CHANNEL_FACE_DETECTED = "faceDetected";
+    public static final String CHANNEL_ITEM_LEFT = "itemLeft";
+    public static final String CHANNEL_ITEM_TAKEN = "itemTaken";
 
     public static final String CHANNEL_AUDIO_ALARM = "audioAlarm";
     public static final String CHANNEL_ENABLE_MOTION_ALARM = "enableMotionAlarm";

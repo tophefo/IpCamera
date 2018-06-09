@@ -55,9 +55,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
     }
 
     public void setURL(String url) {
-        httpMethod = "GET";
         httpUrl = url;
-        logger.debug("Url is set in authHandler:{}", url);
     }
 
     private String calcMD5Hash(String toHash) {
@@ -185,7 +183,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
         if (msg instanceof HttpResponse) {
             HttpResponse response = (HttpResponse) msg;
             if (response.status().code() == 401) {
-                logger.debug("401: This is normal for digest authentication. Request is {}:{}", httpMethod, httpUrl);
+                logger.debug("401: Normal for DIGEST authorization. \tURL:{}", httpUrl);
                 if (!response.headers().isEmpty()) {
                     for (CharSequence name : response.headers().names()) {
                         for (CharSequence value : response.headers().getAll(name)) {
@@ -197,10 +195,11 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                                     closeConnection = true;
                                     byte indexInLists = (byte) myHandler.listOfChannels.indexOf(ctx.channel());
                                     if (indexInLists >= 0) {
-                                        logger.debug("401: Channel closing shortly.");
+                                        logger.debug("401: Channel {} closing shortly for \tURL:{}", indexInLists,
+                                                httpUrl);
                                         myHandler.listOfRequests.set(indexInLists, "closing");
                                     } else {
-                                        logger.debug("!!!!!!!!!!!!!!!!!!!!! Could not find the channel to close");
+                                        logger.debug("!!!!!!!!!!!!!!!!!!!!! 401: Could not find the channel to close");
                                     }
                                 }
                             }
@@ -213,6 +212,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                         ctx.close();// needs to be here
                     }
                 }
+                super.channelRead(ctx, new Object()); // dont pass 401 errors on to next handler.
             }
         }
         // Pass the Message back to the pipeline for the next handler to process//
@@ -221,20 +221,12 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) {
-        logger.debug("++++ Auth Handler created for GET:{}", httpUrl);
+        logger.debug("++++ Auth Handler created for \t\tURL:{}", httpUrl);
     }
 
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) {
         myHandler = null;
         username = password = httpMethod = httpUrl = null;
-    }
-
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        logger.debug(
-                "Camera may have closed the connection which can be normal. Do not report this unless it happens to every request. Cause reported is:{}",
-                cause);
-        ctx.close();
     }
 }
