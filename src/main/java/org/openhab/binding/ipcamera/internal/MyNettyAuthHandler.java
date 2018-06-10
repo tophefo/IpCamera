@@ -33,7 +33,7 @@ import io.netty.handler.codec.http.HttpResponse;
 
 public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private Logger logger = LoggerFactory.getLogger(getClass());
     private IpCameraHandler myHandler;
     private String username, password;
     private String httpMethod, httpUrl;
@@ -140,7 +140,9 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
             if (!qop.isEmpty() && !realm.isEmpty()) {
                 myHandler.useDigestAuth = true;
             } else {
-                logger.warn("Something is missing? opaque:{}, qop:{}, realm:{}", opaque, qop, realm);
+                logger.warn(
+                        "!!!! Something is wrong with the reply back from the camera. WWW-Authenticate header: qop:{}, realm:{}",
+                        qop, realm);
             }
 
             String stale = searchString(authenticate, "stale=\"");
@@ -172,7 +174,6 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
             myHandler.sendHttpRequest(httpMethod, requestURI, digestString, useNewChannel);
             return null;
         }
-
         return digestString;
     }
 
@@ -195,11 +196,11 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                                     closeConnection = true;
                                     byte indexInLists = (byte) myHandler.listOfChannels.indexOf(ctx.channel());
                                     if (indexInLists >= 0) {
-                                        logger.debug("401: Channel {} closing shortly for \tURL:{}", indexInLists,
-                                                httpUrl);
                                         myHandler.listOfRequests.set(indexInLists, "closing");
+                                        logger.debug("401: Channel {} marked as closing for \tURL:{}", indexInLists,
+                                                httpUrl);
                                     } else {
-                                        logger.debug("!!!!!!!!!!!!!!!!!!!!! 401: Could not find the channel to close");
+                                        logger.warn("!!!! 401: Could not find the channel to mark as closing");
                                     }
                                 }
                             }
@@ -207,26 +208,30 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                     }
                     if (authenticate != null) {
                         processAuth(authenticate, httpMethod, httpUrl, true, closeConnection);
+                    } else {
+                        logger.warn("Camera gave a 401 reply and did not provide a WWW-Authenticate header");
                     }
                     if (closeConnection) {
                         ctx.close();// needs to be here
                     }
                 }
-                super.channelRead(ctx, new Object()); // dont pass 401 errors on to next handler.
             }
         }
         // Pass the Message back to the pipeline for the next handler to process//
+        authenticate = null;
         super.channelRead(ctx, msg);
     }
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) {
-        logger.debug("++++ Auth Handler created for \t\tURL:{}", httpUrl);
+        // logger.debug("++++ Auth Handler created for \t\tURL:{}", httpUrl);
     }
 
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) {
+        logger = null;
         myHandler = null;
         username = password = httpMethod = httpUrl = null;
+        nonce = opaque = qop = realm = null;
     }
 }
