@@ -316,7 +316,7 @@ public class IpCameraHandler extends BaseThingHandler {
             logger.error("Can not connect to the camera at {}:{} check your network for issues.", ipAddress, port);
             dispose();
 
-            cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 30, 60,
+            cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 54, 60,
                     TimeUnit.SECONDS);
             return false;
         }
@@ -702,9 +702,8 @@ public class IpCameraHandler extends BaseThingHandler {
             }
 
             // Alarm checking goes in here//
-            if (content.contains(
-                    "<EventNotificationAlert version=\"2.0\" xmlns=\"http://www.hikvision.com/ver20/XMLSchema\">")) {
-                if (content.contains("<channelID>" + nvrChannel + "</channelID>")) {
+            if (content.contains("<EventNotificationAlert version=\"")) {
+                if (content.contains("hannelID>" + nvrChannel + "</")) {// some camera use c or <dynChannelID>
 
                     if (content.contains("<eventType>linedetection</eventType>")) {
                         motionDetected(CHANNEL_LINE_CROSSING_ALARM);
@@ -1307,12 +1306,11 @@ public class IpCameraHandler extends BaseThingHandler {
                     videoStreamUri = onvifCamera.getMedia().getRTSPStreamUri(profileToken);
 
                 } catch (ConnectException e) {
-                    logger.error(
-                            "Can not connect to camera with ONVIF at IP:{}, it may be the wrong ONVIF_PORT. Fault was {}",
+                    logger.error("Can not connect with ONVIF at IP:{}, it may be the wrong ONVIF_PORT. Fault was {}",
                             ipAddress, e.toString());
                 } catch (SOAPException e) {
                     logger.error(
-                            "The camera connection had a SOAP error, this may indicate your camera does not fully support ONVIF, check for an updated firmware for your camera. Not to worry, we will still try and connect. Camera at IP:{}, fault was {}",
+                            "SOAP error when trying to connect with ONVIF. This may indicate your camera does not fully support ONVIF, check for an updated firmware for your camera. Will try and connect with HTTP. Camera at IP:{}, fault was {}",
                             ipAddress, e.toString());
                 } catch (NullPointerException e) {
                     logger.error(
@@ -1431,7 +1429,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 : Integer.parseInt(config.get(CONFIG_ONVIF_PROFILE_NUMBER).toString());
         updateImageEvents = config.get(CONFIG_IMAGE_UPDATE_EVENTS).toString();
 
-        cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 0, 60, TimeUnit.SECONDS);
+        cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 0, 64, TimeUnit.SECONDS);
     }
 
     @Override

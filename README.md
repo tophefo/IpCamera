@@ -1,6 +1,6 @@
 # <bindingName> Binding
 
-This binding allows you to use IP cameras in Openhab2 directly so long as they either have ONVIF or the ability to fetch a snapshot via a http link. Some brands of camera have much better support and also have motion and audio alarms working that can be used to trigger Openhab rules and do much more cool stuff so choose your camera wisely by looking at what the APIs allow and do not allow you to do. Keep a copy of the API documents.
+This binding allows you to use IP cameras in Openhab2 directly so long as they either have ONVIF or the ability to fetch a snapshot via a http link. Some brands of camera have much better support and will have motion, audio, and other alarms working that can be used to trigger Openhab rules and do much more cool stuff so choose your camera wisely by looking at what the APIs allow you to do. Keep a copy of the API documents as they have a habit of disappearing off manufacturers web sites.
 
 In Alphabetical order:
 
@@ -8,9 +8,9 @@ AMCREST
 
 https://s3.amazonaws.com/amcrest-files/Amcrest+HTTP+API+3.2017.pdf
 
-AXIS
+DAHUA
 
-https://www.axis.com/en-au/support/developer-support/vapix
+ftp://ftp.wintel.fi/drivers/dahua/SDK-HTTP_ohjelmointi/DAHUA_IPC_HTTP_API_V1.00x.pdf
 
 FOSCAM
 
@@ -28,7 +28,7 @@ https://wikiold.instar.de/index.php/List_of_CGI_commands_(HD)
 
 ## Supported Things
 
-If doing manual text configuration and/or when needing to setup HABPANEL or your sitemap you are going to need to know what your camera has as a "thing name". These are listed in BOLD below and are only a single word. Example the thing type for a generic onvif camera is "ONVIF". 
+If doing manual text configuration and/or when needing to setup HABPANEL or your sitemap you are going to need to know what your camera has as a "thing type". These are listed in BOLD below and are only a single word. Example: The thing type for a generic onvif camera is "ONVIF". 
 
 HTTPONLY: For any camera that is not ONVIF compatible, and has the ability to fetch a snapshot with a url.
 
@@ -36,7 +36,7 @@ ONVIF: Use for all ONVIF Cameras from any brand that do not have an API.
 
 AMCREST: Use for all current Amcrest Cameras as they support an API as well as ONVIF.
 
-AXIS: Use for all current Axis Cameras as they support an API as well as ONVIF.
+AXIS: Use for all current Axis Cameras as they support ONVIF.
 
 DAHUA: Use for all current Dahua Cameras as they support an API as well as ONVIF.
 
@@ -49,13 +49,13 @@ INSTAR: Use for all current INSTAR Cameras as they support an API as well as ONV
 
 ## Discovery
 
-Auto discovery is not supported currently and I would love a PR if someone has experience using io.Netty and UDP multicast which appears to be the way ONVIF uses to find cameras on a network. Currently you need to manually add the IP camera either via PaperUI or textual configuration which is covered below in more detail. Once the camera is added you then need to supply the IP address and port settings you wish to use. Optionally a username and password can also be filled in if the camera is secured with these which I highly recommend. Clicking on the pencil icon in PaperUI is how you reach these parameters and how you make all the settings unless you have chosen to use manual text configuration. You can not mix manual and PaperUI methods, but it is handy to see and read the descriptions of all the controls in PaperUI.
+Auto discovery is not supported currently and I would love a PR if someone has experience finding cameras on a network. ONVIF documents a way to use UDP multicast to find cameras. Currently you need to manually add the IP camera either via PaperUI or textual configuration which is covered below in more detail. Once the camera is added you then need to supply the IP address and port settings you wish to use. Optionally a username and password can also be filled in if the camera is secured with these which I highly recommend. Clicking on the pencil icon in PaperUI is how you reach these parameters and how you make all the settings unless you have chosen to use manual text configuration. You can not mix manual and PaperUI methods, but it is handy to see and read the descriptions of all the controls in PaperUI.
 
 ## Binding Configuration
 
 The binding can be configured with PaperUI by clicking on the pencil icon of any of the cameras that you have manually added via the PaperUI inbox by pressing on the PLUS (+) icon. 
 
-It can also be manually configured with text files by doing the following. DO NOT try and change a setting using PaperUI after using textual configuration as the two will conflict as the text file locks the settings preventing them from changing. Because the binding is changing so much at the moment I would recommend you use textual configuration as each time Openhab restarts it removes and adds the camera so you automatically gain any extra channels that I add. If using PaperUI, each time I add a new channel you need to remove and re-add the camera which then gives it a new UID number, which in turn can break your sitemap and HABPanel setups. Textual configuration has its advantages and locks the camera to use a simple UID (Unique ID number).
+It can also be manually configured with text files by doing the following. DO NOT try and change a setting using PaperUI after using textual configuration as the two will conflict as the text file locks the settings preventing them from changing. Because the binding is changing so much at the moment I would recommend you use textual configuration, as each time Openhab restarts it removes and adds the camera so you automatically gain any extra channels that I add. If using PaperUI, each time I add a new channel you need to remove and re-add the camera which then gives it a new UID number (Unique ID number), which in turn can break your sitemap and HABPanel setups. Textual configuration has its advantages and locks the camera to use a simple UID.
 
 The parameters that can be used in textual configuration are:
 
@@ -73,33 +73,33 @@ ONVIF_MEDIA_PROFILE
 
 POLL_CAMERA_MS
 
-USE_HTTPS (not working yet)
-
 SNAPSHOT_URL_OVERIDE
 
 IMAGE_UPDATE_EVENTS
 
 
 
-Create a file called 'ipcamera.things' and save it to your things folder.
+Create a file called 'ipcamera.things' and save it to your things folder. Inside this file enter this in plain text and modify it to your needs...
 
 
-Thing ipcamera:ONVIF:001 [ IPADDRESS="192.168.1.2", PASSWORD="suitcase123456", USERNAME="Admin", ONVIF_MEDIA_PROFILE=0]
+Thing ipcamera:ONVIF:001 [ IPADDRESS="192.168.1.2", PASSWORD="suitcase123456", USERNAME="Admin", ONVIF_PORT=80, PORT=80]
 
 
-Here you see the format is: bindingID:THINGNAME:UID [param1="string",param2=x,param3=x]
+Here you see the format is: bindingID:THINGTYPE:UID [param1="string",param2=x,param3=x]
 
 
 BindingID: is always ipcamera.
 
-THINGNAME: is found listed above under the heading "supported things"
+THINGTYPE: is found listed above under the heading "supported things"
 
-UID: Can be made up but it must be UNIQUE, if you use PaperUI you will notice the UID will be something like "0A78687F" which is not very nice when using it in sitemaps and rules.
+UID: Can be made up but it must be UNIQUE, hence why it is called uniqueID. If you use PaperUI you will notice the UID will be something like "0A78687F" which is not very nice when using it in sitemaps and rules, also paperui will choose a new random ID each time you remove and add the camera causing you to edit your rules, items and sitemaps to make them match. Consider learning textual config which is covered above.
 
 
 ## Thing Configuration
 
-After setting up the camera as per above, you can watch the log files when the camera connects as it will list the supported profiles and what each profile will give you. The log will also report if PTZ is supported by your camera.
+IMAGE_UPDATE_EVENTS
+
+Need to add a description on how to use this in texual config.
 
 ## Channels
 
@@ -107,7 +107,7 @@ See PaperUI for a full list of channels and the descriptions. Each camera brand 
 
 ## Full Example
 
-Use the following examples to base your setup on to save some time. NOTE: If your camera is secured with a user and password the links will not work and you will have to use the IMAGE channel to see a picture. FOSCAM cameras are the exception to this as they use the user and pass in plain text in the URL. In the example below you need to leave a fake address in the "Image url=" line otherwise it does not work, the item= overrides the url. Feel free to let me know if this is wrong or if you find a better way.
+Use the following examples to base your setup on to save some time. NOTE: If your camera is secured with a user and password the links will not work and you will have to use the IMAGE channel to see a picture. FOSCAM cameras are the exception to this as they use the user and pass in plain text in the URL. In the example below you need to leave a fake address in the "Image url=" line otherwise it does not work, the item= overrides the url. Feel free to let me know if this is wrong or if you find a better way. Lastly these will not work unless you link the channels in PaperUI, this is shown by a dot in the centre of the circles when looking at all the available channels.
 
 NOTE: You need to ensure the 001 is replaced with the cameras UID which may look like "0A78687F" if you used PaperUI to add the camera. Also replace AMCREST with the name of the supported thing you are using from the list above.
 
@@ -134,6 +134,56 @@ Image url="http://google.com/leaveLinkAsThis" item=ipcamera_AMCREST_001_image re
 
 Thing ipcamera:AMCREST:001 [ IPADDRESS="192.168.1.2", PASSWORD="suitcase123456", USERNAME="DVadar", ONVIF_MEDIA_PROFILE=0]
 
+## Reducing log sizes
+
+There are two log files discussed here, openhab.log and events.log please take the time to consider both logs if a fast and stable setup is something you care about. On some systems with slow disk access like SD cards the writing of a log file can greatly impact on performance. We can turn on/up logs to fault find issues, and then disable them to get the performance back when everything is working.
+
+
+To watch the logs in realtime with openhabian setups use this linux command which can be done via SSH with a program called putty from a windows or mac machine. CTRL+C will close the stream. You can also use SAMBA/network shares to open or copy the file directly.
+
+tail -f /var/log/openhab2/openhab.log -f /var/log/openhab2/events.log
+
+
+
+openhab.log This file displays the information from all bindings and can have the amount of information turned up or down on a per binding basis. The default level is INFO and is the middle level of 5 settings you can use. Openhab documentation goes into this in more detail. Using KARAF console you can use these commands to turn the logging up and down to suit your needs. If you are having issues with the binding not working with your camera, then TRACE will give me everything in DEBUG with the additional reply packets from the camera for me to use for fault finding.
+
+
+log:set WARN org.openhab.binding.ipcamera
+
+log:set INFO org.openhab.binding.ipcamera
+
+log:set DEBUG org.openhab.binding.ipcamera
+
+log:set TRACE org.openhab.binding.ipcamera
+
+
+events.log By default Openhab will log all image updates as an event into a file called events.log, this file can quickly grow if you have multiple cameras all updating pictures every second. To reduce this if you do not want to switch to only updating the image on EVENTS like motion alarms, you then only have 1 option and that is to turn off all events. Openhab does not allow filtering at a binding level due to the log being a pure output from the event bus. To disable use this command in Karaf.
+
+
+log:set WARN smarthome.event
+
+To re-enable use the same command with INFO instead of WARN. 
+
+
 ## Roadmap for further development
 
-If you need a feature added that is in an API, please raise an issue ticket here at this github project if you are not able to copy what I have already done and create a push request. I am looking at 2 way audio and how it can be best added to the binding, if you have ideas then please see the issue ticket I created to discuss how this can be done and how the features will work. If you wish to contribute then please create an issue ticket first to discuss how things will work before doing any coding on large amounts of changes. I am currently trying to setup the backend code to allow people that actually own a particular brand of camera to easily add new features and to insulate other brands from bugs. Any feedback and ideas are welcome.
+Currently the focus is on stability, speed and creating a good framework that allows multiple brands to be used in RULES in a consistent way. What this means is it should be less work to add functions to this binding instead of people creating scripts which are not easy for new Openhab users to find or use, then if a camera breaks down and you change brands, your rules with this binding should be easy to adapt to the new brand of camera with no/minimal changes. 
+
+
+If you need a feature added that is in an API, please raise an issue ticket here at this github project with a sample of what a browser shows when you enter in the URL and it is usually very quick to add these features. 
+
+
+If this binding becomes popular, I can look at extending the frame work to support:
+
+RTSP streams to the image channel.
+
+FTP/NAS features to save the images and delete old files.
+
+Auto find and setup cameras on the network.
+
+ONVIF alarms
+
+1 and 2 way audio.
+
+
+If you wish to contribute then please create an issue ticket first to discuss how things will work before doing any coding on large amounts of changes, this is due to needing to keep things CONSISTENT between brands and also easy to maintain. This list of areas that could be added are a great place to start helping with this binding if you wish to contribute. Any feedback, push requests and ideas are welcome.
