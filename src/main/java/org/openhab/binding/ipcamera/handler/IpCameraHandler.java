@@ -358,9 +358,11 @@ public class IpCameraHandler extends BaseThingHandler {
         private int bytesToRecieve = 0; // default to 0.5Mb for cameras that do not send a Content-Length
         private int bytesAlreadyRecieved = 0;
         private byte[] lastSnapshot;
+        private String incomingMessage;
         private String contentType = "empty";
         private Object reply = null;
         public String requestUrl;
+        private boolean statusCodeSuccess = false;
 
         CommonCameraHandler(String url) {
             requestUrl = url;
@@ -374,12 +376,15 @@ public class IpCameraHandler extends BaseThingHandler {
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
             boolean closeConnection = false;
 
+            // logger.debug(msg.toString());
+
             if (msg instanceof HttpResponse) {
                 HttpResponse response = (HttpResponse) msg;
                 if (response.status().code() != 200) {
-                    // logger.debug(msg.toString());
+                    logger.trace(msg.toString());
                 } else {
-                    // logger.debug(msg.toString());
+                    statusCodeSuccess = true;
+                    logger.trace(msg.toString());
                 }
                 if (!response.headers().isEmpty()) {
                     for (CharSequence name : response.headers().names()) {
@@ -412,21 +417,11 @@ public class IpCameraHandler extends BaseThingHandler {
             if (msg instanceof HttpContent) {
                 HttpContent content = (HttpContent) msg;
 
-                // If it is not an image send it on to the next handler//
-                if (!contentType.contains("image/jpeg")) {
-                    reply = content.content().toString(CharsetUtil.UTF_8);
-                    content.content().release();
-                    bytesAlreadyRecieved = 0;
-                    lastSnapshot = null;
-                    super.channelRead(ctx, reply);
-                }
-
                 if (content instanceof DefaultHttpContent) {
                     if (contentType.contains("image/jpeg")) {
                         if (bytesToRecieve == 0) {
                             bytesToRecieve = 512000; // 0.512Mbyte when no Content-Length is sent
-                            logger.debug(
-                                    "Camera did not report a Content-Length header so we have to guess how much RAM is needed.");
+                            logger.debug("Camera has no Content-Length header, we have to guess how much RAM.");
                         }
                         for (int i = 0; i < content.content().capacity(); i++) {
                             if (lastSnapshot == null) {
@@ -441,12 +436,21 @@ public class IpCameraHandler extends BaseThingHandler {
                                         "We got too many packets back from the camera for some reason, please report this.");
                             }
                         }
+                    } else if (statusCodeSuccess) { // incomingMessage that is not an IMAGE
+                        if (incomingMessage == null) {
+                            incomingMessage = content.content().toString(CharsetUtil.UTF_8);
+                        } else {
+                            incomingMessage += content.content().toString(CharsetUtil.UTF_8);
+                        }
+                        content.content().release();// must be here or a memory leak occurs.
+                        bytesAlreadyRecieved = incomingMessage.length();
+                    } else {
+                        content.content().release();// must be here or a memory leak occurs.
                     }
                 }
 
                 if (content instanceof LastHttpContent) {
-                    logger.debug("last http content");
-                    if (bytesAlreadyRecieved != 0) {
+                    if (contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
                         updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
                         lastSnapshot = null;
                     }
@@ -455,6 +459,15 @@ public class IpCameraHandler extends BaseThingHandler {
                         // ctx.close();
                     }
                 }
+            }
+
+            // If it is not an image send it on to the next handler//
+            if (!contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
+                reply = incomingMessage;
+                incomingMessage = null;
+                bytesToRecieve = 0;
+                bytesAlreadyRecieved = 0;
+                super.channelRead(ctx, reply);
             }
         }
 
@@ -735,6 +748,15 @@ public class IpCameraHandler extends BaseThingHandler {
                         updateState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("OFF"));
                         updateState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("OFF"));
                     }
+                } else if (content.contains("<channelID>0</channelID>")) {// NVR uses channel 0 to say all channels
+                    if (content.contains("<eventType>videoloss</eventType>\r\n<eventState>inactive</eventState>")) {
+                        firstMotionAlarm = false;
+                        updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                        updateState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
+                        updateState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("OFF"));
+                        updateState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("OFF"));
+                        updateState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("OFF"));
+                    }
                 }
             }
 
@@ -749,7 +771,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
             }
             content = null;
-            logger.debug("Got to the end of the HIK handler, this is good");
         }
     }
 
