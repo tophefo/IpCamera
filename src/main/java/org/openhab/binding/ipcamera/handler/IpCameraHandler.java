@@ -235,7 +235,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 public void initChannel(SocketChannel socketChannel) throws Exception {
                     // RtspResponseDecoder //RtspRequestEncoder // try in the pipeline soon//
                     // IdleStateHandler(readerIdleTime,writerIdleTime,allIdleTime)
-                    socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(30, 0, 0));
+                    socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(15, 0, 0));
                     socketChannel.pipeline().addLast(new HttpClientCodec());
                     socketChannel.pipeline().addLast(new HttpContentDecompressor());
                     socketChannel.pipeline().addLast("authHandler",
@@ -361,8 +361,9 @@ public class IpCameraHandler extends BaseThingHandler {
         private String incomingMessage;
         private String contentType = "empty";
         private Object reply = null;
-        public String requestUrl;
+        private String requestUrl;
         private boolean statusCodeSuccess = false;
+        private boolean closeConnection = true;
 
         CommonCameraHandler(String url) {
             requestUrl = url;
@@ -374,7 +375,6 @@ public class IpCameraHandler extends BaseThingHandler {
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            boolean closeConnection = false;
 
             // logger.debug(msg.toString());
 
@@ -394,8 +394,8 @@ public class IpCameraHandler extends BaseThingHandler {
                             } else if (name.toString().equalsIgnoreCase("Content-Length")) {
                                 bytesToRecieve = Integer.parseInt(value.toString());
                             } else if (name.toString().equalsIgnoreCase("Connection")) {
-                                if (value.toString().contains("close")) {
-                                    closeConnection = true;
+                                if (value.toString().contains("keep-alive")) {
+                                    closeConnection = false;
                                 }
                             }
                         }
@@ -436,7 +436,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                         "We got too many packets back from the camera for some reason, please report this.");
                             }
                         }
-                    } else if (statusCodeSuccess) { // incomingMessage that is not an IMAGE
+                    } else if (statusCodeSuccess) { // incomingMessage that is not an IMAGE nor a 401
                         if (incomingMessage == null) {
                             incomingMessage = content.content().toString(CharsetUtil.UTF_8);
                         } else {
@@ -455,8 +455,8 @@ public class IpCameraHandler extends BaseThingHandler {
                         lastSnapshot = null;
                     }
                     if (closeConnection) {
-                        logger.debug("End of Reply and the camera told the connection to close.");
-                        // ctx.close();
+                        logger.debug("Binding will now close the channel as keep-alive was not found in the headers.");
+                        ctx.close();
                     }
                 }
             }
@@ -512,7 +512,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 IdleStateEvent e = (IdleStateEvent) evt;
                 // If camera does not use the channel for X time it will close.
                 if (e.state() == IdleState.READER_IDLE) {
-                    logger.debug("!!!! Channel was found idle for more than 30 seconds so closing it down");
+                    logger.debug("!!!! Channel was found idle for more than 15 seconds so closing it down");
                     byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
                     if (indexInLists >= 0) {
                         listOfRequests.set(indexInLists, "closing");
@@ -594,6 +594,7 @@ public class IpCameraHandler extends BaseThingHandler {
             } else if (content.contains("table.MotionDetect[" + nvrChannel + "].Enable=true")) {
                 updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
             }
+            ctx.close();
         }
     }
 
@@ -706,6 +707,25 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     private class HikvisionHandler extends ChannelDuplexHandler {
+        byte lineCount, vmdCount, leftCount, takenCount, faceCount = 0;
+
+        void countDown() {
+            if (lineCount > 1) {
+                lineCount--;
+            }
+            if (vmdCount > 1) {
+                vmdCount--;
+            }
+            if (leftCount > 1) {
+                leftCount--;
+            }
+            if (takenCount > 1) {
+                takenCount--;
+            }
+            if (faceCount > 1) {
+                faceCount--;
+            }
+        }
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -720,43 +740,65 @@ public class IpCameraHandler extends BaseThingHandler {
 
                     if (content.contains("<eventType>linedetection</eventType>")) {
                         motionDetected(CHANNEL_LINE_CROSSING_ALARM);
+                        lineCount = 5;
+                        countDown();
                     }
                     if (content.contains("<eventType>VMD</eventType>")) {
                         motionDetected(CHANNEL_MOTION_ALARM);
+                        vmdCount = 5;
+                        if (vmdCount > 0) {
+                            countDown();
+                        }
                     }
                     if (content.contains("<eventType>facedetection</eventType>")) {
                         updateState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("ON"));
-                    } else {
-
+                        faceCount = 5;
+                        if (faceCount > 0) {
+                            countDown();
+                        }
                     }
                     if (content.contains("<eventType>unattendedBaggage</eventType>")) {
                         updateState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("ON"));
-                    } else {
-
+                        leftCount = 5;
+                        if (leftCount > 0) {
+                            countDown();
+                        }
                     }
                     if (content.contains("<eventType>attendedBaggage</eventType>")) {
                         updateState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("ON"));
-                    } else {
-
+                        takenCount = 5;
+                        if (takenCount > 0) {
+                            countDown();
+                        }
                     }
-
                     if (content.contains("<eventType>videoloss</eventType>\r\n<eventState>inactive</eventState>")) {
                         firstMotionAlarm = false;
-                        updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                        updateState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
-                        updateState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("OFF"));
-                        updateState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("OFF"));
-                        updateState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("OFF"));
+                        countDown();
+                        countDown();
+                        countDown();
                     }
                 } else if (content.contains("<channelID>0</channelID>")) {// NVR uses channel 0 to say all channels
                     if (content.contains("<eventType>videoloss</eventType>\r\n<eventState>inactive</eventState>")) {
                         firstMotionAlarm = false;
-                        updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                        updateState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
-                        updateState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("OFF"));
-                        updateState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("OFF"));
-                        updateState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("OFF"));
+                        countDown();
+                        countDown();
+                        countDown();
                     }
+                }
+                if (lineCount-- == 1) {
+                    updateState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
+                }
+                if (vmdCount-- == 1) {
+                    updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                }
+                if (leftCount-- == 1) {
+                    updateState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("OFF"));
+                }
+                if (takenCount-- == 1) {
+                    updateState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("OFF"));
+                }
+                if (faceCount-- == 1) {
+                    updateState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("OFF"));
                 }
             }
 
@@ -797,10 +839,8 @@ public class IpCameraHandler extends BaseThingHandler {
                 updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
                 firstMotionAlarm = false;
             }
-
             content = null;
         }
-
     }
 
     public IpCameraHandler(Thing thing) {
@@ -1369,9 +1409,10 @@ public class IpCameraHandler extends BaseThingHandler {
         @Override
         public void run() {
 
-            if (countHandlers > 10) {
+            if (countHandlers > 15 || listOfRequests.size() > 10) {
                 logger.warn(
-                        "!!!! There are now more than 10 channels being tracked, Cleaning out closed channels now.");
+                        "!!!! There are {} Handlers open, that are using {} channels, cleaning out channels now to try and reduce this to below 10.",
+                        countHandlers, listOfRequests.size());
                 cleanChannels();
             }
 

@@ -179,7 +179,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        boolean closeConnection = false;
+        boolean closeConnection = true;
         String authenticate = null;
         if (msg instanceof HttpResponse) {
             HttpResponse response = (HttpResponse) msg;
@@ -188,31 +188,29 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                 if (!response.headers().isEmpty()) {
                     for (CharSequence name : response.headers().names()) {
                         for (CharSequence value : response.headers().getAll(name)) {
-                            if (name.toString().equals("WWW-Authenticate")) {
+                            if (name.toString().equalsIgnoreCase("WWW-Authenticate")) {
                                 authenticate = value.toString();
                             }
-                            if (name.toString().equals("Connection")) {
-                                if (value.toString().contains("close")) {
-                                    closeConnection = true;
-                                    byte indexInLists = (byte) myHandler.listOfChannels.indexOf(ctx.channel());
-                                    if (indexInLists >= 0) {
-                                        myHandler.listOfRequests.set(indexInLists, "closing");
-                                        logger.debug("401: Channel {} marked as closing for \tURL:{}", indexInLists,
-                                                httpUrl);
-                                    } else {
-                                        logger.warn("!!!! 401: Could not find the channel to mark as closing");
-                                    }
-                                }
+                            if (name.toString().equalsIgnoreCase("Connection")
+                                    && value.toString().contains("keep-alive")) {
+                                closeConnection = false;
                             }
+                        }
+                    }
+                    // Need to mark the channel as closing so when we resend with digest we get a new channel.
+                    if (closeConnection) {
+                        byte indexInLists = (byte) myHandler.listOfChannels.indexOf(ctx.channel());
+                        if (indexInLists >= 0) {
+                            myHandler.listOfRequests.set(indexInLists, "closing");
+                            logger.debug("401: Channel {} marked as closing for \tURL:{}", indexInLists, httpUrl);
+                        } else {
+                            logger.warn("!!!! 401: Could not find the channel to mark as closing");
                         }
                     }
                     if (authenticate != null) {
                         processAuth(authenticate, httpMethod, httpUrl, true, closeConnection);
                     } else {
                         logger.warn("Camera gave a 401 reply and did not provide a WWW-Authenticate header");
-                    }
-                    if (closeConnection) {
-                        ctx.close();// needs to be here
                     }
                 }
             }
