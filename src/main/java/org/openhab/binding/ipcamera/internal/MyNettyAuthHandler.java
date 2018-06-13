@@ -212,6 +212,9 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                     } else {
                         logger.warn("Camera gave a 401 reply and did not provide a WWW-Authenticate header");
                     }
+                    if (closeConnection) {
+                        ctx.close();// needs to be here
+                    }
                 }
             }
         }

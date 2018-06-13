@@ -203,8 +203,8 @@ public class IpCameraHandler extends BaseThingHandler {
                 listOfRequests.remove(index);
                 listOfChannels.remove(index);
             } else if (listOfRequests.get(index).contentEquals("closing")) {
-                Channel chan = listOfChannels.get(index);
-                chan.close();
+                // Channel chan = listOfChannels.get(index);
+                // chan.close();
             }
         }
     }
@@ -405,8 +405,8 @@ public class IpCameraHandler extends BaseThingHandler {
                     } else if (closeConnection) {
                         byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
                         if (indexInLists >= 0) {
-                            logger.debug("Channel marked as closing, channel:{} \tURL:{}", indexInLists, requestUrl);
                             listOfRequests.set(indexInLists, "closing");
+                            logger.debug("Channel marked as closing, channel:{} \tURL:{}", indexInLists, requestUrl);
                         } else {
                             logger.debug("!!!! Could not find the ch for a Connection: close URL:{}", requestUrl);
                         }
@@ -447,27 +447,41 @@ public class IpCameraHandler extends BaseThingHandler {
                     } else {
                         content.content().release();// must be here or a memory leak occurs.
                     }
-                }
 
-                if (content instanceof LastHttpContent) {
-                    if (contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
-                        updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
-                        lastSnapshot = null;
+                    if (content instanceof LastHttpContent) {
+                        if (contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
+                            updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
+                            lastSnapshot = null;
+                            if (closeConnection) {
+                                logger.debug(
+                                        "Snapshot recieved: Binding will now close the channel as keep-alive was not found in the headers.");
+                                ctx.close();
+                            } else {
+                                logger.debug("Snapshot recieved: Binding will now keep-alive the channel.");
+                            }
+                        }
+
+                        // If it is not an image send it on to the next handler//
+                        if (!contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
+                            reply = incomingMessage;
+                            incomingMessage = null;
+                            bytesToRecieve = 0;
+                            bytesAlreadyRecieved = 0;
+                            super.channelRead(ctx, reply);
+                        }
                     }
-                    if (closeConnection) {
-                        logger.debug("Binding will now close the channel as keep-alive was not found in the headers.");
-                        ctx.close();
+
+                    if (contentType.contains("multipart")) {
+                        // HIKVISION alertStream never has a LastHttpContent as it always stays open//
+                        if (!contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
+                            reply = incomingMessage;
+                            incomingMessage = null;
+                            bytesToRecieve = 0;
+                            bytesAlreadyRecieved = 0;
+                            super.channelRead(ctx, reply);
+                        }
                     }
                 }
-            }
-
-            // If it is not an image send it on to the next handler//
-            if (!contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
-                reply = incomingMessage;
-                incomingMessage = null;
-                bytesToRecieve = 0;
-                bytesAlreadyRecieved = 0;
-                super.channelRead(ctx, reply);
             }
         }
 
@@ -660,6 +674,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf("100"));
             }
             content = null;
+            ctx.close();
         }
     }
 
@@ -1423,14 +1438,14 @@ public class IpCameraHandler extends BaseThingHandler {
             switch (thing.getThingTypeUID().getId()) {
                 case "AMCREST":
                     sendHttpRequest("GET", "/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion", null,
-                            false);
+                            true);
                     sendHttpRequest("GET", "/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation", null,
-                            false);
+                            true);
                     break;
 
                 case "FOSCAM":
                     sendHttpRequest("GET",
-                            "/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username + "&pwd=" + password, null, false);
+                            "/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username + "&pwd=" + password, null, true);
                     break;
                 case "HIKVISION":
                     byte indexInLists = (byte) listOfRequests.indexOf("/ISAPI/Event/notification/alertStream");
@@ -1499,6 +1514,8 @@ public class IpCameraHandler extends BaseThingHandler {
         onvifCamera = null;
         basicAuth = null; // clear out stored hash
         useDigestAuth = false;
+        listOfRequests.clear();
+        listOfChannels.clear();
 
         if (cameraConnectionJob != null) {
             cameraConnectionJob.cancel(true);
