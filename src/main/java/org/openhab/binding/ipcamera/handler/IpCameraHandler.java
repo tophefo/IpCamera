@@ -18,6 +18,7 @@ import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -71,6 +72,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.base64.Base64;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
 import io.netty.handler.codec.http.DefaultHttpContent;
+import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpContentDecompressor;
@@ -108,7 +110,6 @@ public class IpCameraHandler extends BaseThingHandler {
     private ScheduledFuture<?> fetchCameraOutputJob = null;
     private int selectedMediaProfile = 0;
     private Bootstrap mainBootstrap;
-    private byte countHandlers = 0;
     private String globalUrl;
     private String nvrChannel;
 
@@ -128,7 +129,7 @@ public class IpCameraHandler extends BaseThingHandler {
     private final ScheduledExecutorService cameraConnection = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService fetchCameraOutput = Executors.newSingleThreadScheduledExecutor();
     private String snapshotUri = null;
-    private String videoStreamUri = "ONVIF failed, PTZ may not work.";
+    private String videoStreamUri = "ONVIF failed to report a RTSP stream link.";
     public String ipAddress = "empty";
     private int port;
     private String profileToken = "empty";
@@ -203,13 +204,45 @@ public class IpCameraHandler extends BaseThingHandler {
                 listOfRequests.remove(index);
                 listOfChannels.remove(index);
             } else if (listOfRequests.get(index).contentEquals("closing")) {
-                // Channel chan = listOfChannels.get(index);
-                // chan.close();
+                Channel chan = listOfChannels.get(index);
+                chan.close();
+                listOfRequests.set(index, "closed");
+                logger.debug("Cleaned up channel {} by force closing it as it was already marked for closing", index);
             }
         }
     }
 
-    // Always use this as sendHttpRequest(GET/POST/PUT/DELETE, "/foo/bar",null)//
+    public void sendHttpPOST(String httpRequestURL) {
+        String body;
+        body = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n" + "\r\n"
+                + "<MotionDetection xmlns=\"http://www.hikvision.com/ver20/XMLSchema\" version=\"2.0\">\r\n" + "\r\n"
+                + "<enabled>false</enabled>\r\n" + "\r\n" + "<enableHighlight>false</enableHighlight>\r\n" + "\r\n"
+                + "<samplingInterval>2</samplingInterval>\r\n" + "\r\n" + "<startTriggerTime>500</startTriggerTime>\r\n"
+                + "\r\n" + "<endTriggerTime>500</endTriggerTime>\r\n" + "\r\n" + "<regionType>grid</regionType>\r\n"
+                + "\r\n" + "\r\n" + "<Grid>\r\n" + "\r\n" + "<rowGranularity>18</rowGranularity>\r\n" + "\r\n"
+                + "<columnGranularity>22</columnGranularity>\r\n" + "\r\n" + "</Grid>\r\n" + "\r\n" + "\r\n"
+                + "<MotionDetectionLayout xmlns=\"http://www.hikvision.com/ver20/XMLSchema\" version=\"2.0\">\r\n"
+                + "\r\n" + "<sensitivityLevel>100</sensitivityLevel>\r\n" + "\r\n" + "\r\n" + "<layout>\r\n" + "\r\n"
+                + "<gridMap>0000000000003ffff83ffff83ffff83ffff83ffff83ffff83ffff83ffff83ffff83ffff83ffff83ffff83ffff83ffff83ffff8000000</gridMap>\r\n"
+                + "\r\n" + "</layout>\r\n" + "\r\n" + "</MotionDetectionLayout>\r\n" + "\r\n" + "</MotionDetection>";
+
+        FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, new HttpMethod("POST"),
+                httpRequestURL);
+        request.headers().set(HttpHeaderNames.HOST, ipAddress);
+        request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
+        request.headers().set(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.GZIP);
+        request.headers().add(HttpHeaderNames.CONTENT_TYPE, "application/xml; charset=\"UTF-8\"");
+        ByteBuf bbuf = Unpooled.copiedBuffer(body, StandardCharsets.UTF_8);
+        request.headers().set(HttpHeaderNames.CONTENT_LENGTH, bbuf.readableBytes());
+        request.content().clear().writeBytes(bbuf);
+        // now flush this
+    }
+
+    public void sendHttpGET(String httpRequestURL) {
+        sendHttpRequest("GET", httpRequestURL, null, false);
+    }
+
+    // Always use this as sendHttpGET(GET/POST/PUT/DELETE, "/foo/bar",null,false/true)//
     // The authHandler will use this method with a digest string as needed.
     public boolean sendHttpRequest(String httpMethod, String httpRequestURL, String digestString,
             boolean useNewChannel) {
@@ -239,7 +272,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     socketChannel.pipeline().addLast(new HttpClientCodec());
                     socketChannel.pipeline().addLast(new HttpContentDecompressor());
                     socketChannel.pipeline().addLast("authHandler",
-                            new MyNettyAuthHandler(username, password, "GET", globalUrl, thing.getHandler()));
+                            new MyNettyAuthHandler(username, password, thing.getHandler()));
                     socketChannel.pipeline().addLast("commonHandler", new CommonCameraHandler(globalUrl));
 
                     switch (thing.getThingTypeUID().getId()) {
@@ -330,7 +363,7 @@ public class IpCameraHandler extends BaseThingHandler {
             amcrestHandler.setURL(httpRequestURL);
         }
         commonHandler.setURL(httpRequestURL);
-        authHandler.setURL(httpRequestURL);
+        authHandler.setURL(httpMethod, httpRequestURL);
 
         indexInLists = (byte) listOfRequests.indexOf("closed");
         if (indexInLists == -1) {
@@ -491,8 +524,8 @@ public class IpCameraHandler extends BaseThingHandler {
 
         @Override
         public void handlerAdded(ChannelHandlerContext ctx) {
-            logger.debug("++++ Handler {} created. {} channels. \tURL:{}", ++countHandlers, listOfRequests.size(),
-                    requestUrl);
+            logger.debug("++++ CommonCameraHandler created. {} channels tracked (some may be closed). \tURL:{}",
+                    listOfRequests.size(), requestUrl);
         }
 
         @Override
@@ -508,10 +541,8 @@ public class IpCameraHandler extends BaseThingHandler {
             bytesAlreadyRecieved = 0;
             contentType = null;
             reply = null;
-            if (countHandlers > 0) {
-                --countHandlers;
-            }
-            logger.debug("---- Closing Handler, {} more left. \tURL:{}", countHandlers, requestUrl);
+
+            logger.debug("---- Closing CommonCameraHandler. \tURL:{}", requestUrl);
         }
 
         @Override
@@ -634,10 +665,10 @@ public class IpCameraHandler extends BaseThingHandler {
                 updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("ON"));
                 updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
                 if (updateImageEvents.contains("2") && !firstMotionAlarm) {
-                    sendHttpRequest("GET", getCorrectUrlFormat(snapshotUri), null, false);
+                    sendHttpGET(getCorrectUrlFormat(snapshotUri));
                     firstMotionAlarm = true;
                 } else if (updateImageEvents.contains("4")) {
-                    sendHttpRequest("GET", getCorrectUrlFormat(snapshotUri), null, false);
+                    sendHttpGET(getCorrectUrlFormat(snapshotUri));
                 }
             }
 
@@ -656,10 +687,10 @@ public class IpCameraHandler extends BaseThingHandler {
                 updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("ON"));
                 updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
                 if (updateImageEvents.contains("3") && !firstAudioAlarm) {
-                    sendHttpRequest("GET", getCorrectUrlFormat(snapshotUri), null, false);
+                    sendHttpGET(getCorrectUrlFormat(snapshotUri));
                     firstAudioAlarm = true;
                 } else if (updateImageEvents.contains("5")) {
-                    sendHttpRequest("GET", getCorrectUrlFormat(snapshotUri), null, false);
+                    sendHttpGET(getCorrectUrlFormat(snapshotUri));
                 }
             }
 
@@ -865,20 +896,20 @@ public class IpCameraHandler extends BaseThingHandler {
     private void motionDetected(String thisAlarmsChannel) {
         updateState(thisAlarmsChannel.toString(), OnOffType.valueOf("ON"));
         if (updateImageEvents.contains("2") && !firstMotionAlarm) {
-            sendHttpRequest("GET", getCorrectUrlFormat(snapshotUri), null, false);
+            sendHttpGET(getCorrectUrlFormat(snapshotUri));
             firstMotionAlarm = true;
         } else if (updateImageEvents.contains("4")) {
-            sendHttpRequest("GET", getCorrectUrlFormat(snapshotUri), null, false);
+            sendHttpGET(getCorrectUrlFormat(snapshotUri));
         }
     }
 
     private void audioDetected() {
         updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("ON"));
         if (updateImageEvents.contains("3") && !firstAudioAlarm) {
-            sendHttpRequest("GET", getCorrectUrlFormat(snapshotUri), null, false);
+            sendHttpGET(getCorrectUrlFormat(snapshotUri));
             firstAudioAlarm = true;
         } else if (updateImageEvents.contains("5")) {
-            sendHttpRequest("GET", getCorrectUrlFormat(snapshotUri), null, false);
+            sendHttpGET(getCorrectUrlFormat(snapshotUri));
         }
     }
 
@@ -943,16 +974,16 @@ public class IpCameraHandler extends BaseThingHandler {
                 case CHANNEL_THRESHOLD_AUDIO_ALARM:
                     switch (thing.getThingTypeUID().getId()) {
                         case "FOSCAM":
-                            sendHttpRequest("GET", "/cgi-bin/CGIProxy.fcgi?cmd=getAudioAlarmConfig&usr=" + username
-                                    + "&pwd=" + password, null, false);
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getAudioAlarmConfig&usr=" + username + "&pwd="
+                                    + password);
                             break;
                     }
                     break;
                 case CHANNEL_ENABLE_AUDIO_ALARM:
                     switch (thing.getThingTypeUID().getId()) {
                         case "FOSCAM":
-                            sendHttpRequest("GET", "/cgi-bin/CGIProxy.fcgi?cmd=getAudioAlarmConfig&usr=" + username
-                                    + "&pwd=" + password, null, false);
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getAudioAlarmConfig&usr=" + username + "&pwd="
+                                    + password);
                             break;
                     }
                     break;
@@ -960,20 +991,15 @@ public class IpCameraHandler extends BaseThingHandler {
                     switch (thing.getThingTypeUID().getId()) {
 
                         case "AMCREST":
-                            sendHttpRequest("GET",
-                                    "/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect[" + nvrChannel + "]",
-                                    null, false);
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect[" + nvrChannel
+                                    + "]");
                             break;
 
                         case "FOSCAM":
-                            sendHttpRequest("GET",
-                                    "/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username + "&pwd=" + password, null,
-                                    false);
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username + "&pwd=" + password);
                             break;
                         case "HIKVISION":
-                            sendHttpRequest("GET",
-                                    "/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection", null,
-                                    false);
+                            sendHttpGET("/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection");
                             break;
                     }
 
@@ -1000,14 +1026,14 @@ public class IpCameraHandler extends BaseThingHandler {
                     case "AMCREST":
                         break;
                     case "HIKVISION":
-                        // sendHttpRequest("GET", "/Event/notification/alertStream", null, false);
+                        // sendHttpGET( "/Event/notification/alertStream");
                         break;
                 }
                 break;
 
             case CHANNEL_UPDATE_IMAGE_NOW:
                 if (snapshotUri != null) {
-                    sendHttpRequest("GET", getCorrectUrlFormat(snapshotUri), null, false);
+                    sendHttpGET(getCorrectUrlFormat(snapshotUri));
                 }
 
                 break;
@@ -1019,23 +1045,17 @@ public class IpCameraHandler extends BaseThingHandler {
                     case "FOSCAM":
                         int value = Math.round(Float.valueOf(command.toString()));
                         if (value == 0) {
-                            sendHttpRequest("GET", "/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=0&usr="
-                                    + username + "&pwd=" + password, null, false);
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=0&usr=" + username
+                                    + "&pwd=" + password);
                         } else if (value <= 33) {
-                            sendHttpRequest("GET",
-                                    "/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=0&usr="
-                                            + username + "&pwd=" + password,
-                                    null, false);
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=0&usr="
+                                    + username + "&pwd=" + password);
                         } else if (value <= 66) {
-                            sendHttpRequest("GET",
-                                    "/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=1&usr="
-                                            + username + "&pwd=" + password,
-                                    null, false);
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=1&usr="
+                                    + username + "&pwd=" + password);
                         } else {
-                            sendHttpRequest("GET",
-                                    "/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=2&usr="
-                                            + username + "&pwd=" + password,
-                                    null, false);
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=2&usr="
+                                    + username + "&pwd=" + password);
                         }
 
                         break;
@@ -1043,15 +1063,11 @@ public class IpCameraHandler extends BaseThingHandler {
                     case "INSTAR":
                         value = Math.round(Float.valueOf(command.toString()));
                         if (value == 0) {
-                            sendHttpRequest("GET", "/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=0", null,
-                                    false);
+                            sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=0");
                         } else {
-                            sendHttpRequest("GET", "/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1", null,
-                                    false);
-                            sendHttpRequest("GET",
-                                    "/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1&-aa_value="
-                                            + command.toString(),
-                                    null, false);
+                            sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1");
+                            sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1&-aa_value="
+                                    + command.toString());
                         }
 
                         break;
@@ -1066,22 +1082,20 @@ public class IpCameraHandler extends BaseThingHandler {
                     case "FOSCAM":
 
                         if ("ON".equals(command.toString())) {
-                            sendHttpRequest("GET", "/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&usr="
-                                    + username + "&pwd=" + password, null, false);
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&usr=" + username
+                                    + "&pwd=" + password);
                         } else {
-                            sendHttpRequest("GET", "/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=0&usr="
-                                    + username + "&pwd=" + password, null, false);
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=0&usr=" + username
+                                    + "&pwd=" + password);
                         }
                         break;
 
                     case "INSTAR":
 
                         if ("ON".equals(command.toString())) {
-                            sendHttpRequest("GET", "/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1", null,
-                                    false);
+                            sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1");
                         } else {
-                            sendHttpRequest("GET", "/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=0", null,
-                                    false);
+                            sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=0");
                         }
                         break;
                 }
@@ -1092,11 +1106,11 @@ public class IpCameraHandler extends BaseThingHandler {
                 switch (thing.getThingTypeUID().getId()) {
                     case "AMCREST":
                         if ("ON".equals(command.toString())) {
-                            sendHttpRequest("GET", "/cgi-bin/configManager.cgi?action=setConfig&MotionDetect["
-                                    + nvrChannel + "].Enable=true", null, false);
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[" + nvrChannel
+                                    + "].Enable=true");
                         } else {
-                            sendHttpRequest("GET", "/cgi-bin/configManager.cgi?action=setConfig&MotionDetect["
-                                    + nvrChannel + "].Enable=false", null, false);
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[" + nvrChannel
+                                    + "].Enable=false");
                         }
                         break;
 
@@ -1104,47 +1118,41 @@ public class IpCameraHandler extends BaseThingHandler {
                         if ("ON".equals(command.toString())) {
                             // example of how to setup a zone. Add to end of url
                             // &x1=3042&y1=1604&width1=5185&height1=6229&threshold1=0&sensitivity1=2&valid1=1
-                            sendHttpRequest("GET", "/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig&isEnable=1&usr="
-                                    + username + "&pwd=" + password, null, false);
-                            sendHttpRequest("GET", "/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig1&isEnable=1&usr="
-                                    + username + "&pwd=" + password, null, false);
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig&isEnable=1&usr=" + username
+                                    + "&pwd=" + password);
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig1&isEnable=1&usr=" + username
+                                    + "&pwd=" + password);
                         } else {
-                            sendHttpRequest("GET", "/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig&isEnable=0&usr="
-                                    + username + "&pwd=" + password, null, false);
-                            sendHttpRequest("GET", "/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig1&isEnable=0&usr="
-                                    + username + "&pwd=" + password, null, false);
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig&isEnable=0&usr=" + username
+                                    + "&pwd=" + password);
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig1&isEnable=0&usr=" + username
+                                    + "&pwd=" + password);
                         }
                         break;
                     case "HIKVISION":
                         if ("ON".equals(command.toString())) {
-                            sendHttpRequest("GET", "/MotionDetection/" + nvrChannel, null, false);
+                            sendHttpGET("/MotionDetection/" + nvrChannel);
 
                         } else {
-                            sendHttpRequest("GET", "/MotionDetection/" + nvrChannel, null, false);
+                            sendHttpGET("/MotionDetection/" + nvrChannel);
                         }
                         break;
 
                     case "INSTAR":
                         if ("ON".equals(command.toString())) {
-                            sendHttpRequest("GET",
-                                    "/cgi-bin/hi3510/param.cgi?cmd=setmdattr&-enable=1&-name=1&cmd=setmdattr&-enable=1&-name=2&cmd=setmdattr&-enable=1&-name=3&cmd=setmdattr&-enable=1&-name=4",
-                                    null, false);
+                            sendHttpGET(
+                                    "/cgi-bin/hi3510/param.cgi?cmd=setmdattr&-enable=1&-name=1&cmd=setmdattr&-enable=1&-name=2&cmd=setmdattr&-enable=1&-name=3&cmd=setmdattr&-enable=1&-name=4");
                         } else {
-                            sendHttpRequest("GET",
-                                    "/cgi-bin/hi3510/param.cgi?cmd=setmdattr&-enable=0&-name=1&cmd=setmdattr&-enable=0&-name=2&cmd=setmdattr&-enable=0&-name=3&cmd=setmdattr&-enable=0&-name=4",
-                                    null, false);
+                            sendHttpGET(
+                                    "/cgi-bin/hi3510/param.cgi?cmd=setmdattr&-enable=0&-name=1&cmd=setmdattr&-enable=0&-name=2&cmd=setmdattr&-enable=0&-name=3&cmd=setmdattr&-enable=0&-name=4");
                         }
                         break;
 
                     case "DAHUA":
                         if ("ON".equals(command.toString())) {
-                            sendHttpRequest("GET",
-                                    "/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=true", null,
-                                    false);
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=true");
                         } else {
-                            sendHttpRequest("GET",
-                                    "/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=false", null,
-                                    false);
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=false");
                         }
                         break;
                 }
@@ -1274,7 +1282,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
                         fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 5000,
                                 Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
-                        sendHttpRequest("GET", getCorrectUrlFormat(snapshotUri), null, false);
+                        sendHttpGET(getCorrectUrlFormat(snapshotUri));
                         updateState(CHANNEL_IMAGE_URL, new StringType(snapshotUri));
                     }
                 } else {
@@ -1394,7 +1402,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
 
                 if (snapshotUri != null) {
-                    countHandlers = 0;
                     if (sendHttpRequest("GET", getCorrectUrlFormat(snapshotUri), null, false)) {
 
                         updateState(CHANNEL_IMAGE_URL, new StringType(snapshotUri));
@@ -1424,28 +1431,25 @@ public class IpCameraHandler extends BaseThingHandler {
         @Override
         public void run() {
 
-            if (countHandlers > 15 || listOfRequests.size() > 10) {
+            if (listOfRequests.size() > 12) {
                 logger.warn(
-                        "!!!! There are {} Handlers open, that are using {} channels, cleaning out channels now to try and reduce this to below 10.",
-                        countHandlers, listOfRequests.size());
+                        "!!!! There are {} channels being tracked, cleaning out any closed channels now to try and reduce this to below 12.",
+                        listOfRequests.size());
                 cleanChannels();
             }
 
             if (snapshotUri != null && updateImageEvents.contains("1")) {
-                sendHttpRequest("GET", getCorrectUrlFormat(snapshotUri), null, false);
+                sendHttpGET(getCorrectUrlFormat(snapshotUri));
             }
 
             switch (thing.getThingTypeUID().getId()) {
                 case "AMCREST":
-                    sendHttpRequest("GET", "/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion", null,
-                            true);
-                    sendHttpRequest("GET", "/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation", null,
-                            true);
+                    sendHttpGET("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion");
+                    sendHttpGET("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation");
                     break;
 
                 case "FOSCAM":
-                    sendHttpRequest("GET",
-                            "/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username + "&pwd=" + password, null, true);
+                    sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username + "&pwd=" + password);
                     break;
                 case "HIKVISION":
                     byte indexInLists = (byte) listOfRequests.indexOf("/ISAPI/Event/notification/alertStream");
@@ -1453,23 +1457,22 @@ public class IpCameraHandler extends BaseThingHandler {
                         logger.warn(
                                 "!!!! Alertstream was not running, Cleaning channels and then going to re-start it now.");
                         cleanChannels();
-                        sendHttpRequest("GET", "/ISAPI/Event/notification/alertStream", null, false);
+                        sendHttpGET("/ISAPI/Event/notification/alertStream");
                     }
                     break;
                 case "INSTAR":
                     // Poll the audio alarm on/off/threshold/...
-                    sendHttpRequest("GET", "/cgi-bin/hi3510/param.cgi?cmd=getaudioalarmattr", null, false);
+                    sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=getaudioalarmattr");
                     // Poll the motion alarm on/off/settings/...
-                    sendHttpRequest("GET", "/cgi-bin/hi3510/param.cgi?cmd=getmdattr", null, false);
+                    sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=getmdattr");
                     break;
                 case "DAHUA":
                     // Poll the alarm configs ie on/off/...
-                    sendHttpRequest("GET", "/cgi-bin/configManager.cgi?action=getConfig&name=Alarm", null, false);
+                    sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=Alarm");
                     // Check for alarms, channel is for a NVR and not a single cam.
-                    sendHttpRequest("GET",
+                    sendHttpGET(
                             "/cgi-bin/eventManager.cgi?action=attach&codes=[VideoMotion,MDResult,VideoBlind,VideoLoss,CrossLineDetection]&channel=["
-                                    + nvrChannel + "]",
-                            null, false);
+                                    + nvrChannel + "]");
                     break;
             }
         }

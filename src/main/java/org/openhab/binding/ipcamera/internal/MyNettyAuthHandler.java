@@ -54,8 +54,9 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
         password = pass;
     }
 
-    public void setURL(String url) {
+    public void setURL(String method, String url) {
         httpUrl = url;
+        httpMethod = method;
     }
 
     private String calcMD5Hash(String toHash) {
