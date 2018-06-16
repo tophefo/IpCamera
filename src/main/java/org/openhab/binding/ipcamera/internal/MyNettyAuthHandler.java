@@ -57,6 +57,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
     public void setURL(String method, String url) {
         httpUrl = url;
         httpMethod = method;
+        logger.debug("Authorization Handler is now setup for \t{}:{}", method, url);
     }
 
     private String calcMD5Hash(String toHash) {
@@ -203,7 +204,8 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                         byte indexInLists = (byte) myHandler.listOfChannels.indexOf(ctx.channel());
                         if (indexInLists >= 0) {
                             myHandler.listOfRequests.set(indexInLists, "closing");
-                            logger.debug("401: Channel {} marked as closing for \tURL:{}", indexInLists, httpUrl);
+                            logger.debug("401: Mark as closing, the Channel {} \t{}:{}", indexInLists, httpMethod,
+                                    httpUrl);
                         } else {
                             logger.warn("!!!! 401: Could not find the channel to mark as closing");
                         }
@@ -226,7 +228,6 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) {
-        // logger.debug("++++ Auth Handler created for \t\tURL:{}", httpUrl);
     }
 
     @Override

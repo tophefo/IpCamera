@@ -79,7 +79,6 @@ import io.netty.handler.codec.http.HttpContentDecompressor;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
@@ -111,12 +110,13 @@ public class IpCameraHandler extends BaseThingHandler {
     private int selectedMediaProfile = 0;
     private Bootstrap mainBootstrap;
     private String globalUrl;
+    private FullHttpRequest putRequestWithBody;
     private String nvrChannel;
 
     public LinkedList<String> listOfRequests = new LinkedList<String>();
     public LinkedList<Channel> listOfChannels = new LinkedList<Channel>();
     // private LinkedList<ChannelFuture> listOfFutures = new LinkedList<ChannelFuture>();
-    // private LinkedList<String> listOfReplies = new LinkedList<String>();
+    private LinkedList<String> listOfReplies = new LinkedList<String>();
 
     private EventLoopGroup mainEventLoopGroup = new NioEventLoopGroup();
     private PTZVector ptzLocation;
@@ -142,15 +142,15 @@ public class IpCameraHandler extends BaseThingHandler {
     private FloatRange tiltRange;
     private PtzDevices ptzDevices;
     // These hold the cameras PTZ position in the range that the camera uses, ie mine is -1 to +1
-    private float currentPanCamValue = 0.0f;
-    private float currentTiltCamValue = 0.0f;
-    private float currentZoomCamValue = 0.0f;
-    private float zoomMin = 0;
-    private float zoomMax = 0;
+    private Float currentPanCamValue = 0.0f;
+    private Float currentTiltCamValue = 0.0f;
+    private Float currentZoomCamValue = 0.0f;
+    private Float zoomMin = 0.0f;
+    private Float zoomMax = 0.0f;
     // These hold the PTZ values for updating Openhabs controls in 0-100 range
-    private float currentPanPercentage = 0.0f;
-    private float currentTiltPercentage = 0.0f;
-    private float currentZoomPercentage = 0.0f;
+    private Float currentPanPercentage = 0.0f;
+    private Float currentTiltPercentage = 0.0f;
+    private Float currentZoomPercentage = 0.0f;
 
     // false clears the stored hash of the user/pass
     // true creates the hash
@@ -212,37 +212,44 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     }
 
-    public void sendHttpPOST(String httpRequestURL) {
-        String body;
-        body = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n" + "\r\n"
-                + "<MotionDetection xmlns=\"http://www.hikvision.com/ver20/XMLSchema\" version=\"2.0\">\r\n" + "\r\n"
-                + "<enabled>false</enabled>\r\n" + "\r\n" + "<enableHighlight>false</enableHighlight>\r\n" + "\r\n"
-                + "<samplingInterval>2</samplingInterval>\r\n" + "\r\n" + "<startTriggerTime>500</startTriggerTime>\r\n"
-                + "\r\n" + "<endTriggerTime>500</endTriggerTime>\r\n" + "\r\n" + "<regionType>grid</regionType>\r\n"
-                + "\r\n" + "\r\n" + "<Grid>\r\n" + "\r\n" + "<rowGranularity>18</rowGranularity>\r\n" + "\r\n"
-                + "<columnGranularity>22</columnGranularity>\r\n" + "\r\n" + "</Grid>\r\n" + "\r\n" + "\r\n"
-                + "<MotionDetectionLayout xmlns=\"http://www.hikvision.com/ver20/XMLSchema\" version=\"2.0\">\r\n"
-                + "\r\n" + "<sensitivityLevel>100</sensitivityLevel>\r\n" + "\r\n" + "\r\n" + "<layout>\r\n" + "\r\n"
-                + "<gridMap>0000000000003ffff83ffff83ffff83ffff83ffff83ffff83ffff83ffff83ffff83ffff83ffff83ffff83ffff83ffff83ffff8000000</gridMap>\r\n"
-                + "\r\n" + "</layout>\r\n" + "\r\n" + "</MotionDetectionLayout>\r\n" + "\r\n" + "</MotionDetection>";
+    public void hikChangeSetting(String httpRequestURL, String findOldValue, String newValue) {
 
-        FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, new HttpMethod("POST"),
+        if (listOfReplies.size() == 0) {
+            sendHttpGET(httpRequestURL);
+            logger.error(
+                    "Did not have a reply stored before hikChangeSetting was run, try again shortly as reply has just been requested.");
+            return;
+        }
+
+        String body = (listOfReplies.size() == 0) ? "empty" : listOfReplies.element();
+        body = body.replace(findOldValue, newValue);
+
+        logger.debug("Reply from camera was {}", listOfReplies.element());
+        logger.debug("body is {}", body);
+        listOfReplies.clear();
+
+        FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, new HttpMethod("PUT"),
                 httpRequestURL);
         request.headers().set(HttpHeaderNames.HOST, ipAddress);
-        request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
+        request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
         request.headers().set(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.GZIP);
-        request.headers().add(HttpHeaderNames.CONTENT_TYPE, "application/xml; charset=\"UTF-8\"");
+        request.headers().add(HttpHeaderNames.CONTENT_TYPE, "application/x-www-form-urlencoded; charset=UTF-8");
         ByteBuf bbuf = Unpooled.copiedBuffer(body, StandardCharsets.UTF_8);
         request.headers().set(HttpHeaderNames.CONTENT_LENGTH, bbuf.readableBytes());
         request.content().clear().writeBytes(bbuf);
-        // now flush this
+        sendHttpPUT(httpRequestURL, request);
+    }
+
+    public void sendHttpPUT(String httpRequestURL, FullHttpRequest request) {
+        putRequestWithBody = request; // use Global so the authhandler can use it when resent with DIGEST.
+        sendHttpRequest("PUT", httpRequestURL, null, false);
     }
 
     public void sendHttpGET(String httpRequestURL) {
         sendHttpRequest("GET", httpRequestURL, null, false);
     }
 
-    // Always use this as sendHttpGET(GET/POST/PUT/DELETE, "/foo/bar",null,false/true)//
+    // Always use this as sendHttpGET(GET/POST/PUT/DELETE, "/foo/bar",null,false)//
     // The authHandler will use this method with a digest string as needed.
     public boolean sendHttpRequest(String httpMethod, String httpRequestURL, String digestString,
             boolean useNewChannel) {
@@ -299,7 +306,7 @@ public class IpCameraHandler extends BaseThingHandler {
             });
         }
 
-        HttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, new HttpMethod(httpMethod),
+        FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, new HttpMethod(httpMethod),
                 httpRequestURL);
         request.headers().set(HttpHeaderNames.HOST, ipAddress);
         request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
@@ -316,6 +323,11 @@ public class IpCameraHandler extends BaseThingHandler {
 
         if (useDigestAuth) {
             if (digestString != null) {
+                if (httpMethod.contentEquals("PUT")) {
+                    request = putRequestWithBody;
+                    logger.debug("Request is for a PUT and is {}", request);
+                }
+
                 logger.debug("Resending using a fresh DIGEST \tURL:{}", httpRequestURL);
                 request.headers().set(HttpHeaderNames.AUTHORIZATION, "Digest " + digestString);
             }
@@ -329,7 +341,11 @@ public class IpCameraHandler extends BaseThingHandler {
             if (!useNewChannel) {
                 ch = listOfChannels.get(indexInLists);
                 if (ch.isOpen()) {
-                    logger.debug("****Using the already open channel:{} \tURL:{}", indexInLists, httpRequestURL);
+                    logger.debug("****Using the already open channel:{} \t{}:{}", indexInLists, httpMethod,
+                            httpRequestURL);
+
+                    authHandler = (MyNettyAuthHandler) ch.pipeline().get("authHandler");
+                    authHandler.setURL(httpMethod, httpRequestURL);
                     ch.writeAndFlush(request);
                     request = null;
                     return true;
@@ -369,11 +385,12 @@ public class IpCameraHandler extends BaseThingHandler {
         if (indexInLists == -1) {
             listOfRequests.addLast(httpRequestURL);
             listOfChannels.addLast(ch);
-            logger.debug("Have  opened  a  brand NEW channel:{} \tURL:{}", listOfRequests.size() - 1, httpRequestURL);
+            logger.debug("Have  opened  a  brand NEW channel:{} \t{}:{}", listOfRequests.size() - 1, httpMethod,
+                    httpRequestURL);
         } else {
             listOfRequests.set(indexInLists, httpRequestURL);
             listOfChannels.set(indexInLists, ch);
-            logger.debug("Have  opened  a  brand new channel:{} \tURL:{}", indexInLists, httpRequestURL);
+            logger.debug("Have  opened  a  brand new channel:{} \t{}:{}", indexInLists, httpMethod, httpRequestURL);
         }
 
         chFuture = ch.writeAndFlush(request);
@@ -409,7 +426,7 @@ public class IpCameraHandler extends BaseThingHandler {
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 
-            // logger.debug(msg.toString());
+            logger.debug(msg.toString());
 
             if (msg instanceof HttpResponse) {
                 HttpResponse response = (HttpResponse) msg;
@@ -547,6 +564,13 @@ public class IpCameraHandler extends BaseThingHandler {
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+            byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
+            if (indexInLists >= 0) {
+                listOfRequests.set(indexInLists, "closed");
+            } else {
+                logger.warn("!!!! exceptionCaught could not located the channel to close it down");
+            }
+
             logger.debug("!!!! Camera has closed the channel \tURL:{} Cause reported is: {}", requestUrl, cause);
             ctx.close();
         }
@@ -851,6 +875,7 @@ public class IpCameraHandler extends BaseThingHandler {
             // determine if the motion detection is turned on or off.
             else if (content
                     .contains("<MotionDetection version=\"2.0\" xmlns=\"http://www.hikvision.com/ver20/XMLSchema\">")) {
+                listOfReplies.addLast(content);
 
                 if (content.contains("<enabled>true</enabled>")) {
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
@@ -1131,10 +1156,11 @@ public class IpCameraHandler extends BaseThingHandler {
                         break;
                     case "HIKVISION":
                         if ("ON".equals(command.toString())) {
-                            sendHttpGET("/MotionDetection/" + nvrChannel);
-
+                            hikChangeSetting("/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection",
+                                    "<enabled>false</enabled>", "<enabled>true</enabled>");
                         } else {
-                            sendHttpGET("/MotionDetection/" + nvrChannel);
+                            hikChangeSetting("/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection",
+                                    "<enabled>true</enabled>", "<enabled>false</enabled>");
                         }
                         break;
 
@@ -1212,8 +1238,6 @@ public class IpCameraHandler extends BaseThingHandler {
     void setAbsolutePan(Float panValue) {
 
         if (ptzDevices != null) {
-            logger.info("Pan values are Min:{}, Max:{}, new panValue:{}", panRange.getMin(), panRange.getMax(),
-                    panValue);
 
             if (onvifCamera != null && panRange != null && tiltRange != null) {
                 try {
@@ -1232,8 +1256,6 @@ public class IpCameraHandler extends BaseThingHandler {
 
     void setAbsoluteTilt(Float tiltValue) {
         if (ptzDevices != null) {
-            logger.info("Tilt values are Min:{}, Max:{}, new tiltValue:{}", tiltRange.getMin(), tiltRange.getMax(),
-                    tiltValue);
 
             if (onvifCamera != null && panRange != null && tiltRange != null) {
                 try {
@@ -1363,6 +1385,11 @@ public class IpCameraHandler extends BaseThingHandler {
                                     "Camera is reporting that it supports PTZ control with Absolute movement via ONVIF");
 
                             logger.debug("Checking Pan now.");
+                            String temp = ptzDevices.getPanSpaces(profileToken).toString();
+                            logger.debug("Pan came back with this string .{}.", temp);
+                            temp = ptzDevices.getNode(profileToken).toString();
+                            logger.debug("getNode came back with this string .{}.", temp);
+
                             panRange = ptzDevices.getPanSpaces(profileToken);
                             logger.debug("Checking Tilt now.");
                             tiltRange = ptzDevices.getTiltSpaces(profileToken);
@@ -1386,7 +1413,8 @@ public class IpCameraHandler extends BaseThingHandler {
                             ptzDevices = null;
                         }
                     }
-                    logger.debug("Finished with PTZ, now fetching the Video URL's the camera supports.");
+                    logger.info(
+                            "Finished with PTZ with no errors, now fetching the Video URL for RTSP from the camera.");
                     videoStreamUri = onvifCamera.getMedia().getRTSPStreamUri(profileToken);
 
                 } catch (ConnectException e) {
@@ -1397,8 +1425,12 @@ public class IpCameraHandler extends BaseThingHandler {
                             "SOAP error when trying to connect with ONVIF. This may indicate your camera does not fully support ONVIF, check for an updated firmware for your camera. Will try and connect with HTTP. Camera at IP:{}, fault was {}",
                             ipAddress, e.toString());
                 } catch (NullPointerException e) {
-                    logger.error(
-                            "NPE occured when trying to connect to the camera with ONVIF, PTZ controls may not work.");
+                    logger.error("Following NPE occured when trying to connect to the camera with ONVIF.{}",
+                            e.toString());
+                    if (ptzDevices != null && tiltRange.equals(null)) {
+                        logger.error("NPE occured when asking the camera about PTZ, PTZ controls will not work.");
+                        ptzDevices = null;
+                    }
                 }
 
                 if (snapshotUri != null) {
@@ -1459,6 +1491,10 @@ public class IpCameraHandler extends BaseThingHandler {
                         cleanChannels();
                         sendHttpGET("/ISAPI/Event/notification/alertStream");
                     }
+                    if (listOfReplies.size() < 1) {
+                        logger.debug("Fetching the latest state of the motion detection");
+                        sendHttpGET("/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection");
+                    }
                     break;
                 case "INSTAR":
                     // Poll the audio alarm on/off/threshold/...
@@ -1517,8 +1553,10 @@ public class IpCameraHandler extends BaseThingHandler {
         onvifCamera = null;
         basicAuth = null; // clear out stored hash
         useDigestAuth = false;
+        cleanChannels();
         listOfRequests.clear();
         listOfChannels.clear();
+        listOfReplies.clear();
 
         if (cameraConnectionJob != null) {
             cameraConnectionJob.cancel(true);
