@@ -734,35 +734,35 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     private class InstarHandler extends ChannelDuplexHandler {
-        String content;
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            content = msg.toString();
+            String content = msg.toString();
 
             if (!content.isEmpty()) {
                 logger.debug("HTTP Result back from camera is \t:{}:", content);
-                // Audio Alarm
-                String aa_enable = searchString(content, "var aa_enable = \"");
-                if ("1".equals(aa_enable)) {
-                    updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
-                    String aa_value = searchString(content, "var aa_value = \"");
-                    // String aa_time = searchString(content, "var aa_time = \"");
-                    if (!aa_value.isEmpty()) {
-                        logger.debug("Threshold is chaning to {}", aa_value);
-                        updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf(aa_value));
-                    }
-                } else {
-                    updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
-                }
+            }
 
-                // Motion Alarm
-                String m1_enable = searchString(content, "var m1_enable=\"");
-                if ("1".equals(m1_enable)) {
-                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
-                } else {
-                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
+            // Audio Alarm
+            String aa_enable = searchString(content, "var aa_enable = \"");
+            if ("1".equals(aa_enable)) {
+                updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
+                String aa_value = searchString(content, "var aa_value = \"");
+                // String aa_time = searchString(content, "var aa_time = \"");
+                if (!aa_value.isEmpty()) {
+                    logger.debug("Threshold is changing to {}", aa_value);
+                    updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf(aa_value));
                 }
+            } else if ("0".equals(aa_enable)) {
+                updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+            }
+
+            // Motion Alarm
+            String m1_enable = searchString(content, "var m1_enable=\"");
+            if ("1".equals(m1_enable)) {
+                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
+            } else if ("0".equals(m1_enable)) {
+                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
             }
         }
 
@@ -772,7 +772,6 @@ public class IpCameraHandler extends BaseThingHandler {
 
         @Override
         public void handlerRemoved(ChannelHandlerContext ctx) {
-            content = null;
         }
     }
 
