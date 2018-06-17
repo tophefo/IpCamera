@@ -115,7 +115,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
     public LinkedList<String> listOfRequests = new LinkedList<String>();
     public LinkedList<Channel> listOfChannels = new LinkedList<Channel>();
-    // private LinkedList<ChannelFuture> listOfFutures = new LinkedList<ChannelFuture>();
+    public LinkedList<Byte> listOfChStatus = new LinkedList<Byte>();
     private LinkedList<String> listOfReplies = new LinkedList<String>();
 
     private EventLoopGroup mainEventLoopGroup = new NioEventLoopGroup();
@@ -199,45 +199,50 @@ public class IpCameraHandler extends BaseThingHandler {
     private void cleanChannels() {
 
         for (byte index = 0; index < listOfRequests.size(); index++) {
-            logger.debug("Channel {} is for URL:{}", index, listOfRequests.get(index));
-            if (listOfRequests.get(index).contentEquals("closed")) {
-                listOfRequests.remove(index);
-                listOfChannels.remove(index);
-            } else if (listOfRequests.get(index).contentEquals("closing")) {
+            logger.debug("Channel {} is {} for URL:{}", index, listOfChStatus.get(index), listOfRequests.get(index));
+            if (listOfChStatus.get(index) == (byte) -1) {
+                if (listOfReplies.get(index) == null) {
+                    listOfRequests.remove(index);
+                    listOfChannels.remove(index);
+                    listOfChStatus.remove(index);
+                    listOfReplies.remove(index);
+                }
+
+            } else if (listOfChStatus.get(index) == (byte) 0) {
                 Channel chan = listOfChannels.get(index);
                 chan.close();
-                listOfRequests.set(index, "closed");
+                listOfChStatus.set(index, (byte) -1);
                 logger.debug("Cleaned up channel {} by force closing it as it was already marked for closing", index);
             }
         }
     }
 
     public void hikChangeSetting(String httpRequestURL, String findOldValue, String newValue) {
+        String body;
 
-        if (listOfReplies.size() == 0) {
+        byte indexInLists = (byte) listOfRequests.indexOf(httpRequestURL);
+        if (indexInLists >= 0) {
+            if (listOfReplies.get(indexInLists) != null) {
+                body = listOfReplies.get(indexInLists);
+                logger.debug("Reply from camera was {}", body);
+                body = body.replace(findOldValue, newValue);
+                logger.debug("body is {}", body);
+                FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, new HttpMethod("PUT"),
+                        httpRequestURL);
+                request.headers().set(HttpHeaderNames.HOST, ipAddress);
+                request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
+                request.headers().set(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.GZIP);
+                request.headers().add(HttpHeaderNames.CONTENT_TYPE, "application/x-www-form-urlencoded; charset=UTF-8");
+                ByteBuf bbuf = Unpooled.copiedBuffer(body, StandardCharsets.UTF_8);
+                request.headers().set(HttpHeaderNames.CONTENT_LENGTH, bbuf.readableBytes());
+                request.content().clear().writeBytes(bbuf);
+                sendHttpPUT(httpRequestURL, request);
+            }
+        } else {
             sendHttpGET(httpRequestURL);
             logger.error(
                     "Did not have a reply stored before hikChangeSetting was run, try again shortly as reply has just been requested.");
-            return;
         }
-
-        String body = (listOfReplies.size() == 0) ? "empty" : listOfReplies.element();
-        body = body.replace(findOldValue, newValue);
-
-        logger.debug("Reply from camera was {}", listOfReplies.element());
-        logger.debug("body is {}", body);
-        listOfReplies.clear();
-
-        FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, new HttpMethod("PUT"),
-                httpRequestURL);
-        request.headers().set(HttpHeaderNames.HOST, ipAddress);
-        request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
-        request.headers().set(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.GZIP);
-        request.headers().add(HttpHeaderNames.CONTENT_TYPE, "application/x-www-form-urlencoded; charset=UTF-8");
-        ByteBuf bbuf = Unpooled.copiedBuffer(body, StandardCharsets.UTF_8);
-        request.headers().set(HttpHeaderNames.CONTENT_LENGTH, bbuf.readableBytes());
-        request.content().clear().writeBytes(bbuf);
-        sendHttpPUT(httpRequestURL, request);
     }
 
     public void sendHttpPUT(String httpRequestURL, FullHttpRequest request) {
@@ -338,7 +343,7 @@ public class IpCameraHandler extends BaseThingHandler {
         byte indexInLists = (byte) listOfRequests.indexOf(httpRequestURL);
 
         if (indexInLists >= 0) {
-            if (!useNewChannel) {
+            if (!useNewChannel && listOfChStatus.get(indexInLists) == 1) {
                 ch = listOfChannels.get(indexInLists);
                 if (ch.isOpen()) {
                     logger.debug("****Using the already open channel:{} \t{}:{}", indexInLists, httpMethod,
@@ -381,15 +386,18 @@ public class IpCameraHandler extends BaseThingHandler {
         commonHandler.setURL(httpRequestURL);
         authHandler.setURL(httpMethod, httpRequestURL);
 
-        indexInLists = (byte) listOfRequests.indexOf("closed");
+        indexInLists = (byte) listOfChStatus.indexOf((byte) -1);
         if (indexInLists == -1) {
             listOfRequests.addLast(httpRequestURL);
             listOfChannels.addLast(ch);
+            listOfChStatus.addLast((byte) 1);
+            listOfReplies.addLast(null);
             logger.debug("Have  opened  a  brand NEW channel:{} \t{}:{}", listOfRequests.size() - 1, httpMethod,
                     httpRequestURL);
         } else {
             listOfRequests.set(indexInLists, httpRequestURL);
             listOfChannels.set(indexInLists, ch);
+            listOfChStatus.set(indexInLists, (byte) 1);
             logger.debug("Have  opened  a  brand new channel:{} \t{}:{}", indexInLists, httpMethod, httpRequestURL);
         }
 
@@ -455,7 +463,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     } else if (closeConnection) {
                         byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
                         if (indexInLists >= 0) {
-                            listOfRequests.set(indexInLists, "closing");
+                            listOfChStatus.set(indexInLists, (byte) 0);
                             logger.debug("Channel marked as closing, channel:{} \tURL:{}", indexInLists, requestUrl);
                         } else {
                             logger.debug("!!!! Could not find the ch for a Connection: close URL:{}", requestUrl);
@@ -550,7 +558,7 @@ public class IpCameraHandler extends BaseThingHandler {
             byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
             if (indexInLists >= 0) {
                 logger.debug("commonCameraHandler closed channel:{} \tURL:{}", indexInLists, requestUrl);
-                listOfRequests.set(indexInLists, "closed");
+                listOfChStatus.set(indexInLists, (byte) -1);
             } else {
                 logger.warn("Could not find the channel when removing the handler!");
             }
@@ -566,7 +574,7 @@ public class IpCameraHandler extends BaseThingHandler {
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
             if (indexInLists >= 0) {
-                listOfRequests.set(indexInLists, "closed");
+                listOfChStatus.set(indexInLists, (byte) -1);
             } else {
                 logger.warn("!!!! exceptionCaught could not located the channel to close it down");
             }
@@ -584,7 +592,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     logger.debug("!!!! Channel was found idle for more than 15 seconds so closing it down");
                     byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
                     if (indexInLists >= 0) {
-                        listOfRequests.set(indexInLists, "closing");
+                        listOfChStatus.set(indexInLists, (byte) 0);
                     } else {
                         logger.warn("!!!! Channel was found idle but could not located it to close it down");
                     }
@@ -874,12 +882,37 @@ public class IpCameraHandler extends BaseThingHandler {
             // determine if the motion detection is turned on or off.
             else if (content
                     .contains("<MotionDetection version=\"2.0\" xmlns=\"http://www.hikvision.com/ver20/XMLSchema\">")) {
-                listOfReplies.addLast(content);
+                byte indexInLists = (byte) listOfRequests
+                        .indexOf("/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection");
+                if (indexInLists >= 0) {
+                    listOfReplies.set(indexInLists, content);
+                }
 
                 if (content.contains("<enabled>true</enabled>")) {
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
                 } else if (content.contains("<enabled>false</enabled>")) {
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                }
+            } else if (content.contains("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n" + "<LineDetection>")) {
+                byte indexInLists = (byte) listOfRequests.indexOf("/ISAPI/Smart/LineDetection/" + nvrChannel + "01");
+                if (indexInLists >= 0) {
+                    listOfReplies.set(indexInLists, content);
+                }
+                if (content.contains("<enabled>true</enabled>")) {
+                    updateState(CHANNEL_ENABLE_LINE_CROSSING_ALARM, OnOffType.valueOf("ON"));
+                } else if (content.contains("<enabled>false</enabled>")) {
+                    updateState(CHANNEL_ENABLE_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
+                }
+            } else if (content.contains("<AudioDetection version=\"2.0\" xmlns=\"http://www.")) {
+                byte indexInLists = (byte) listOfRequests
+                        .indexOf("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01");
+                if (indexInLists >= 0) {
+                    listOfReplies.set(indexInLists, content);
+                }
+                if (content.contains("<enabled>true</enabled>")) {
+                    updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
+                } else if (content.contains("<enabled>false</enabled>")) {
+                    updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
                 }
             }
             content = null;
@@ -1009,8 +1042,20 @@ public class IpCameraHandler extends BaseThingHandler {
                             sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getAudioAlarmConfig&usr=" + username + "&pwd="
                                     + password);
                             break;
+                        case "HIKVISION":
+                            sendHttpGET("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01");
+                            break;
                     }
                     break;
+
+                case CHANNEL_ENABLE_LINE_CROSSING_ALARM:
+                    switch (thing.getThingTypeUID().getId()) {
+                        case "HIKVISION":
+                            sendHttpGET("/ISAPI/Smart/LineDetection/" + nvrChannel + "01");
+                            break;
+                    }
+                    break;
+
                 case CHANNEL_ENABLE_MOTION_ALARM:
                     switch (thing.getThingTypeUID().getId()) {
 
@@ -1115,13 +1160,31 @@ public class IpCameraHandler extends BaseThingHandler {
                         break;
 
                     case "INSTAR":
-
                         if ("ON".equals(command.toString())) {
                             sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1");
                         } else {
                             sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=0");
                         }
                         break;
+                    case "HIKVISION":
+                        if ("ON".equals(command.toString())) {
+                            hikChangeSetting("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01",
+                                    "<enabled>false</enabled>", "<enabled>true</enabled>");
+                        } else {
+                            hikChangeSetting("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01",
+                                    "<enabled>true</enabled>", "<enabled>false</enabled>");
+                        }
+                        break;
+                }
+                break;
+
+            case CHANNEL_ENABLE_LINE_CROSSING_ALARM:
+                if ("ON".equals(command.toString())) {
+                    hikChangeSetting("/ISAPI/Smart/LineDetection/" + nvrChannel + "01", "<enabled>false</enabled>",
+                            "<enabled>true</enabled>");
+                } else {
+                    hikChangeSetting("/ISAPI/Smart/LineDetection/" + nvrChannel + "01", "<enabled>true</enabled>",
+                            "<enabled>false</enabled>");
                 }
 
                 break;
@@ -1490,10 +1553,11 @@ public class IpCameraHandler extends BaseThingHandler {
                         cleanChannels();
                         sendHttpGET("/ISAPI/Event/notification/alertStream");
                     }
-                    if (listOfReplies.size() < 1) {
-                        logger.debug("Fetching the latest state of the motion detection");
-                        sendHttpGET("/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection");
-                    }
+
+                    // sendHttpGET("/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection");
+                    // sendHttpGET("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01");
+                    // sendHttpGET("/ISAPI/Smart/LineDetection/" + nvrChannel + "01");
+
                     break;
                 case "INSTAR":
                     // Poll the audio alarm on/off/threshold/...
@@ -1555,6 +1619,7 @@ public class IpCameraHandler extends BaseThingHandler {
         cleanChannels();
         listOfRequests.clear();
         listOfChannels.clear();
+        listOfChStatus.clear();
         listOfReplies.clear();
 
         if (cameraConnectionJob != null) {
