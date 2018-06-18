@@ -186,7 +186,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
         if (msg instanceof HttpResponse) {
             HttpResponse response = (HttpResponse) msg;
             if (response.status().code() == 401) {
-                logger.debug("401: Normal for DIGEST authorization. \tURL:{}", httpUrl);
+                logger.trace("401: Normal for DIGEST authorization. \tURL:{}", httpUrl);
                 if (!response.headers().isEmpty()) {
                     for (CharSequence name : response.headers().names()) {
                         for (CharSequence value : response.headers().getAll(name)) {
