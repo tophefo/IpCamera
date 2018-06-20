@@ -57,7 +57,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
     public void setURL(String method, String url) {
         httpUrl = url;
         httpMethod = method;
-        logger.debug("MyNettyAuthHandler is now setup for \t{}:{}", method, url);
+        logger.trace("MyNettyAuthHandler is now setup for \t{}:{}", method, url);
     }
 
     private String calcMD5Hash(String toHash) {
