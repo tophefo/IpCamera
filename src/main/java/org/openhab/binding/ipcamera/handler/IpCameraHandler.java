@@ -384,7 +384,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     "Connection Timeout: Check your IP is correct and the camera can be reached.");
             logger.error("Can not connect with HTTP to the camera at {}:{} check your network for issues.", ipAddress,
                     port);
-            dispose();
+            restart();
 
             cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 54, 60,
                     TimeUnit.SECONDS);
@@ -703,45 +703,34 @@ public class IpCameraHandler extends BaseThingHandler {
             }
 
             ////////////// Motion Alarm //////////////
-            if (content.contains("<motionDetectAlarm>0</motionDetectAlarm>")) {
-                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
-            }
-            if (content.contains("<motionDetectAlarm>1</motionDetectAlarm>")) { // means it is enabled but no alarm
-                updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
-                firstMotionAlarm = false;
-            }
-            if (content.contains("<motionDetectAlarm>2</motionDetectAlarm>")) {// means it is enabled and alarm on
-                updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("ON"));
-                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
-                if (updateImageEvents.contains("2") && !firstMotionAlarm) {
-                    sendHttpGET(getCorrectUrlFormat(snapshotUri));
-                    firstMotionAlarm = true;
-                } else if (updateImageEvents.contains("4")) {
-                    sendHttpGET(getCorrectUrlFormat(snapshotUri));
+            // motionDetectAlarm or can be motionDetectAlarms, methods now support both
+            if (content.contains("<motionDetectAlarm")) {
+                if (content.contains(">0</motionDetectAlarm")) {
+                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                } else if (content.contains(">1</motionDetectAlarm")) { // means it is enabled but no alarm
+                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
+                    updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                    firstMotionAlarm = false;
+                } else if (content.contains(">2</motionDetectAlarm")) {// means it is enabled and alarm on
+                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
+                    motionDetected(CHANNEL_MOTION_ALARM);
                 }
             }
 
             ////////////// Sound Alarm //////////////
             if (content.contains("<soundAlarm>0</soundAlarm>")) {
-                updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
                 updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
                 firstAudioAlarm = false;
             }
             if (content.contains("<soundAlarm>1</soundAlarm>")) {
-                updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
                 updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
+                updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
                 firstAudioAlarm = false;
             }
             if (content.contains("<soundAlarm>2</soundAlarm>")) {
-                updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("ON"));
                 updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
-                if (updateImageEvents.contains("3") && !firstAudioAlarm) {
-                    sendHttpGET(getCorrectUrlFormat(snapshotUri));
-                    firstAudioAlarm = true;
-                } else if (updateImageEvents.contains("5")) {
-                    sendHttpGET(getCorrectUrlFormat(snapshotUri));
-                }
+                audioDetected();
             }
 
             ////////////// Sound Threshold //////////////
@@ -754,7 +743,6 @@ public class IpCameraHandler extends BaseThingHandler {
             if (content.contains("<sensitivity>2</sensitivity>")) {
                 updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf("100"));
             }
-            content = null;
             ctx.close();
         }
     }
@@ -790,14 +778,6 @@ public class IpCameraHandler extends BaseThingHandler {
             } else if ("0".equals(m1_enable)) {
                 updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
             }
-        }
-
-        @Override
-        public void handlerAdded(ChannelHandlerContext ctx) {
-        }
-
-        @Override
-        public void handlerRemoved(ChannelHandlerContext ctx) {
         }
     }
 
@@ -1092,12 +1072,10 @@ public class IpCameraHandler extends BaseThingHandler {
 
                 case CHANNEL_ENABLE_MOTION_ALARM:
                     switch (thing.getThingTypeUID().getId()) {
-
                         case "AMCREST":
                             sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect[" + nvrChannel
                                     + "]");
                             break;
-
                         case "FOSCAM":
                             sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username + "&pwd=" + password);
                             break;
@@ -1105,7 +1083,6 @@ public class IpCameraHandler extends BaseThingHandler {
                             sendHttpGET("/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection");
                             break;
                     }
-
                     break;
 
                 case CHANNEL_PAN:
@@ -1240,14 +1217,14 @@ public class IpCameraHandler extends BaseThingHandler {
 
                     case "FOSCAM":
                         if ("ON".equals(command.toString())) {
-                            // example of how to setup a zone. Add to end of url
-                            // &x1=3042&y1=1604&width1=5185&height1=6229&threshold1=0&sensitivity1=2&valid1=1
-                            sendHttpGET(
-                                    "/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig&isEnable=1&schedule0=1023&schedule1=1023&schedule2=1023&schedule3=1023&schedule4=1023&schedule5=1023&schedule6=1023&usr="
-                                            + username + "&pwd=" + password);
-                            sendHttpGET(
-                                    "/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig1&isEnable=1&schedule0=281474976710655&schedule1=281474976710655&schedule2=281474976710655&schedule3=281474976710655&schedule4=281474976710655&schedule5=281474976710655&schedule6=281474976710655&usr="
-                                            + username + "&pwd=" + password);
+                            if (config.get(CONFIG_MOTION_URL_OVERIDE) == null) {
+                                sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig&isEnable=1&usr="
+                                        + username + "&pwd=" + password);
+                                sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig1&isEnable=1&usr="
+                                        + username + "&pwd=" + password);
+                            } else {
+                                sendHttpGET(config.get(CONFIG_MOTION_URL_OVERIDE).toString());
+                            }
                         } else {
                             sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig&isEnable=0&usr=" + username
                                     + "&pwd=" + password);
@@ -1652,6 +1629,26 @@ public class IpCameraHandler extends BaseThingHandler {
         cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 0, 64, TimeUnit.SECONDS);
     }
 
+    private void restart() {
+        onvifCamera = null;
+        basicAuth = null; // clear out stored hash
+        useDigestAuth = false;
+        cleanChannels();
+        listOfRequests.clear();
+        listOfChannels.clear();
+        listOfChStatus.clear();
+        listOfReplies.clear();
+
+        if (cameraConnectionJob != null) {
+            cameraConnectionJob.cancel(true);
+            cameraConnectionJob = null;
+        }
+        if (fetchCameraOutputJob != null) {
+            fetchCameraOutputJob.cancel(true);
+            fetchCameraOutputJob = null;
+        }
+    }
+
     @Override
     public void dispose() {
         onvifCamera = null;
@@ -1671,7 +1668,5 @@ public class IpCameraHandler extends BaseThingHandler {
             fetchCameraOutputJob.cancel(true);
             fetchCameraOutputJob = null;
         }
-        // mainBootstrap = null;
-        // secondBootstrap = null;
     }
 }

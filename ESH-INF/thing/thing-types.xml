@@ -472,6 +472,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>        
 </parameter>
 
+<parameter name="MOTION_URL_OVERIDE" type="text" required="false" groupName="Settings">
+<context>url</context>
+<label>Create your own custom enable Motion Alarm settings by entering a custom URL</label>
+<description>Leave this empty to use the default, or create your own setting.
+</description>        
+</parameter>
+
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
 <label>ONVIF Port</label>
 <description>The port your camera uses for ONVIF connections.
