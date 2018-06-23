@@ -337,7 +337,7 @@ public class IpCameraHandler extends BaseThingHandler {
             }
         }
 
-        logger.debug("Sending camera at IP:{} the \tURL:{}", ipAddress, httpRequestURL);
+        logger.debug("Sending camera at IP:{}, \tURL:{}", ipAddress, httpRequestURL);
 
         byte indexInLists = -1;
         for (byte index = 0; index < listOfRequests.size(); index++) {
@@ -360,20 +360,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
             }
         }
-
-        /*
-         * if (indexInLists >= 0) {
-         * ch = listOfChannels.get(indexInLists);
-         * if (ch.isOpen()) {
-         * logger.debug("****Using the already open channel:{} \t{}:{}", indexInLists, httpMethod, httpRequestURL);
-         * authHandler = (MyNettyAuthHandler) ch.pipeline().get("authHandler");
-         * authHandler.setURL(httpMethod, httpRequestURL);
-         * ch.writeAndFlush(request);
-         * request = null;
-         * return true;
-         * }
-         * }
-         */
 
         globalUrl = httpRequestURL;
         chFuture = mainBootstrap.connect(new InetSocketAddress(ipAddress, port));
@@ -405,7 +391,7 @@ public class IpCameraHandler extends BaseThingHandler {
         if (indexInLists >= 0) {
             listOfChStatus.set(indexInLists, (byte) 1);
             listOfChannels.set(indexInLists, ch);
-            logger.debug("Have opened an old back up, channel:{} \t{}:{}", indexInLists, httpMethod, httpRequestURL);
+            logger.debug("Have re-opened the old channel:{} \t{}:{}", indexInLists, httpMethod, httpRequestURL);
         } else {
             listOfRequests.addLast(httpRequestURL);
             listOfChannels.addLast(ch);
@@ -703,15 +689,14 @@ public class IpCameraHandler extends BaseThingHandler {
             }
 
             ////////////// Motion Alarm //////////////
-            // motionDetectAlarm or can be motionDetectAlarms, methods now support both
-            if (content.contains("<motionDetectAlarm")) {
-                if (content.contains(">0</motionDetectAlarm")) {
+            if (content.contains("<motionDetectAlarm>")) {
+                if (content.contains("<motionDetectAlarm>0</motionDetectAlarm>")) {
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                } else if (content.contains(">1</motionDetectAlarm")) { // means it is enabled but no alarm
+                } else if (content.contains("<motionDetectAlarm>1</motionDetectAlarm>")) { // Enabled but no alarm
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
                     updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
-                } else if (content.contains(">2</motionDetectAlarm")) {// means it is enabled and alarm on
+                } else if (content.contains("<motionDetectAlarm>2</motionDetectAlarm>")) {// Enabled, alarm on
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
                     motionDetected(CHANNEL_MOTION_ALARM);
                 }
@@ -743,7 +728,11 @@ public class IpCameraHandler extends BaseThingHandler {
             if (content.contains("<sensitivity>2</sensitivity>")) {
                 updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf("100"));
             }
-            ctx.close();
+
+            if (content.contains("</CGI_Result>")) {
+                ctx.close();
+                logger.debug("End of FOSCAM handler reached, so closing the channel to the camera now");
+            }
         }
     }
 
@@ -1491,15 +1480,15 @@ public class IpCameraHandler extends BaseThingHandler {
                     videoStreamUri = onvifCamera.getMedia().getRTSPStreamUri(profileToken);
 
                 } catch (ConnectException e) {
-                    logger.error(
+                    logger.warn(
                             "Can not connect with ONVIF to the camera at {}, check the ONVIF_PORT is correct. Fault was {}",
                             ipAddress, e.toString());
                 } catch (SOAPException e) {
-                    logger.error(
+                    logger.warn(
                             "SOAP error when trying to connect with ONVIF. This may indicate your camera does not fully support ONVIF, check for an updated firmware for your camera. Will try and connect with HTTP. Camera at IP:{}, fault was {}",
                             ipAddress, e.toString());
                 } catch (NullPointerException e) {
-                    logger.error("Following NPE occured when trying to connect to the camera with ONVIF.{}",
+                    logger.warn("Following NPE occured when trying to connect to the camera with ONVIF.{}",
                             e.toString());
                     if (ptzDevices != null && tiltRange.equals(null)) {
                         logger.error("NPE occured when asking the camera about PTZ, PTZ controls will not work.");
