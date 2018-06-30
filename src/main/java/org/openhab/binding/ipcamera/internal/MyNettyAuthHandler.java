@@ -114,8 +114,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
     // processAuth(challString, string,string, true) to auto send new packet
     // First run it should not have authenticate as null
     // nonce is reused if authenticate is null so the NC needs to increment to allow this//
-    public String processAuth(String authenticate, String httpMethod, String requestURI, boolean reSend,
-            boolean useNewChannel) {
+    public String processAuth(String authenticate, String httpMethod, String requestURI, boolean reSend) {
 
         if (authenticate != null) {
 
@@ -125,7 +124,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                 }
                 logger.debug("Setting up the camera to use Basic Auth and resending last request with correct auth.");
                 myHandler.setBasicAuth(true);
-                myHandler.sendHttpRequest(httpMethod, requestURI, null, false);
+                myHandler.sendHttpRequest(httpMethod, requestURI, null);
                 return "Using Basic";
             }
 
@@ -173,7 +172,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                 + response + "\", opaque=\"" + opaque + "\"";
 
         if (reSend) {
-            myHandler.sendHttpRequest(httpMethod, requestURI, digestString, useNewChannel);
+            myHandler.sendHttpRequest(httpMethod, requestURI, digestString);
             return null;
         }
         return digestString;
@@ -201,17 +200,25 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                     }
                     // Need to mark the channel as closing so when we resend with digest we get a new channel.
                     if (closeConnection) {
-                        byte indexInLists = (byte) myHandler.listOfChannels.indexOf(ctx.channel());
-                        if (indexInLists >= 0) {
-                            myHandler.listOfChStatus.set(indexInLists, (byte) 0);
-                            logger.debug("401: Mark as closing, the Channel {} \t{}:{}", indexInLists, httpMethod,
-                                    httpUrl);
-                        } else {
-                            logger.warn("!!!! 401: Could not find the channel to mark as closing");
+                        logger.debug("401: Trying to lock");
+                        myHandler.lock.lock();
+                        logger.debug("401: locked");
+                        try {
+                            byte indexInLists = (byte) myHandler.listOfChannels.indexOf(ctx.channel());
+                            if (indexInLists >= 0) {
+                                myHandler.listOfChStatus.set(indexInLists, (byte) 0);
+                                logger.debug("401: Mark as closing, the  channel:{} \t{}:{}", indexInLists, httpMethod,
+                                        httpUrl);
+                            } else {
+                                logger.warn("!!!! 401: Could not find the channel to mark as closing");
+                            }
+                        } finally {
+                            myHandler.lock.unlock();
+                            logger.debug("401: unlocked");
                         }
                     }
                     if (authenticate != null) {
-                        processAuth(authenticate, httpMethod, httpUrl, true, closeConnection);
+                        processAuth(authenticate, httpMethod, httpUrl, true);
                     } else {
                         logger.warn("Camera gave a 401 reply and did not provide a WWW-Authenticate header");
                     }

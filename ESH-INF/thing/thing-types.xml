@@ -245,13 +245,6 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>   
 </parameter>
 
-<parameter name="USE_HTTPS" type="boolean" required="true" groupName="Settings">
-<label>NOT WORKING: Use HTTPS instead of HTTP.</label>
-<description>NOT WORKING: Use HTTPS to increase the security of poorly protected passwords
-</description>
-<default>false</default>
-</parameter>
-
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
 <label>ONVIF Port</label>
 <description>The port your camera uses for ONVIF connections.
@@ -530,7 +523,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="itemTaken" typeId="itemTaken"/> 
             <channel id="faceDetected" typeId="faceDetected"/>              
             <channel id="enableAudioAlarm" typeId="enableAudioAlarm"/>
-            <channel id="audioAlarm" typeId="audioAlarm"/>                 
+            <channel id="audioAlarm" typeId="audioAlarm"/>
+            <channel id="activateAlarmOutput" typeId="activateAlarmOutput"/>                 
             <channel id="pan" typeId="pan"/>
             <channel id="tilt" typeId="tilt"/>
             <channel id="zoom" typeId="zoom"/>
@@ -798,13 +792,6 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>        
 </parameter>
 
-<parameter name="USE_HTTPS" type="boolean" required="true" groupName="Settings">
-<label>NOT WORKING: Use HTTPS instead of HTTP.</label>
-<description>NOT WORKING: Use HTTPS to increase the security of poorly protected passwords
-</description>
-<default>false</default>
-</parameter>
-
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
 <label>ONVIF Port</label>
 <description>The port your camera uses for ONVIF connections.
@@ -968,15 +955,20 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <label>Enable/Disable the Audio Alarm</label>
         <description>By using this feature you can stop the camera from sending emails when you are having a party.</description>
         <category>SoundVolume</category>
-        </channel-type>
-        
+        </channel-type>        
+             
         <channel-type id="thresholdAudioAlarm">
         <item-type>Dimmer</item-type>
         <label>Threshold for the Audio Alarm</label>
         <description>By moving this control you should be able to change how sensitive the audio alarm is to soft or loud noises.</description>
         <category>SoundVolume</category>
         </channel-type>
-                  
-
-       
+        
+        <channel-type id="activateAlarmOutput">
+        <item-type>Switch</item-type>
+        <label>Trigger the cameras alarm output</label>
+        <description>You can use the cameras output to trigger a device like a burglar alarm.</description>
+        <category>Alarm</category>
+        </channel-type>
+                         
 </thing:thing-descriptions>
