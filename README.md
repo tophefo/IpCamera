@@ -134,15 +134,31 @@ Image url="http://google.com/leaveLinkAsThis" item=ipcamera_AMCREST_001_image re
 
 Thing ipcamera:AMCREST:001 [ IPADDRESS="192.168.1.2", PASSWORD="suitcase123456", USERNAME="DVadar", ONVIF_MEDIA_PROFILE=0]
 
+
+
+A second example, this time using items for the image:
+
+
+*.items
+
+Image frontDoorCam { channel="ipcamera:HIKVISION:78941ac2:image" }
+
+
+*.sitemap
+
+Default item=frontDoorCam 
+
+
 ## Reducing log sizes
 
 There are two log files discussed here, openhab.log and events.log please take the time to consider both logs if a fast and stable setup is something you care about. On some systems with slow disk access like SD cards the writing of a log file can greatly impact on performance. We can turn on/up logs to fault find issues, and then disable them to get the performance back when everything is working.
 
 
-To watch the logs in realtime with openhabian setups use this linux command which can be done via SSH with a program called putty from a windows or mac machine. CTRL+C will close the stream. You can also use SAMBA/network shares to open or copy the file directly.
+To watch the logs in realtime with openhabian setups use this linux command which can be done via SSH with a program called putty from a windows or mac machine. 
 
 tail -f /var/log/openhab2/openhab.log -f /var/log/openhab2/events.log
 
+CTRL+C will close the stream. You can also use SAMBA/network shares to open or copy the file directly, but my favorite way to view the logs is with "Frontail". Frontail is another UI that can be selected like paperUI, and can be installed using the openhabian config tool.
 
 
 openhab.log This file displays the information from all bindings and can have the amount of information turned up or down on a per binding basis. The default level is INFO and is the middle level of 5 settings you can use. Openhab documentation goes into this in more detail. Using KARAF console you can use these commands to turn the logging up and down to suit your needs. If you are having issues with the binding not working with your camera, then TRACE will give me everything in DEBUG with the additional reply packets from the camera for me to use for fault finding.
@@ -167,7 +183,7 @@ To re-enable use the same command with INFO instead of WARN.
 
 ## Roadmap for further development
 
-Currently the focus is on stability, speed and creating a good framework that allows multiple brands to be used in RULES in a consistent way. What this means is it should be less work to add functions to this binding instead of people creating scripts which are not easy for new Openhab users to find or use, then if a camera breaks down and you change brands, your rules with this binding should be easy to adapt to the new brand of camera with no/minimal changes. 
+Currently the focus is on stability, speed and creating a good framework that allows multiple brands to be used in RULES in a consistent way. What this means is it should be less work to add functions to this binding instead of people creating scripts which are not easy for new Openhab users to find or use. By consistent I mean if a camera breaks down and you wish to change brands, your rules with this binding should be easy to adapt to the new brand of camera with no/minimal changes. 
 
 
 If you need a feature added that is in an API, please raise an issue ticket here at this github project with a sample of what a browser shows when you enter in the URL and it is usually very quick to add these features. 
@@ -177,9 +193,11 @@ If this binding becomes popular, I can look at extending the frame work to suppo
 
 RTSP streams to the image channel.
 
+PTZ methods for continuous move.
+
 FTP/NAS features to save the images and delete old files.
 
-Auto find and setup cameras on the network.
+Auto find and setup cameras on your network.
 
 ONVIF alarms
 
