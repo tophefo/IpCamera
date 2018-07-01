@@ -222,9 +222,15 @@ public class IpCameraHandler extends BaseThingHandler {
 
     public void hikChangeSetting(String httpGetPutURL, String findOldValue, String newValue) {
         String body;
+        byte indexInLists;
         lock.lock();
-        byte indexInLists = (byte) listOfRequests.indexOf(httpGetPutURL);
+        try {
+            indexInLists = (byte) listOfRequests.indexOf(httpGetPutURL);
+        } finally {
+            lock.unlock();
+        }
         if (indexInLists >= 0) {
+            lock.lock();
             if (listOfReplies.get(indexInLists) != null) {
                 body = listOfReplies.get(indexInLists);
                 lock.unlock();
@@ -235,18 +241,20 @@ public class IpCameraHandler extends BaseThingHandler {
                         httpGetPutURL);
                 request.headers().set(HttpHeaderNames.HOST, ipAddress);
                 request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
-                request.headers().add(HttpHeaderNames.CONTENT_TYPE, "application/x-www-form-urlencoded; charset=UTF-8");
+                request.headers().add(HttpHeaderNames.CONTENT_TYPE, "application/xml; charset=\"UTF-8\"");
                 ByteBuf bbuf = Unpooled.copiedBuffer(body, StandardCharsets.UTF_8);
                 request.headers().set(HttpHeaderNames.CONTENT_LENGTH, bbuf.readableBytes());
                 request.content().clear().writeBytes(bbuf);
                 sendHttpPUT(httpGetPutURL, request);
+            } else {
+                lock.unlock();
             }
         } else {
-            lock.unlock();
             sendHttpGET(httpGetPutURL);
             logger.warn(
                     "Did not have a reply stored before hikChangeSetting was run, try again shortly as a reply has just been requested.");
         }
+
     }
 
     public void hikSendXml(String httpPutURL, String xml) {
@@ -254,7 +262,7 @@ public class IpCameraHandler extends BaseThingHandler {
         FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, new HttpMethod("PUT"), httpPutURL);
         request.headers().set(HttpHeaderNames.HOST, ipAddress);
         request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
-        request.headers().add(HttpHeaderNames.CONTENT_TYPE, "application/x-www-form-urlencoded; charset=UTF-8");
+        request.headers().add(HttpHeaderNames.CONTENT_TYPE, "application/xml; charset=\"UTF-8\"");
         ByteBuf bbuf = Unpooled.copiedBuffer(xml, StandardCharsets.UTF_8);
         request.headers().set(HttpHeaderNames.CONTENT_LENGTH, bbuf.readableBytes());
         request.content().clear().writeBytes(bbuf);
@@ -325,10 +333,22 @@ public class IpCameraHandler extends BaseThingHandler {
             });
         }
 
-        FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, new HttpMethod(httpMethod),
-                httpRequestURL);
-        request.headers().set(HttpHeaderNames.HOST, ipAddress);
-        request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
+        FullHttpRequest request;
+        if (httpMethod.contentEquals("PUT")) {
+
+            if (useDigestAuth && digestString == null) {
+                request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, new HttpMethod(httpMethod), httpRequestURL);
+                request.headers().set(HttpHeaderNames.HOST, ipAddress);
+                request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
+            } else {
+                request = putRequestWithBody;
+            }
+
+        } else {
+            request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, new HttpMethod(httpMethod), httpRequestURL);
+            request.headers().set(HttpHeaderNames.HOST, ipAddress);
+            request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
+        }
 
         if (basicAuth != null) {
             if (useDigestAuth) {
@@ -341,11 +361,6 @@ public class IpCameraHandler extends BaseThingHandler {
 
         if (useDigestAuth) {
             if (digestString != null) {
-                if (httpMethod.contentEquals("PUT")) {
-                    request = putRequestWithBody;
-                    logger.debug("Request is for a PUT and is {}", request);
-                }
-
                 logger.debug("Resending using a fresh DIGEST \tURL:{}", httpRequestURL);
                 request.headers().set(HttpHeaderNames.AUTHORIZATION, "Digest " + digestString);
             }
@@ -1329,13 +1344,19 @@ public class IpCameraHandler extends BaseThingHandler {
             case CHANNEL_ACTIVATE_ALARM_OUTPUT:
                 if ("ON".equals(command.toString())) {
                     hikSendXml("/ISAPI/System/IO/outputs/" + nvrChannel + "/trigger",
-                            "<IOPortData xmlns=“http://www.isapi.org/ver20/XMLSchema”>\r\n<outputState>high</outputState>\r\n</IOPortData>\r\n");
+                            "<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n    <outputState>high</outputState>\r\n</IOPortData>\r\n");
+                    // hikSendXml("/IO/outputs/" + nvrChannel + "/trigger",
+                    // "<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n"
+                    // + " <outputState>high</outputState>\r\n" + "</IOPortData>");
+
                 } else {
                     hikSendXml("/ISAPI/System/IO/outputs/" + nvrChannel + "/trigger",
-                            "<IOPortData xmlns=“http://www.isapi.org/ver20/XMLSchema”>\r\n<outputState>low</outputState>\r\n</IOPortData>\r\n");
+                            "<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n    <outputState>low</outputState>\r\n</IOPortData>\r\n");
+                    // hikSendXml("/IO/outputs/" + nvrChannel + "/trigger",
+                    // "<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n"
+                    // + " <outputState>low</outputState>\r\n" + "</IOPortData>");
                 }
                 break;
-
         }
     }
 
