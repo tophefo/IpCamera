@@ -72,7 +72,6 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.base64.Base64;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
-import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpContent;
@@ -86,6 +85,7 @@ import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.CharsetUtil;
+import io.netty.util.ReferenceCountUtil;
 
 /**
  * The {@link IpCameraHandler} is responsible for handling commands, which are
@@ -424,24 +424,18 @@ public class IpCameraHandler extends BaseThingHandler {
         }
 
         if (indexInLists >= 0) {
-            logger.debug("Trying to lock in main2");
             lock.lock();
-            logger.debug("Just locked in main2");
             listOfChStatus.set(indexInLists, (byte) 1);
             listOfChannels.set(indexInLists, ch);
             lock.unlock();
-            logger.debug("Just unlocked in main2");
             logger.debug("Have re-opened  the closed channel:{} \t{}:{}", indexInLists, httpMethod, httpRequestURL);
         } else {
-            logger.debug("Trying to lock in main2");
             lock.lock();
-            logger.debug("Just locked in main2");
             listOfRequests.addLast(httpRequestURL);
             listOfChannels.addLast(ch);
             listOfChStatus.addLast((byte) 1);
             listOfReplies.addLast(null);
             lock.unlock();
-            logger.debug("Just unlocked in main2");
             logger.debug("Have  opened  a  brand NEW channel:{} \t{}:{}", listOfRequests.size() - 1, httpMethod,
                     httpRequestURL);
         }
@@ -471,55 +465,56 @@ public class IpCameraHandler extends BaseThingHandler {
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            HttpContent content = null;
+            try {
+                logger.trace(msg.toString());
 
-            logger.trace(msg.toString());
-
-            if (msg instanceof HttpResponse) {
-                HttpResponse response = (HttpResponse) msg;
-                if (!response.headers().isEmpty()) {
-                    for (CharSequence name : response.headers().names()) {
-                        for (CharSequence value : response.headers().getAll(name)) {
-                            if (name.toString().equalsIgnoreCase("Content-Type")) {
-                                contentType = value.toString();
-                            } else if (name.toString().equalsIgnoreCase("Content-Length")) {
-                                bytesToRecieve = Integer.parseInt(value.toString());
-                            } else if (name.toString().equalsIgnoreCase("Connection")) {
-                                if (value.toString().contains("keep-alive")) {
-                                    closeConnection = false;
-                                } else {
-                                    closeConnection = true;
-                                }
-                            } else if (name.toString().equalsIgnoreCase("Transfer-Encoding")) {
-                                if (value.toString().contains("chunked")) {
-                                    isChunked = true;
+                if (msg instanceof HttpResponse) {
+                    HttpResponse response = (HttpResponse) msg;
+                    if (!response.headers().isEmpty()) {
+                        for (CharSequence name : response.headers().names()) {
+                            for (CharSequence value : response.headers().getAll(name)) {
+                                if (name.toString().equalsIgnoreCase("Content-Type")) {
+                                    contentType = value.toString();
+                                } else if (name.toString().equalsIgnoreCase("Content-Length")) {
+                                    bytesToRecieve = Integer.parseInt(value.toString());
+                                } else if (name.toString().equalsIgnoreCase("Connection")) {
+                                    if (value.toString().contains("keep-alive")) {
+                                        closeConnection = false;
+                                    } else {
+                                        closeConnection = true;
+                                    }
+                                } else if (name.toString().equalsIgnoreCase("Transfer-Encoding")) {
+                                    if (value.toString().contains("chunked")) {
+                                        isChunked = true;
+                                    }
                                 }
                             }
                         }
-                    }
-                    if (contentType.contains("multipart")) {
-                        closeConnection = false; // HIKVISION and Dahua need this for alarm/alertStream
-                    } else if (closeConnection) {
-                        lock.lock();
-                        try {
-                            byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
-                            if (indexInLists >= 0) {
-                                listOfChStatus.set(indexInLists, (byte) 0);
-                                logger.debug("Channel marked as closing, channel:{} \tURL:{}", indexInLists,
-                                        requestUrl);
-                            } else {
-                                logger.debug("!!!! Could not find the ch for a Connection: close URL:{}", requestUrl);
+                        if (contentType.contains("multipart")) {
+                            closeConnection = false; // HIKVISION and Dahua need this for alarm/alertStream
+                        } else if (closeConnection) {
+                            lock.lock();
+                            try {
+                                byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
+                                if (indexInLists >= 0) {
+                                    listOfChStatus.set(indexInLists, (byte) 0);
+                                    logger.debug("Channel marked as closing, channel:{} \tURL:{}", indexInLists,
+                                            requestUrl);
+                                } else {
+                                    logger.debug("!!!! Could not find the ch for a Connection: close URL:{}",
+                                            requestUrl);
+                                }
+                            } finally {
+                                lock.unlock();
                             }
-                        } finally {
-                            lock.unlock();
                         }
                     }
                 }
-            }
 
-            if (msg instanceof HttpContent) {
-                HttpContent content = (HttpContent) msg;
+                if (msg instanceof HttpContent) {
+                    content = (HttpContent) msg;
 
-                if (content instanceof DefaultHttpContent) {
                     if (contentType.contains("image/jpeg")) {
                         if (bytesToRecieve == 0) {
                             bytesToRecieve = 512000; // 0.512Mbyte when no Content-Length is sent
@@ -531,37 +526,54 @@ public class IpCameraHandler extends BaseThingHandler {
                             }
                             lastSnapshot[bytesAlreadyRecieved++] = content.content().getByte(i);
                         }
-                        content.content().release();// must be here or a memory leak occurs.
-                        if (bytesAlreadyRecieved >= bytesToRecieve) {
-                            if (bytesToRecieve != bytesAlreadyRecieved) {
-                                logger.error(
-                                        "We got too many packets back from the camera for some reason, please report this.");
+                        if (bytesAlreadyRecieved > bytesToRecieve) {
+                            logger.error("We got too much data from the camera, please report this.");
+                        }
+
+                        if (content instanceof LastHttpContent) {
+                            if (contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
+                                updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
+                                lastSnapshot = null;
+                                if (closeConnection) {
+                                    logger.debug("Snapshot recieved: Binding will now close the channel.");
+                                    ctx.close();
+                                } else {
+                                    logger.debug("Snapshot recieved: Binding will now keep-alive the channel.");
+                                }
                             }
                         }
                     } else { // incomingMessage that is not an IMAGE
+
                         if (incomingMessage == null) {
                             incomingMessage = content.content().toString(CharsetUtil.UTF_8);
                         } else {
                             incomingMessage += content.content().toString(CharsetUtil.UTF_8);
                         }
-                        content.content().release();// must be here or a memory leak occurs.
                         bytesAlreadyRecieved = incomingMessage.length();
-                    }
+                        if (content instanceof LastHttpContent) {
 
-                    if (content instanceof LastHttpContent) {
-                        if (contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
-                            updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
-                            lastSnapshot = null;
-                            if (closeConnection) {
-                                logger.debug("Snapshot recieved: Binding will now close the channel.");
-                                ctx.close();
-                            } else {
-                                logger.debug("Snapshot recieved: Binding will now keep-alive the channel.");
+                            // If it is not an image send it on to the next handler//
+                            if (!contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
+                                reply = incomingMessage;
+                                incomingMessage = null;
+                                bytesToRecieve = 0;
+                                bytesAlreadyRecieved = 0;
+                                super.channelRead(ctx, reply);
                             }
                         }
 
-                        // If it is not an image send it on to the next handler//
-                        if (!contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
+                        // HIKVISION alertStream never has a LastHttpContent as it always stays open//
+                        if (contentType.contains("multipart")) {
+                            if (!contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
+                                reply = incomingMessage;
+                                incomingMessage = null;
+                                bytesToRecieve = 0;
+                                bytesAlreadyRecieved = 0;
+                                super.channelRead(ctx, reply);
+                            }
+                        }
+                        // Foscam needs this as will other cameras with chunks//
+                        if (isChunked && bytesAlreadyRecieved != 0) {
                             reply = incomingMessage;
                             incomingMessage = null;
                             bytesToRecieve = 0;
@@ -569,18 +581,11 @@ public class IpCameraHandler extends BaseThingHandler {
                             super.channelRead(ctx, reply);
                         }
                     }
-                    // HIKVISION alertStream never has a LastHttpContent as it always stays open//
-                    if (contentType.contains("multipart")) {
-                        if (!contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
-                            reply = incomingMessage;
-                            incomingMessage = null;
-                            bytesToRecieve = 0;
-                            bytesAlreadyRecieved = 0;
-                            super.channelRead(ctx, reply);
-                        }
-                    }
-                    // Foscam needs this as will other cameras with chunks//
-                    if (isChunked && bytesAlreadyRecieved != 0) {
+
+                } else {
+                    logger.debug("Message passed on from new code, must be EmptyLastHttpContent");
+                    // If it is not an image send it on to the next handler as some cams have EmptyLastHttpContent//
+                    if (!contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
                         reply = incomingMessage;
                         incomingMessage = null;
                         bytesToRecieve = 0;
@@ -588,6 +593,8 @@ public class IpCameraHandler extends BaseThingHandler {
                         super.channelRead(ctx, reply);
                     }
                 }
+            } finally {
+                ReferenceCountUtil.release(msg);
             }
         }
 
@@ -603,9 +610,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
         @Override
         public void handlerRemoved(ChannelHandlerContext ctx) {
-            logger.debug("handlerremover trying to lock");
             lock.lock();
-            logger.debug("handlerremover has lock");
             try {
                 byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
                 if (indexInLists >= 0) {
@@ -617,9 +622,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     }
                 }
             } finally {
-                logger.debug("handlerremover trying to unlock");
                 lock.unlock();
-                logger.debug("handlerremover has unlocked");
             }
             lastSnapshot = null;
             bytesAlreadyRecieved = 0;
@@ -706,40 +709,45 @@ public class IpCameraHandler extends BaseThingHandler {
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            String content = msg.toString();
+            try {
+                String content = msg.toString();
 
-            if (!content.isEmpty()) {
-                logger.trace("HTTP Result back from camera is \t:{}:", content);
+                if (!content.isEmpty()) {
+                    logger.trace("HTTP Result back from camera is \t:{}:", content);
+                }
+
+                switch (content) {
+                    case "Error: No Events\r\n":
+                        if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion".equals(requestUrl)) {
+                            updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                            firstMotionAlarm = false;
+                        } else if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation"
+                                .equals(requestUrl)) {
+                            updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                            firstAudioAlarm = false;
+                        }
+                        break;
+
+                    case "channels[0]=0\r\n":
+                        if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion".equals(requestUrl)) {
+                            motionDetected(CHANNEL_MOTION_ALARM);
+                        } else if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation"
+                                .equals(requestUrl)) {
+                            audioDetected();
+                        }
+                        break;
+                }
+
+                if (content.contains("table.MotionDetect[" + nvrChannel + "].Enable=false")) {
+                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                } else if (content.contains("table.MotionDetect[" + nvrChannel + "].Enable=true")) {
+                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
+                }
+
+            } finally {
+                ReferenceCountUtil.release(msg);
+                ctx.close();
             }
-
-            switch (content) {
-                case "Error: No Events\r\n":
-                    if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion".equals(requestUrl)) {
-                        updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                        firstMotionAlarm = false;
-                    } else if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation"
-                            .equals(requestUrl)) {
-                        updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
-                        firstAudioAlarm = false;
-                    }
-                    break;
-
-                case "channels[0]=0\r\n":
-                    if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion".equals(requestUrl)) {
-                        motionDetected(CHANNEL_MOTION_ALARM);
-                    } else if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation"
-                            .equals(requestUrl)) {
-                        audioDetected();
-                    }
-                    break;
-            }
-
-            if (content.contains("table.MotionDetect[" + nvrChannel + "].Enable=false")) {
-                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
-            } else if (content.contains("table.MotionDetect[" + nvrChannel + "].Enable=true")) {
-                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
-            }
-            ctx.close();
         }
     }
 
@@ -747,55 +755,62 @@ public class IpCameraHandler extends BaseThingHandler {
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            String content = msg.toString();
-            if (!content.isEmpty()) {
-                logger.trace("HTTP Result back from camera is \t:{}:", content);
-            }
-
-            ////////////// Motion Alarm //////////////
-            if (content.contains("<motionDetectAlarm>")) {
-                if (content.contains("<motionDetectAlarm>0</motionDetectAlarm>")) {
-                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                } else if (content.contains("<motionDetectAlarm>1</motionDetectAlarm>")) { // Enabled but no alarm
-                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
-                    updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                    firstMotionAlarm = false;
-                } else if (content.contains("<motionDetectAlarm>2</motionDetectAlarm>")) {// Enabled, alarm on
-                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
-                    motionDetected(CHANNEL_MOTION_ALARM);
+            String content = null;
+            try {
+                content = msg.toString();
+                if (!content.isEmpty()) {
+                    logger.trace("HTTP Result back from camera is \t:{}:", content);
                 }
-            }
 
-            ////////////// Sound Alarm //////////////
-            if (content.contains("<soundAlarm>0</soundAlarm>")) {
-                updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
-                updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
-                firstAudioAlarm = false;
-            }
-            if (content.contains("<soundAlarm>1</soundAlarm>")) {
-                updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
-                updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
-                firstAudioAlarm = false;
-            }
-            if (content.contains("<soundAlarm>2</soundAlarm>")) {
-                updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
-                audioDetected();
-            }
+                ////////////// Motion Alarm //////////////
+                if (content.contains("<motionDetectAlarm>")) {
+                    if (content.contains("<motionDetectAlarm>0</motionDetectAlarm>")) {
+                        updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                    } else if (content.contains("<motionDetectAlarm>1</motionDetectAlarm>")) { // Enabled but no alarm
+                        updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
+                        updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                        firstMotionAlarm = false;
+                    } else if (content.contains("<motionDetectAlarm>2</motionDetectAlarm>")) {// Enabled, alarm on
+                        updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
+                        motionDetected(CHANNEL_MOTION_ALARM);
+                    }
+                }
 
-            ////////////// Sound Threshold //////////////
-            if (content.contains("<sensitivity>0</sensitivity>")) {
-                updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf("0"));
-            }
-            if (content.contains("<sensitivity>1</sensitivity>")) {
-                updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf("50"));
-            }
-            if (content.contains("<sensitivity>2</sensitivity>")) {
-                updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf("100"));
-            }
+                ////////////// Sound Alarm //////////////
+                if (content.contains("<soundAlarm>0</soundAlarm>")) {
+                    updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                    updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                    firstAudioAlarm = false;
+                }
+                if (content.contains("<soundAlarm>1</soundAlarm>")) {
+                    updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
+                    updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                    firstAudioAlarm = false;
+                }
+                if (content.contains("<soundAlarm>2</soundAlarm>")) {
+                    updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
+                    audioDetected();
+                }
 
-            if (content.contains("</CGI_Result>")) {
-                ctx.close();
-                logger.debug("End of FOSCAM handler reached, so closing the channel to the camera now");
+                ////////////// Sound Threshold //////////////
+                if (content.contains("<sensitivity>0</sensitivity>")) {
+                    updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf("0"));
+                }
+                if (content.contains("<sensitivity>1</sensitivity>")) {
+                    updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf("50"));
+                }
+                if (content.contains("<sensitivity>2</sensitivity>")) {
+                    updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf("100"));
+                }
+
+                if (content.contains("</CGI_Result>")) {
+                    ctx.close();
+                    logger.debug("End of FOSCAM handler reached, so closing the channel to the camera now");
+                }
+
+            } finally {
+                ReferenceCountUtil.release(msg);
+                content = null;
             }
         }
     }
@@ -804,32 +819,39 @@ public class IpCameraHandler extends BaseThingHandler {
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            String content = msg.toString();
+            String content = null;
+            try {
+                content = msg.toString();
 
-            if (!content.isEmpty()) {
-                logger.trace("HTTP Result back from camera is \t:{}:", content);
-            }
-
-            // Audio Alarm
-            String aa_enable = searchString(content, "var aa_enable = \"");
-            if ("1".equals(aa_enable)) {
-                updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
-                String aa_value = searchString(content, "var aa_value = \"");
-                // String aa_time = searchString(content, "var aa_time = \"");
-                if (!aa_value.isEmpty()) {
-                    logger.debug("Threshold is changing to {}", aa_value);
-                    updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf(aa_value));
+                if (!content.isEmpty()) {
+                    logger.trace("HTTP Result back from camera is \t:{}:", content);
                 }
-            } else if ("0".equals(aa_enable)) {
-                updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
-            }
 
-            // Motion Alarm
-            String m1_enable = searchString(content, "var m1_enable=\"");
-            if ("1".equals(m1_enable)) {
-                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
-            } else if ("0".equals(m1_enable)) {
-                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                // Audio Alarm
+                String aa_enable = searchString(content, "var aa_enable = \"");
+                if ("1".equals(aa_enable)) {
+                    updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
+                    String aa_value = searchString(content, "var aa_value = \"");
+                    // String aa_time = searchString(content, "var aa_time = \"");
+                    if (!aa_value.isEmpty()) {
+                        logger.debug("Threshold is changing to {}", aa_value);
+                        updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf(aa_value));
+                    }
+                } else if ("0".equals(aa_enable)) {
+                    updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                }
+
+                // Motion Alarm
+                String m1_enable = searchString(content, "var m1_enable=\"");
+                if ("1".equals(m1_enable)) {
+                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
+                } else if ("0".equals(m1_enable)) {
+                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                }
+
+            } finally {
+                ReferenceCountUtil.release(msg);
+                content = null;
             }
         }
     }
@@ -857,138 +879,152 @@ public class IpCameraHandler extends BaseThingHandler {
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            String content = msg.toString();
-            if (!content.isEmpty()) {
-                logger.trace("HTTP Result back from camera is \t:{}:", content);
-                // logger.debug("HTTP Result back from camera is \t:{}:", content);
+            String content = null;
+            try {
+                content = msg.toString();
+                if (!content.isEmpty()) {
+                    logger.trace("HTTP Result back from camera is \t:{}:", content);
+                    // logger.debug("HTTP Result back from camera is \t:{}:", content);
+                }
+
+                // Alarm checking goes in here//
+                if (content.contains("<EventNotificationAlert version=\"")) {
+                    if (content.contains("hannelID>" + nvrChannel + "</")) {// some camera use c or <dynChannelID>
+
+                        if (content.contains("<eventType>linedetection</eventType>")) {
+                            motionDetected(CHANNEL_LINE_CROSSING_ALARM);
+                            lineCount = 5;
+                            countDown();
+                        }
+                        if (content.contains("<eventType>VMD</eventType>")) {
+                            motionDetected(CHANNEL_MOTION_ALARM);
+                            vmdCount = 5;
+                            if (vmdCount > 0) {
+                                countDown();
+                            }
+                        }
+                        if (content.contains("<eventType>facedetection</eventType>")) {
+                            updateState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("ON"));
+                            faceCount = 5;
+                            if (faceCount > 0) {
+                                countDown();
+                            }
+                        }
+                        if (content.contains("<eventType>unattendedBaggage</eventType>")) {
+                            updateState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("ON"));
+                            leftCount = 5;
+                            if (leftCount > 0) {
+                                countDown();
+                            }
+                        }
+                        if (content.contains("<eventType>attendedBaggage</eventType>")) {
+                            updateState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("ON"));
+                            takenCount = 5;
+                            if (takenCount > 0) {
+                                countDown();
+                            }
+                        }
+                        if (content.contains("<eventType>videoloss</eventType>\r\n<eventState>inactive</eventState>")) {
+                            firstMotionAlarm = false;
+                            countDown();
+                            countDown();
+                            countDown();
+                        }
+                    } else if (content.contains("<channelID>0</channelID>")) {// NVR uses channel 0 to say all channels
+                        if (content.contains("<eventType>videoloss</eventType>\r\n<eventState>inactive</eventState>")) {
+                            firstMotionAlarm = false;
+                            countDown();
+                            countDown();
+                            countDown();
+                        }
+                    }
+                    if (lineCount-- == 1) {
+                        updateState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
+                    }
+                    if (vmdCount-- == 1) {
+                        updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                    }
+                    if (leftCount-- == 1) {
+                        updateState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("OFF"));
+                    }
+                    if (takenCount-- == 1) {
+                        updateState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("OFF"));
+                    }
+                    if (faceCount-- == 1) {
+                        updateState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("OFF"));
+                    }
+                }
+
+                // determine if the motion detection is turned on or off.
+                else if (content.contains("<MotionDetection version=\"2.0\" xmlns=\"http://www.")) {
+                    lock.lock();
+                    try {
+                        byte indexInLists = (byte) listOfRequests
+                                .indexOf("/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection");
+                        if (indexInLists >= 0) {
+                            logger.debug(
+                                    "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Storing new Motion reply {}",
+                                    content);
+                            listOfReplies.set(indexInLists, content);
+                        }
+                    } finally {
+                        lock.unlock();
+                    }
+
+                    if (content.contains("<enabled>true</enabled>")) {
+                        updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
+                    } else if (content.contains("<enabled>false</enabled>")) {
+                        updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                    }
+                } else if (content.contains("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n" + "<LineDetection>")) {
+                    lock.lock();
+                    try {
+                        byte indexInLists = (byte) listOfRequests
+                                .indexOf("/ISAPI/Smart/LineDetection/" + nvrChannel + "01");
+                        if (indexInLists >= 0) {
+                            logger.debug(
+                                    "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Storing new Line Crossing reply {}",
+                                    content);
+                            listOfReplies.set(indexInLists, content);
+                        }
+                    } finally {
+                        lock.unlock();
+                    }
+                    if (content.contains("<enabled>true</enabled>")) {
+                        updateState(CHANNEL_ENABLE_LINE_CROSSING_ALARM, OnOffType.valueOf("ON"));
+                    } else if (content.contains("<enabled>false</enabled>")) {
+                        updateState(CHANNEL_ENABLE_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
+                    }
+                } else if (content.contains("<AudioDetection version=\"2.0\" xmlns=\"http://www.")) {
+                    lock.lock();
+                    try {
+                        byte indexInLists = (byte) listOfRequests
+                                .indexOf("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01");
+                        if (indexInLists >= 0) {
+                            listOfReplies.set(indexInLists, content);
+                        }
+                    } finally {
+                        lock.unlock();
+                    }
+                    if (content.contains("<enabled>true</enabled>")) {
+                        updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
+                    } else if (content.contains("<enabled>false</enabled>")) {
+                        updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                    }
+
+                } ////////////////// External Alarm Input ///////////////
+                if (content.contains("<IOPortStatus xmlns=\"http://www.")) {
+                    if (content.contains("<ioState>active</ioState>")) {
+                        updateState(CHANNEL_EXTERNAL_ALARM_INPUT, OnOffType.valueOf("ON"));
+                    } else if (content.contains("<ioState>inactive</ioState>")) {
+                        updateState(CHANNEL_EXTERNAL_ALARM_INPUT, OnOffType.valueOf("OFF"));
+                    }
+                }
+
+            } finally {
+                ReferenceCountUtil.release(msg);
+                content = null;
             }
-
-            // Alarm checking goes in here//
-            if (content.contains("<EventNotificationAlert version=\"")) {
-                if (content.contains("hannelID>" + nvrChannel + "</")) {// some camera use c or <dynChannelID>
-
-                    if (content.contains("<eventType>linedetection</eventType>")) {
-                        motionDetected(CHANNEL_LINE_CROSSING_ALARM);
-                        lineCount = 5;
-                        countDown();
-                    }
-                    if (content.contains("<eventType>VMD</eventType>")) {
-                        motionDetected(CHANNEL_MOTION_ALARM);
-                        vmdCount = 5;
-                        if (vmdCount > 0) {
-                            countDown();
-                        }
-                    }
-                    if (content.contains("<eventType>facedetection</eventType>")) {
-                        updateState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("ON"));
-                        faceCount = 5;
-                        if (faceCount > 0) {
-                            countDown();
-                        }
-                    }
-                    if (content.contains("<eventType>unattendedBaggage</eventType>")) {
-                        updateState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("ON"));
-                        leftCount = 5;
-                        if (leftCount > 0) {
-                            countDown();
-                        }
-                    }
-                    if (content.contains("<eventType>attendedBaggage</eventType>")) {
-                        updateState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("ON"));
-                        takenCount = 5;
-                        if (takenCount > 0) {
-                            countDown();
-                        }
-                    }
-                    if (content.contains("<eventType>videoloss</eventType>\r\n<eventState>inactive</eventState>")) {
-                        firstMotionAlarm = false;
-                        countDown();
-                        countDown();
-                        countDown();
-                    }
-                } else if (content.contains("<channelID>0</channelID>")) {// NVR uses channel 0 to say all channels
-                    if (content.contains("<eventType>videoloss</eventType>\r\n<eventState>inactive</eventState>")) {
-                        firstMotionAlarm = false;
-                        countDown();
-                        countDown();
-                        countDown();
-                    }
-                }
-                if (lineCount-- == 1) {
-                    updateState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
-                }
-                if (vmdCount-- == 1) {
-                    updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                }
-                if (leftCount-- == 1) {
-                    updateState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("OFF"));
-                }
-                if (takenCount-- == 1) {
-                    updateState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("OFF"));
-                }
-                if (faceCount-- == 1) {
-                    updateState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("OFF"));
-                }
-            }
-
-            // determine if the motion detection is turned on or off.
-            else if (content
-                    .contains("<MotionDetection version=\"2.0\" xmlns=\"http://www.hikvision.com/ver20/XMLSchema\">")) {
-                lock.lock();
-                try {
-                    byte indexInLists = (byte) listOfRequests
-                            .indexOf("/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection");
-                    if (indexInLists >= 0) {
-                        logger.debug("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Storing new Motion reply {}",
-                                content);
-                        listOfReplies.set(indexInLists, content);
-                    }
-                } finally {
-                    lock.unlock();
-                }
-
-                if (content.contains("<enabled>true</enabled>")) {
-                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
-                } else if (content.contains("<enabled>false</enabled>")) {
-                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                }
-            } else if (content.contains("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n" + "<LineDetection>")) {
-                lock.lock();
-                try {
-                    byte indexInLists = (byte) listOfRequests
-                            .indexOf("/ISAPI/Smart/LineDetection/" + nvrChannel + "01");
-                    if (indexInLists >= 0) {
-                        logger.debug(
-                                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Storing new Line Crossing reply {}",
-                                content);
-                        listOfReplies.set(indexInLists, content);
-                    }
-                } finally {
-                    lock.unlock();
-                }
-                if (content.contains("<enabled>true</enabled>")) {
-                    updateState(CHANNEL_ENABLE_LINE_CROSSING_ALARM, OnOffType.valueOf("ON"));
-                } else if (content.contains("<enabled>false</enabled>")) {
-                    updateState(CHANNEL_ENABLE_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
-                }
-            } else if (content.contains("<AudioDetection version=\"2.0\" xmlns=\"http://www.")) {
-                lock.lock();
-                try {
-                    byte indexInLists = (byte) listOfRequests
-                            .indexOf("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01");
-                    if (indexInLists >= 0) {
-                        listOfReplies.set(indexInLists, content);
-                    }
-                } finally {
-                    lock.unlock();
-                }
-                if (content.contains("<enabled>true</enabled>")) {
-                    updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
-                } else if (content.contains("<enabled>false</enabled>")) {
-                    updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
-                }
-            }
-            content = null;
         }
     }
 
@@ -996,35 +1032,39 @@ public class IpCameraHandler extends BaseThingHandler {
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            String content = msg.toString();
-            if (!content.isEmpty()) {
-                logger.trace("HTTP Result back from camera is \t:{}:", content);
-            }
+            String content = null;
+            try {
+                content = msg.toString();
+                if (!content.isEmpty()) {
+                    logger.trace("HTTP Result back from camera is \t:{}:", content);
+                }
 
-            // determine if the motion detection is turned on or off.
-            if (content.contains("table.Alarm[0].Enable=true")) {
-                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
-            } else if (content.contains("table.Alarm[0].Enable=false")) {
-                updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
-            }
+                // determine if the motion detection is turned on or off.
+                if (content.contains("table.Alarm[0].Enable=true")) {
+                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
+                } else if (content.contains("table.Alarm[0].Enable=false")) {
+                    updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                }
 
-            // Handle motion alarm
-            if (content.contains("Code=VideoMotion;action=Start;index=")) {
-                motionDetected(CHANNEL_MOTION_ALARM);
-            } else if (content.contains("Code=VideoMotion;action=Stop;index=")) {
-                updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                firstMotionAlarm = false;
-            }
+                // Handle motion alarm
+                if (content.contains("Code=VideoMotion;action=Start;index=")) {
+                    motionDetected(CHANNEL_MOTION_ALARM);
+                } else if (content.contains("Code=VideoMotion;action=Stop;index=")) {
+                    updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                    firstMotionAlarm = false;
+                }
 
-            // Handle CrossLineDetection alarm
-            if (content.contains("Code=CrossLineDetection;action=Start;index=")) {
-                motionDetected(CHANNEL_LINE_CROSSING_ALARM);
-            } else if (content.contains("Code=CrossLineDetection;action=Stop;index=")) {
-                updateState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
-                firstMotionAlarm = false;
+                // Handle CrossLineDetection alarm
+                if (content.contains("Code=CrossLineDetection;action=Start;index=")) {
+                    motionDetected(CHANNEL_LINE_CROSSING_ALARM);
+                } else if (content.contains("Code=CrossLineDetection;action=Stop;index=")) {
+                    updateState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
+                    firstMotionAlarm = false;
+                }
+            } finally {
+                ReferenceCountUtil.release(msg);
+                content = null;
             }
-
-            content = null;
         }
 
     }
@@ -1304,6 +1344,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         break;
                     case "HIKVISION":
                         if ("ON".equals(command.toString())) {
+
                             hikChangeSetting("/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection",
                                     "<enabled>false</enabled>", "<enabled>true</enabled>");
                         } else {
@@ -1654,6 +1695,8 @@ public class IpCameraHandler extends BaseThingHandler {
                         cleanChannels();
                         sendHttpGET("/ISAPI/Event/notification/alertStream");
                     }
+
+                    sendHttpGET("/ISAPI/System/IO/inputs/" + nvrChannel + "/status");
 
                     break;
                 case "INSTAR":

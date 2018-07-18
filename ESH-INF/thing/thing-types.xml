@@ -524,7 +524,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="faceDetected" typeId="faceDetected"/>              
             <channel id="enableAudioAlarm" typeId="enableAudioAlarm"/>
             <channel id="audioAlarm" typeId="audioAlarm"/>
-            <channel id="activateAlarmOutput" typeId="activateAlarmOutput"/>                 
+            <channel id="activateAlarmOutput" typeId="activateAlarmOutput"/>
+            <channel id="externalAlarmInput" typeId="externalAlarmInput"/>                
             <channel id="pan" typeId="pan"/>
             <channel id="tilt" typeId="tilt"/>
             <channel id="zoom" typeId="zoom"/>
@@ -935,6 +936,14 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <category>SoundVolume</category>
         <state readOnly="true" />
         </channel-type>
+        
+        <channel-type id="externalAlarmInput">
+        <item-type>Switch</item-type>
+        <label>External Alarm Input</label>
+        <description>Some cameras have alarm input wires which can be used to connect to door bells or external PIR sensors.</description>
+        <category>Alarm</category>
+        <state readOnly="true" />
+        </channel-type>      
         
         <channel-type id="enableMotionAlarm">
         <item-type>Switch</item-type>

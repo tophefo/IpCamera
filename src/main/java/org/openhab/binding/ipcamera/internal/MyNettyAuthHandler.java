@@ -200,9 +200,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                     }
                     // Need to mark the channel as closing so when we resend with digest we get a new channel.
                     if (closeConnection) {
-                        logger.debug("401: Trying to lock");
                         myHandler.lock.lock();
-                        logger.debug("401: locked");
                         try {
                             byte indexInLists = (byte) myHandler.listOfChannels.indexOf(ctx.channel());
                             if (indexInLists >= 0) {
@@ -214,7 +212,6 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                             }
                         } finally {
                             myHandler.lock.unlock();
-                            logger.debug("401: unlocked");
                         }
                     }
                     if (authenticate != null) {

@@ -136,17 +136,36 @@ Thing ipcamera:AMCREST:001 [ IPADDRESS="192.168.1.2", PASSWORD="suitcase123456",
 
 
 
+
+
 A second example, this time using items for the image:
 
 
 *.items
 
-Image frontDoorCam { channel="ipcamera:HIKVISION:78941ac2:image" }
+
+Image BabyCam { channel="ipcamera:AMCREST:001:image" }
+Switch BabyCamImage { channel="ipcamera:AMCREST:001:updateImageNow" }
+Dimmer BabyCamPan { channel="ipcamera:AMCREST:001:pan" }
+Dimmer BabyCamTilt { channel="ipcamera:AMCREST:001:tilt" }
+Dimmer BabyCamZoom { channel="ipcamera:AMCREST:001:zoom" }
+Switch BabyCamEnableMotion { channel="ipcamera:AMCREST:001:enableMotionAlarm" }
+Switch BabyCamMotionAlarm { channel="ipcamera:AMCREST:001:motionAlarm" }
+Switch BabyCamAudioAlarm { channel="ipcamera:AMCREST:001:audioAlarm" }
 
 
 *.sitemap
 
-Default item=frontDoorCam 
+
+Image url="http://google.com/leaveLinkAsThis" item=BabyCam refresh=2000
+Switch item=BabyCamImage label="Fetch new picture of baby"
+Slider item=BabyCamPan
+Slider item=BabyCamTilt
+Slider item=BabyCamZoom
+Switch item=BabyCamEnableMotion
+Switch item=BabyCamMotionAlarm
+Switch item=BabyCamAudioAlarm
+
 
 
 ## Reducing log sizes
