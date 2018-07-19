@@ -113,7 +113,7 @@ UID: Can be made up but it must be UNIQUE, hence why it is called uniqueID. If y
 
 IMAGE_UPDATE_EVENTS
 
-Need to add a description on how to use this in texual config.
+Need to add a description on how to use this in textual config.
 
 ## Channels
 
@@ -138,10 +138,6 @@ Thing ipcamera:HIKVISION:002 [IPADDRESS="192.168.3.6", PASSWORD="suitcase123456"
 
 ```
 
-
-
-
-A second example, this time using items for the image:
 
 
 *.items
