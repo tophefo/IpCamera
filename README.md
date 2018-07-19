@@ -82,7 +82,21 @@ IMAGE_UPDATE_EVENTS
 Create a file called 'ipcamera.things' and save it to your things folder. Inside this file enter this in plain text and modify it to your needs...
 
 
-Thing ipcamera:ONVIF:001 [ IPADDRESS="192.168.1.2", PASSWORD="suitcase123456", USERNAME="Admin", ONVIF_PORT=80, PORT=80]
+```
+
+Thing ipcamera:ONVIF:001 [ IPADDRESS="192.168.1.21", PASSWORD="suitcase123456", USERNAME="Admin", ONVIF_PORT=80, PORT=80]
+
+```
+
+A second example, this time for a camera that does not have API or ONVIF support.
+
+
+```
+
+Thing ipcamera:HTTPONLY:002 [ IPADDRESS="192.168.1.22", PASSWORD="suitcase123456", USERNAME="admin", SNAPSHOT_URL_OVERIDE="http://192.168.1.22/cgi-bin/CGIProxy.fcgi?cmd=snapPicture2&usr=admin&pwd=suitcase123456", PORT=80]
+
+```
+
 
 
 Here you see the format is: bindingID:THINGTYPE:UID [param1="string",param2=x,param3=x]
@@ -114,6 +128,9 @@ NOTE: You need to ensure the 001 is replaced with the cameras UID which may look
 
 *.sitemap
 
+
+```
+
 Slider item=ipcamera_AMCREST_001_pan
 
 Slider item=ipcamera_AMCREST_001_tilt
@@ -127,13 +144,21 @@ Switch item=ipcamera_AMCREST_001_motionAlarm
 Switch item=ipcamera_AMCREST_001_audioAlarm
 
 Image url="http://google.com/leaveLinkAsThis" item=ipcamera_AMCREST_001_image refresh=5000
-             
+
+
+```
+        
                 
 
 *.things
 
+
+```
+
 Thing ipcamera:AMCREST:001 [ IPADDRESS="192.168.1.2", PASSWORD="suitcase123456", USERNAME="DVadar", ONVIF_MEDIA_PROFILE=0]
 
+
+```
 
 
 
@@ -143,6 +168,7 @@ A second example, this time using items for the image:
 
 *.items
 
+```
 
 Image BabyCam { channel="ipcamera:AMCREST:001:image" }
 Switch BabyCamImage { channel="ipcamera:AMCREST:001:updateImageNow" }
@@ -153,9 +179,12 @@ Switch BabyCamEnableMotion { channel="ipcamera:AMCREST:001:enableMotionAlarm" }
 Switch BabyCamMotionAlarm { channel="ipcamera:AMCREST:001:motionAlarm" }
 Switch BabyCamAudioAlarm { channel="ipcamera:AMCREST:001:audioAlarm" }
 
+```
+
 
 *.sitemap
 
+```
 
 Image url="http://google.com/leaveLinkAsThis" item=BabyCam refresh=2000
 Switch item=BabyCamImage label="Fetch new picture of baby"
@@ -166,6 +195,8 @@ Switch item=BabyCamEnableMotion
 Switch item=BabyCamMotionAlarm
 Switch item=BabyCamAudioAlarm
 
+```
+
 
 
 ## Reducing log sizes
@@ -175,13 +206,19 @@ There are two log files discussed here, openhab.log and events.log please take t
 
 To watch the logs in realtime with openhabian setups use this linux command which can be done via SSH with a program called putty from a windows or mac machine. 
 
+```
+
 tail -f /var/log/openhab2/openhab.log -f /var/log/openhab2/events.log
+
+```
+
 
 CTRL+C will close the stream. You can also use SAMBA/network shares to open or copy the file directly, but my favorite way to view the logs is with "Frontail". Frontail is another UI that can be selected like paperUI, and can be installed using the openhabian config tool.
 
 
 openhab.log This file displays the information from all bindings and can have the amount of information turned up or down on a per binding basis. The default level is INFO and is the middle level of 5 settings you can use. Openhab documentation goes into this in more detail. Using KARAF console you can use these commands to turn the logging up and down to suit your needs. If you are having issues with the binding not working with your camera, then TRACE will give me everything in DEBUG with the additional reply packets from the camera for me to use for fault finding.
 
+```
 
 log:set WARN org.openhab.binding.ipcamera
 
@@ -191,11 +228,18 @@ log:set DEBUG org.openhab.binding.ipcamera
 
 log:set TRACE org.openhab.binding.ipcamera
 
+```
+
 
 events.log By default Openhab will log all image updates as an event into a file called events.log, this file can quickly grow if you have multiple cameras all updating pictures every second. To reduce this if you do not want to switch to only updating the image on EVENTS like motion alarms, you then only have 1 option and that is to turn off all events. Openhab does not allow filtering at a binding level due to the log being a pure output from the event bus. To disable use this command in Karaf.
 
 
+```
+
 log:set WARN smarthome.event
+
+```
+
 
 To re-enable use the same command with INFO instead of WARN. 
 
