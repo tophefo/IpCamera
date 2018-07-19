@@ -121,33 +121,11 @@ See PaperUI for a full list of channels and the descriptions. Each camera brand 
 
 ## Full Example
 
-Use the following examples to base your setup on to save some time. NOTE: If your camera is secured with a user and password the links will not work and you will have to use the IMAGE channel to see a picture. FOSCAM cameras are the exception to this as they use the user and pass in plain text in the URL. In the example below you need to leave a fake address in the "Image url=" line otherwise it does not work, the item= overrides the url. Feel free to let me know if this is wrong or if you find a better way. Lastly these will not work unless you link the channels in PaperUI, this is shown by a dot in the centre of the circles when looking at all the available channels.
+Use the following examples to base your setup on to save some time. NOTE: If your camera is secured with a user and password the links will not work and you will have to use the IMAGE channel to see a picture. FOSCAM cameras are the exception to this as they use the user and pass in plain text in the URL. In the example below you need to leave a fake address in the "Image url=" line otherwise it does not work, the item= overrides the url. Feel free to let me know if this is wrong or if you find a better way.
 
-NOTE: You need to ensure the 001 is replaced with the cameras UID which may look like "0A78687F" if you used PaperUI to add the camera. Also replace AMCREST with the name of the supported thing you are using from the list above.
-
-
-*.sitemap
+NOTE: You need to ensure the 001 is replaced with the cameras UID which may look like "0A78687F" if you used PaperUI to add the camera. Also replace AMCREST or HIKVISION with the name of the supported thing you are using from the list above.
 
 
-```
-
-Slider item=ipcamera_AMCREST_001_pan
-
-Slider item=ipcamera_AMCREST_001_tilt
-
-Slider item=ipcamera_AMCREST_001_zoom
-
-Switch item=ipcamera_AMCREST_001_enableMotionAlarm
-
-Switch item=ipcamera_AMCREST_001_motionAlarm
-
-Switch item=ipcamera_AMCREST_001_audioAlarm
-
-Image url="http://google.com/leaveLinkAsThis" item=ipcamera_AMCREST_001_image refresh=5000
-
-
-```
-        
                 
 
 *.things
@@ -155,8 +133,8 @@ Image url="http://google.com/leaveLinkAsThis" item=ipcamera_AMCREST_001_image re
 
 ```
 
-Thing ipcamera:AMCREST:001 [ IPADDRESS="192.168.1.2", PASSWORD="suitcase123456", USERNAME="DVadar", ONVIF_MEDIA_PROFILE=0]
-
+Thing ipcamera:AMCREST:001 [IPADDRESS="192.168.3.2", PASSWORD="suitcase123456", USERNAME="DVadar", POLL_CAMERA_MS=5000]
+Thing ipcamera:HIKVISION:002 [IPADDRESS="192.168.3.6", PASSWORD="suitcase123456", USERNAME="LukeS", POLL_CAMERA_MS=5000]
 
 ```
 
@@ -170,14 +148,21 @@ A second example, this time using items for the image:
 
 ```
 
-Image BabyCam { channel="ipcamera:AMCREST:001:image" }
-Switch BabyCamImage { channel="ipcamera:AMCREST:001:updateImageNow" }
-Dimmer BabyCamPan { channel="ipcamera:AMCREST:001:pan" }
-Dimmer BabyCamTilt { channel="ipcamera:AMCREST:001:tilt" }
-Dimmer BabyCamZoom { channel="ipcamera:AMCREST:001:zoom" }
-Switch BabyCamEnableMotion { channel="ipcamera:AMCREST:001:enableMotionAlarm" }
-Switch BabyCamMotionAlarm { channel="ipcamera:AMCREST:001:motionAlarm" }
-Switch BabyCamAudioAlarm { channel="ipcamera:AMCREST:001:audioAlarm" }
+Image BabyCamImage { channel="ipcamera:AMCREST:001:image" }
+Switch BabyCamUpdateImage "Get new picture" { channel="ipcamera:AMCREST:001:updateImageNow" }
+Dimmer BabyCamPan "Pan left/right" { channel="ipcamera:AMCREST:001:pan" }
+Dimmer BabyCamTilt "Tilt up/down" { channel="ipcamera:AMCREST:001:tilt" }
+Dimmer BabyCamZoom "Zoom in/out" { channel="ipcamera:AMCREST:001:zoom" }
+Switch BabyCamEnableMotion "MotionAlarm on/off" { channel="ipcamera:AMCREST:001:enableMotionAlarm" }
+Switch BabyCamMotionAlarm "Motion detected" { channel="ipcamera:AMCREST:001:motionAlarm" }
+Switch BabyCamAudioAlarm "Audio detected" { channel="ipcamera:AMCREST:001:audioAlarm" }
+
+Image CamImage { channel="ipcamera:HIKVISION:002:image" }
+Switch CamUpdateImage "Get new picture" { channel="ipcamera:HIKVISION:002:updateImageNow" }
+Switch CamEnableMotionAlarm "MotionAlarm on/off" { channel="ipcamera:HIKVISION:002:enableMotionAlarm" }
+Switch CamMotionAlarm "Motion detected" { channel="ipcamera:HIKVISION:002:motionAlarm" }
+Switch CamEnableLineAlarm "LineAlarm on/off" { channel="ipcamera:HIKVISION:002:enableLineCrossingAlarm" }
+Switch CamLineAlarm "Line Alarm detected" { channel="ipcamera:HIKVISION:002:lineCrossingAlarm" }
 
 ```
 
@@ -186,14 +171,26 @@ Switch BabyCamAudioAlarm { channel="ipcamera:AMCREST:001:audioAlarm" }
 
 ```
 
-Image url="http://google.com/leaveLinkAsThis" item=BabyCam refresh=2000
-Switch item=BabyCamImage label="Fetch new picture of baby"
-Slider item=BabyCamPan
-Slider item=BabyCamTilt
-Slider item=BabyCamZoom
-Switch item=BabyCamEnableMotion
-Switch item=BabyCamMotionAlarm
-Switch item=BabyCamAudioAlarm
+        Text label="BabyMonitor" icon="camera" 
+        {   
+        Image url="http://google.com/leaveLinkAsThis" item=BabyCamImage refresh=5000
+        Switch item=BabyCamImage label="Get new picture"
+        Slider item=BabyCamPan label="Pan left/right"
+        Slider item=BabyCamTilt label="Tilt up/down"
+        Slider item=BabyCamZoom label="Zoom in/out"
+        Switch item=BabyCamEnableMotion label="Turn motion on/off"
+        Switch item=BabyCamMotionAlarm label="Motion detected"
+        Switch item=BabyCamAudioAlarm label="Audio detected"    
+        }   
+        Text label="Driveway Camera" icon="camera" 
+        {   
+            Image url="http://google.com/leaveLinkAsThis" item=CamImage refresh=5000
+            Switch item=CamUpdateImage label="Fetch new picture of Driveway"
+            Switch item=CamEnableMotionAlarm
+            Switch item=CamMotionAlarm
+            Switch item=CamEnableLineAlarm
+            Switch item=CamLineAlarm        
+        }
 
 ```
 
@@ -217,6 +214,7 @@ CTRL+C will close the stream. You can also use SAMBA/network shares to open or c
 
 
 openhab.log This file displays the information from all bindings and can have the amount of information turned up or down on a per binding basis. The default level is INFO and is the middle level of 5 settings you can use. Openhab documentation goes into this in more detail. Using KARAF console you can use these commands to turn the logging up and down to suit your needs. If you are having issues with the binding not working with your camera, then TRACE will give me everything in DEBUG with the additional reply packets from the camera for me to use for fault finding.
+
 
 ```
 
