@@ -1013,7 +1013,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     }
 
                 } ////////////////// External Alarm Input ///////////////
-                if (content.contains("<IOPortStatus xmlns=\"http://www.")) {
+                else if (content.contains("<IOPortStatus version=\"2.0\" xmlns=\"http://www.")) {
                     if (content.contains("<ioState>active</ioState>")) {
                         updateState(CHANNEL_EXTERNAL_ALARM_INPUT, OnOffType.valueOf("ON"));
                     } else if (content.contains("<ioState>inactive</ioState>")) {
