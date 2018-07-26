@@ -368,7 +368,6 @@ public class IpCameraHandler extends BaseThingHandler {
 
         logger.debug("Sending camera at IP:{}, \tURL:{}", ipAddress, httpRequestURL);
         lock.lock();
-        logger.debug("Just locked in main1");
 
         byte indexInLists = -1;
         try {
@@ -396,7 +395,6 @@ public class IpCameraHandler extends BaseThingHandler {
             }
         } finally {
             lock.unlock();
-            logger.debug("Just unlocked main1");
         }
 
         chFuture = mainBootstrap.connect(new InetSocketAddress(ipAddress, port));
@@ -581,10 +579,9 @@ public class IpCameraHandler extends BaseThingHandler {
                             super.channelRead(ctx, reply);
                         }
                     }
-
                 } else {
-                    logger.debug("Message passed on from new code, must be EmptyLastHttpContent");
-                    // If it is not an image send it on to the next handler as some cams have EmptyLastHttpContent//
+                    logger.debug("Packet back from camera is not matching HttpContent");
+                    // Foscam and Amcrest cameras need this
                     if (!contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
                         reply = incomingMessage;
                         incomingMessage = null;
@@ -715,30 +712,25 @@ public class IpCameraHandler extends BaseThingHandler {
                 if (!content.isEmpty()) {
                     logger.trace("HTTP Result back from camera is \t:{}:", content);
                 }
-
-                switch (content) {
-                    case "Error: No Events\r\n":
-                        if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion".equals(requestUrl)) {
-                            updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                            firstMotionAlarm = false;
-                        } else if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation"
-                                .equals(requestUrl)) {
-                            updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
-                            firstAudioAlarm = false;
-                        }
-                        break;
-
-                    case "channels[0]=0\r\n":
-                        if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion".equals(requestUrl)) {
-                            motionDetected(CHANNEL_MOTION_ALARM);
-                        } else if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation"
-                                .equals(requestUrl)) {
-                            audioDetected();
-                        }
-                        break;
+                if (content.contains("Error: No Events")) {
+                    if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion".equals(requestUrl)) {
+                        updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                        firstMotionAlarm = false;
+                    } else if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation"
+                            .equals(requestUrl)) {
+                        updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                        firstAudioAlarm = false;
+                    }
+                } else if (content.contains("channels[0]=0")) {
+                    if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion".equals(requestUrl)) {
+                        motionDetected(CHANNEL_MOTION_ALARM);
+                    } else if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation"
+                            .equals(requestUrl)) {
+                        audioDetected();
+                    }
                 }
 
-                if (content.contains("table.MotionDetect[" + nvrChannel + "].Enable=false")) {
+                else if (content.contains("table.MotionDetect[" + nvrChannel + "].Enable=false")) {
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
                 } else if (content.contains("table.MotionDetect[" + nvrChannel + "].Enable=true")) {
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));

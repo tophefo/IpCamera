@@ -10,6 +10,7 @@ Bundle-SymbolicName: org.openhab.binding.ipcamera;singleton:=true
 Bundle-Vendor: openHAB
 Bundle-Version: 2.3.0.qualifier
 Export-Package: 
+ io.netty.util,
  org.openhab.binding.ipcamera,
  org.openhab.binding.ipcamera.handler
 Import-Package: 
