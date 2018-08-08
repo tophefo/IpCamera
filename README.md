@@ -262,3 +262,4 @@ ONVIF alarms
 
 
 If you wish to contribute then please create an issue ticket first to discuss how things will work before doing any coding on large amounts of changes, this is due to needing to keep things CONSISTENT between brands and also easy to maintain. This list of areas that could be added are a great place to start helping with this binding if you wish to contribute. Any feedback, push requests and ideas are welcome.
+

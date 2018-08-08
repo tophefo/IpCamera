@@ -1,14 +1,10 @@
 /**
- * Copyright (c) 2014,2018 by the respective copyright holders.
+ * Copyright (c) 2010-2018 by the respective copyright holders.
  *
- * See the NOTICE file(s) distributed with this work for additional
- * information regarding copyright ownership.
- *
- * This program and the accompanying materials are made available under the
- * terms of the Eclipse Public License 2.0 which is available at
- * http://www.eclipse.org/legal/epl-2.0
- *
- * SPDX-License-Identifier: EPL-2.0
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
  */
 package org.openhab.binding.ipcamera.handler;
 
@@ -62,7 +58,6 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -670,31 +665,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
             }
         }
-
-        private final ChannelFutureListener flushListener = new ChannelFutureListener() {
-            @Override
-            public void operationComplete(ChannelFuture future) throws Exception {
-                if (!future.isSuccess()) {
-                    logger.error("Error trying to flush channel. Cause reported is:{}", future.cause().toString());
-                    future.channel().close();
-                }
-            }
-        };
-
-        private final ChannelFutureListener closeChannelListener = new ChannelFutureListener() {
-
-            @Override
-            public void operationComplete(ChannelFuture future) throws Exception {
-
-                if (!future.isSuccess()) {
-                    logger.error("Something is stoping the connection from closing, {}", future.cause().toString());
-                    future.channel().close();
-                } else {
-
-                }
-            }
-        };
-
     }
 
     private class AmcrestHandler extends ChannelDuplexHandler {
