@@ -8,6 +8,8 @@
         <description>Use when your camera is not ONVIF compatible.</description>
         <channels>
         <channel id="updateImageNow" typeId="updateImageNow" />
+        <channel id="streamVideo" typeId="streamVideo" />
+        
             <channel id="image" typeId="image" />
             <channel id="imageurl" typeId="imageurl" />        
         </channels>     
@@ -22,8 +24,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update Image</option>
-<option value="1">Always Update Image</option>
+<option value="0">Never Update Image (0)</option>
+<option value="1">Always Update Image(1)</option>
 </options>
 </parameter>
 
@@ -106,8 +108,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update Image</option>
-<option value="1">Always Update Image</option>
+<option value="0">Never Update Image (0)</option>
+<option value="1">Always Update Image (1)</option>
 </options>
 </parameter>
 
@@ -206,14 +208,14 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update Image</option>
-<option value="1">Always Update Image</option>
-<option value="2">Start Motion Alarm</option>
-<option value="3">Start Audio Alarm</option>
-<option value="23">Start of Motion and Audio Alarms</option>
-<option value="4">During Motion Alarm</option>
-<option value="5">During Audio Alarm</option>
-<option value="45">During Motion and Audio Alarms</option>
+<option value="0">Never Update Image (0)</option>
+<option value="1">Always Update Image (1)</option>
+<option value="2">Start Motion Alarm (2)</option>
+<option value="3">Start Audio Alarm (3)</option>
+<option value="23">Start of Motion and Audio Alarms (23)</option>
+<option value="4">During Motion Alarm (4)</option>
+<option value="5">During Audio Alarm (5)</option>
+<option value="45">During Motion and Audio Alarms (45)</option>
 </options>
 </parameter>
 
@@ -321,10 +323,10 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update Image</option>
-<option value="1">Always Update Image</option>
-<option value="2">Start Motion Alarm</option>
-<option value="4">During Motion Alarm</option>
+<option value="0">Never Update Image (0)</option>
+<option value="1">Always Update Image (1)</option>
+<option value="2">Start Motion Alarm (2)</option>
+<option value="4">During Motion Alarm (4)</option>
 </options>
 </parameter>
 
@@ -393,7 +395,6 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </config-description>
 </thing-type>
 
-
   <thing-type id="FOSCAM">
         <label>"FOSCAM" IP camera with ONVIF and API support.</label>
         <description>Use for all current HD FOSCAM Cameras as they support an API as well as ONVIF.</description>
@@ -404,7 +405,9 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="motionAlarm" typeId="motionAlarm" />
             <channel id="enableAudioAlarm" typeId="enableAudioAlarm" />
             <channel id="audioAlarm" typeId="audioAlarm" />
-            <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm" />
+            <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm" />   
+            <channel id="autoLED" typeId="autoLED" />                  
+            <channel id="enableLED" typeId="enableLED" />         
             <channel id="pan" typeId="pan" />
             <channel id="tilt" typeId="tilt" />
             <channel id="zoom" typeId="zoom" />
@@ -433,14 +436,14 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update Image</option>
-<option value="1">Always Update Image</option>
-<option value="2">Start Motion Alarm</option>
-<option value="3">Start Audio Alarm</option>
-<option value="23">Start of Motion and Audio Alarms</option>
-<option value="4">During Motion Alarm</option>
-<option value="5">During Audio Alarm</option>
-<option value="45">During Motion and Audio Alarms</option>
+<option value="0">Never Update Image (0)</option>
+<option value="1">Always Update Image (1)</option>
+<option value="2">Start Motion Alarm (2)</option>
+<option value="3">Start Audio Alarm (3)</option>
+<option value="23">Start of Motion and Audio Alarms (23)</option>
+<option value="4">During Motion Alarm (4)</option>
+<option value="5">During Audio Alarm (5)</option>
+<option value="45">During Motion and Audio Alarms (45)</option>
 </options>
 </parameter>
 
@@ -517,6 +520,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="image" typeId="image"/>            
             <channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>
             <channel id="motionAlarm" typeId="motionAlarm"/>
+            <channel id="pirAlarm" typeId="pirAlarm"/>           
             <channel id="enableLineCrossingAlarm" typeId="enableLineCrossingAlarm"/>
             <channel id="lineCrossingAlarm" typeId="lineCrossingAlarm"/>
             <channel id="itemLeft" typeId="itemLeft"/> 
@@ -554,10 +558,10 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update Image</option>
-<option value="1">Always Update Image</option>
-<option value="2">Start Motion Alarm</option>
-<option value="4">During Motion Alarm</option>
+<option value="0">Never Update Image (0)</option>
+<option value="1">Always Update Image (1)</option>
+<option value="2">Start Motion Alarm (2)</option>
+<option value="4">During Motion Alarm (4)</option>
 </options>
 </parameter>
 
@@ -662,8 +666,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update Image</option>
-<option value="1">Always Update Image</option>
+<option value="0">Never Update Image (0)</option>
+<option value="1">Always Update Image (1)</option>
 </options>
 </parameter>
 
@@ -761,14 +765,14 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update Image</option>
-<option value="1">Always Update Image</option>
-<option value="2">Start Motion Alarm</option>
-<option value="3">Start Audio Alarm</option>
-<option value="23">Start of Motion and Audio Alarms</option>
-<option value="4">During Motion Alarm</option>
-<option value="5">During Audio Alarm</option>
-<option value="45">During Motion and Audio Alarms</option>
+<option value="0">Never Update Image (0)</option>
+<option value="1">Always Update Image (1)</option>
+<option value="2">Start Motion Alarm (2)</option>
+<option value="3">Start Audio Alarm (3)</option>
+<option value="23">Start of Motion and Audio Alarms (23)</option>
+<option value="4">During Motion Alarm (4)</option>
+<option value="5">During Audio Alarm (5)</option>
+<option value="45">During Motion and Audio Alarms (45)</option>
 </options>
 </parameter>
 
@@ -897,6 +901,14 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <state readOnly="true" />
         </channel-type>
         
+        <channel-type id="pirAlarm">
+        <item-type>Switch</item-type>
+        <label>PIR Alarm</label>
+        <description>PIR motion has been detected.</description>
+        <category>Motion</category>
+        <state readOnly="true" />
+        </channel-type>
+        
         <channel-type id="lineCrossingAlarm">
         <item-type>Switch</item-type>
         <label>Line Crossing Alarm</label>
@@ -951,7 +963,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <description>By using this feature you can stop the camera from sending emails when you are actually home.</description>
         <category>Motion</category>
         </channel-type>
-        
+               
         <channel-type id="enableLineCrossingAlarm">
         <item-type>Switch</item-type>
         <label>Enable/Disable the Line Crossing Alarm</label>
@@ -979,5 +991,26 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <description>You can use the cameras output to trigger a device like a burglar alarm.</description>
         <category>Alarm</category>
         </channel-type>
+        
+        <channel-type id="enableLED">
+        <item-type>Switch</item-type>
+        <label>Enable/Disable the Infrared LED</label>
+        <description>Turn the LED on and off.</description>
+        <category>Light</category>
+        </channel-type>
+        
+        <channel-type id="autoLED">
+        <item-type>Switch</item-type>
+        <label>Auto control the Infrared LED</label>
+        <description>Turn automatic mode for the LED on and off.</description>
+        </channel-type>
+        
+        <channel-type id="streamVideo">
+        <item-type>Switch</item-type>
+        <label>Enable/Disable the Video streaming (experimental)</label>
+        <description>Experimental, ignore this for now.</description>
+        <category>Camera</category>
+        </channel-type>
+         
                          
 </thing:thing-descriptions>

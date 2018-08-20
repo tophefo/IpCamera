@@ -770,6 +770,14 @@ public class IpCameraHandler extends BaseThingHandler {
                     updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf("100"));
                 }
 
+                //////////////// Infrared LED /////////////////////
+                if (content.contains("<infraLedState>0</infraLedState>")) {
+                    updateState(CHANNEL_ENABLE_LED, OnOffType.valueOf("OFF"));
+                }
+                if (content.contains("<infraLedState>1</infraLedState>")) {
+                    updateState(CHANNEL_ENABLE_LED, OnOffType.valueOf("ON"));
+                }
+
                 if (content.contains("</CGI_Result>")) {
                     ctx.close();
                     logger.debug("End of FOSCAM handler reached, so closing the channel to the camera now");
@@ -824,7 +832,7 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     private class HikvisionHandler extends ChannelDuplexHandler {
-        byte lineCount, vmdCount, leftCount, takenCount, faceCount = 0;
+        byte lineCount, vmdCount, leftCount, takenCount, faceCount, pirCount = 0;
 
         void countDown() {
             if (lineCount > 1) {
@@ -841,6 +849,9 @@ public class IpCameraHandler extends BaseThingHandler {
             }
             if (faceCount > 1) {
                 faceCount--;
+            }
+            if (pirCount > 1) {
+                pirCount--;
             }
         }
 
@@ -890,6 +901,11 @@ public class IpCameraHandler extends BaseThingHandler {
                             if (takenCount > 0) {
                                 countDown();
                             }
+                        }
+                        if (content.contains("<eventType>PIR</eventType>")) {
+                            motionDetected(CHANNEL_PIR_ALARM);
+                            pirCount = 5;
+                            countDown();
                         }
                         if (content.contains("<eventType>videoloss</eventType>\r\n<eventState>inactive</eventState>")) {
                             firstMotionAlarm = false;
@@ -1170,18 +1186,55 @@ public class IpCameraHandler extends BaseThingHandler {
                 case CHANNEL_ZOOM:
                     getAbsoluteZoom();
                     break;
-
             }
             return; // Return as we have handled the refresh command above and don't need to continue further.
         } // end of "REFRESH"
 
         switch (channelUID.getId()) {
 
+            case CHANNEL_STREAM_VIDEO:
+                if (snapshotUri != null) {
+                    sendHttpGET("http://192.168.1.64/ISAPI/Streaming/channels/102/httppreview");
+                }
+                break;
+
             case CHANNEL_UPDATE_IMAGE_NOW:
                 if (snapshotUri != null) {
                     sendHttpGET(getCorrectUrlFormat(snapshotUri));
                 }
 
+                break;
+
+            case CHANNEL_ENABLE_LED:
+
+                switch (thing.getThingTypeUID().getId()) {
+                    case "FOSCAM":
+                        // Disable the auto mode first
+                        sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setInfraLedConfig&mode=1&usr=" + username + "&pwd="
+                                + password);
+                        updateState(CHANNEL_AUTO_LED, OnOffType.valueOf("OFF"));
+                        if ("ON".equals(command.toString())) {
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=openInfraLed&usr=" + username + "&pwd=" + password);
+                        } else {
+                            sendHttpGET(
+                                    "/cgi-bin/CGIProxy.fcgi?cmd=closeInfraLed&usr=" + username + "&pwd=" + password);
+                        }
+                        break;
+                }
+                break;
+
+            case CHANNEL_AUTO_LED:
+                switch (thing.getThingTypeUID().getId()) {
+                    case "FOSCAM":
+                        if ("ON".equals(command.toString())) {
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setInfraLedConfig&mode=0&usr=" + username + "&pwd="
+                                    + password);
+                        } else {
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setInfraLedConfig&mode=1&usr=" + username + "&pwd="
+                                    + password);
+                        }
+                        break;
+                }
                 break;
 
             case CHANNEL_THRESHOLD_AUDIO_ALARM:
