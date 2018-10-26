@@ -526,8 +526,10 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="itemLeft" typeId="itemLeft"/> 
             <channel id="itemTaken" typeId="itemTaken"/> 
             <channel id="faceDetected" typeId="faceDetected"/>              
+            <channel id="enableFieldDetectionAlarm" typeId="enableFieldDetectionAlarm"/>
+            <channel id="fieldDetectionAlarm" typeId="fieldDetectionAlarm"/>
             <channel id="enableAudioAlarm" typeId="enableAudioAlarm"/>
-            <channel id="audioAlarm" typeId="audioAlarm"/>
+            <channel id="audioAlarm" typeId="audioAlarm"/>       
             <channel id="activateAlarmOutput" typeId="activateAlarmOutput"/>
             <channel id="externalAlarmInput" typeId="externalAlarmInput"/>                
             <channel id="pan" typeId="pan"/>
@@ -901,6 +903,20 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <state readOnly="true" />
         </channel-type>
         
+        <channel-type id="fieldDetectionAlarm">
+        <item-type>Switch</item-type>
+        <label>Intrusion  Alarm</label>
+        <description>Intrusion has detected movement. AKA Field Detection Alarm.</description>
+        <category>Motion</category>
+        <state readOnly="true" />
+        </channel-type>
+        
+        <channel-type id="enableFieldDetectionAlarm">
+        <item-type>Switch</item-type>
+        <label>Enable/Disable the Intrusion  Alarm</label>
+        <description>By using this feature you can stop the camera from sending emails when you are actually home.</description>
+        </channel-type>
+        
         <channel-type id="pirAlarm">
         <item-type>Switch</item-type>
         <label>PIR Alarm</label>
@@ -1011,6 +1027,6 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <description>Experimental, ignore this for now.</description>
         <category>Camera</category>
         </channel-type>
-         
+        
                          
 </thing:thing-descriptions>
