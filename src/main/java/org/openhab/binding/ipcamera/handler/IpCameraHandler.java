@@ -1071,9 +1071,9 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
 
                 // determine if the motion detection is turned on or off.
-                if (content.contains("table.Alarm[0].Enable=true")) {
+                if (content.contains("table.MotionDetect[0].Enable=true")) {
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
-                } else if (content.contains("table.Alarm[0].Enable=false")) {
+                } else if (content.contains("table.MotionDetect[0].Enable=false")) {
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
                 }
 
@@ -1785,14 +1785,16 @@ public class IpCameraHandler extends BaseThingHandler {
                     break;
                 case "DAHUA":
                     // Poll the alarm configs ie on/off/...
-                    sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=VideoMotion");
+                    // videomotion replaced by motiondetect, left as its possible older cameras use different api
+                    // sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=VideoMotion");
+                    sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect");
                     sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=CrossLineDetection");
                     // Check for alarms, channel is for a NVR and not a single cam.
                     lock.lock();
                     try {
 
                         indexInLists = (byte) listOfRequests
-                                .indexOf("/cgi-bin/eventManager.cgi?action=attach&codes=[All]");
+                                .indexOf("/cgi-bin/eventManager.cgi?action=attach&codes=[All][&keepalive]");
 
                         // indexInLists = (byte) listOfRequests.indexOf(
                         // "/cgi-bin/eventManager.cgi?action=attach&codes=[VideoMotion,MDResult,VideoBlind,VideoLoss,CrossLineDetection]&channel=["
@@ -1804,7 +1806,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         logger.warn(
                                 "The alarm checking stream was not running. Cleaning channels and then going to re-start it now.");
                         cleanChannels();
-                        sendHttpGET("/cgi-bin/eventManager.cgi?action=attach&codes=[All]");
+                        sendHttpGET("/cgi-bin/eventManager.cgi?action=attach&codes=[All][&keepalive]");
 
                         // sendHttpGET(
                         // "/cgi-bin/eventManager.cgi?action=attach&codes=[VideoMotion,MDResult,VideoBlind,VideoLoss,CrossLineDetection]&channel=["
