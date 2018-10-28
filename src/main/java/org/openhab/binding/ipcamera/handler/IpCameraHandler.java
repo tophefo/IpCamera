@@ -1754,10 +1754,31 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     };
 
+    boolean streamIsStopped(String url) {
+        byte indexInLists = 0;
+
+        lock.lock();
+        try {
+            indexInLists = (byte) listOfRequests.lastIndexOf(url);
+            if (indexInLists < 0) {
+                return true; // Stream not found, probably first run.
+            }
+
+            // Stream was found in list now to check status
+            // Status can be -1=closed, 0=closing (do not re-use channel), 1=open
+            if (listOfChStatus.get(indexInLists) != (byte) 1) {
+                // may need to check if more than one is in the lists.
+                return true; // Stream was open but no longer is
+            }
+        } finally {
+            lock.unlock();
+        }
+        return false; // Stream is still open
+    }
+
     Runnable pollingCamera = new Runnable() {
         @Override
         public void run() {
-            byte indexInLists;
 
             if (listOfRequests.size() > 12) {
                 logger.warn(
@@ -1780,13 +1801,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username + "&pwd=" + password);
                     break;
                 case "HIKVISION":
-                    lock.lock();
-                    try {
-                        indexInLists = (byte) listOfRequests.indexOf("/ISAPI/Event/notification/alertStream");
-                    } finally {
-                        lock.unlock();
-                    }
-                    if (indexInLists < 0) {
+                    if (streamIsStopped("/ISAPI/Event/notification/alertStream")) {
                         logger.warn(
                                 "The alarm checking stream was not running. Cleaning channels and then going to re-start it now.");
                         cleanChannels();
@@ -1809,18 +1824,11 @@ public class IpCameraHandler extends BaseThingHandler {
                     // sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=CrossLineDetection");
 
                     // Check for alarms, channel for NVRs appears not to work at filtering.
-                    lock.lock();
-                    try {
-                        indexInLists = (byte) listOfRequests
-                                .indexOf("/cgi-bin/eventManager.cgi?action=attach&codes=[All][&keepalive]");
-                    } finally {
-                        lock.unlock();
-                    }
-                    if (indexInLists < 0) {
+                    if (streamIsStopped("/cgi-bin/eventManager.cgi?action=attach&codes=[All]")) {
                         logger.warn(
                                 "The alarm checking stream was not running. Cleaning channels and then going to re-start it now.");
                         cleanChannels();
-                        sendHttpGET("/cgi-bin/eventManager.cgi?action=attach&codes=[All][&keepalive]");
+                        sendHttpGET("/cgi-bin/eventManager.cgi?action=attach&codes=[All]");
                     }
                     break;
             }
