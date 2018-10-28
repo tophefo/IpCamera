@@ -6,6 +6,7 @@
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  */
+
 package org.openhab.binding.ipcamera.internal;
 
 import java.security.MessageDigest;
@@ -111,9 +112,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
     // First run it should not have authenticate as null
     // nonce is reused if authenticate is null so the NC needs to increment to allow this//
     public String processAuth(String authenticate, String httpMethod, String requestURI, boolean reSend) {
-
         if (authenticate != null) {
-
             if (authenticate.contains("Basic realm=\"")) {
                 if (myHandler.useDigestAuth == true) {
                     return "Error:Downgrade authenticate avoided";

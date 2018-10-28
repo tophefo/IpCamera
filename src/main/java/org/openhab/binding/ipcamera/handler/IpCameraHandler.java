@@ -6,6 +6,7 @@
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  */
+
 package org.openhab.binding.ipcamera.handler;
 
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.*;
@@ -58,7 +59,6 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -73,6 +73,7 @@ import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
+import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpVersion;
@@ -230,9 +231,9 @@ public class IpCameraHandler extends BaseThingHandler {
             if (listOfReplies.get(indexInLists) != null) {
                 body = listOfReplies.get(indexInLists);
                 lock.unlock();
-                logger.trace("An OLD reply from the camera was:{}", body);
+                logger.debug("An OLD reply from the camera was:{}", body);
                 body = body.replace(findOldValue, newValue);
-                logger.trace("Body for this PUT is going to be:{}", body);
+                logger.debug("Body for this PUT is going to be:{}", body);
                 FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, new HttpMethod("PUT"),
                         httpGetPutURL);
                 request.headers().set(HttpHeaderNames.HOST, ipAddress);
@@ -299,7 +300,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 public void initChannel(SocketChannel socketChannel) throws Exception {
                     // RtspResponseDecoder //RtspRequestEncoder // try in the pipeline soon//
                     socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(15, 0, 0));
-                    socketChannel.pipeline().addLast(new HttpClientCodec());
+                    socketChannel.pipeline().addLast("HttpClientCodec", new HttpClientCodec());
                     // socketChannel.pipeline().addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
                     socketChannel.pipeline().addLast("authHandler",
                             new MyNettyAuthHandler(username, password, thing.getHandler()));
@@ -461,7 +462,7 @@ public class IpCameraHandler extends BaseThingHandler {
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
             HttpContent content = null;
             try {
-                logger.trace(msg.toString());
+                logger.debug(msg.toString());
 
                 if (msg instanceof HttpResponse) {
                     HttpResponse response = (HttpResponse) msg;
@@ -487,6 +488,18 @@ public class IpCameraHandler extends BaseThingHandler {
                         }
                         if (contentType.contains("multipart")) {
                             closeConnection = false; // HIKVISION and Dahua need this for alarm/alertStream
+
+                            // new code may break other brands//
+                            // logger.debug("Message header contains this ContentType header :{}", contentType);
+                            // ByteBuf delimiter;
+                            // multipart/x-mixed-replace;boundary=boundarySample
+                            // delimiter = Unpooled.copiedBuffer("boundarySample".getBytes()); //HIK
+                            // delimiter = Unpooled.copiedBuffer("myboundary".getBytes()); //Dahua
+                            // ctx.pipeline().addAfter("HttpClientCodec", "DelimiterBasedFrameDecoder",
+                            // new DelimiterBasedFrameDecoder(500000, delimiter));
+                            // ctx.pipeline().remove("HttpClientCodec");
+                            // end new experimental code//
+
                         } else if (closeConnection) {
                             lock.lock();
                             try {
@@ -537,7 +550,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             }
                         }
                     } else { // incomingMessage that is not an IMAGE
-
+                        logger.debug("Camera has sent some kind of message.Bytes={}", bytesAlreadyRecieved);
                         if (incomingMessage == null) {
                             incomingMessage = content.content().toString(CharsetUtil.UTF_8);
                         } else {
@@ -545,9 +558,9 @@ public class IpCameraHandler extends BaseThingHandler {
                         }
                         bytesAlreadyRecieved = incomingMessage.length();
                         if (content instanceof LastHttpContent) {
-
+                            logger.debug("Camera has sent last part of the message.Bytes={}", bytesAlreadyRecieved);
                             // If it is not an image send it on to the next handler//
-                            if (!contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
+                            if (bytesAlreadyRecieved != 0) {
                                 reply = incomingMessage;
                                 incomingMessage = null;
                                 bytesToRecieve = 0;
@@ -576,10 +589,24 @@ public class IpCameraHandler extends BaseThingHandler {
                         }
                     }
                 } else {
-                    logger.debug("Packet back from camera is not matching HttpContent");
+                    // logger.debug("Packet back from camera is not matching HttpContent");
+                    if (contentType.contains("multipart")) {
+                        logger.debug("Packet back from camera is multipart");
+                        ///////// new
+                        if (msg instanceof HttpMessage) {
+                            logger.debug("Packet back from camera is HttpMessage");
+                        } else if (msg instanceof HttpResponse) {
+                            logger.debug("Packet back from camera is HttpResponse");
+                        } else if (msg instanceof HttpContent) {
+                            logger.debug("Packet back from camera is HttpContent");
+                        }
+
+                    }
+
                     // Foscam and Amcrest cameras need this
-                    if (!contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
+                    else if (!contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
                         reply = incomingMessage;
+                        logger.debug("Packet back from camera is {}", incomingMessage);
                         incomingMessage = null;
                         bytesToRecieve = 0;
                         bytesAlreadyRecieved = 0;
@@ -666,31 +693,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
             }
         }
-
-        private final ChannelFutureListener flushListener = new ChannelFutureListener() {
-            @Override
-            public void operationComplete(ChannelFuture future) throws Exception {
-                if (!future.isSuccess()) {
-                    logger.error("Error trying to flush channel. Cause reported is:{}", future.cause().toString());
-                    future.channel().close();
-                }
-            }
-        };
-
-        private final ChannelFutureListener closeChannelListener = new ChannelFutureListener() {
-
-            @Override
-            public void operationComplete(ChannelFuture future) throws Exception {
-
-                if (!future.isSuccess()) {
-                    logger.error("Something is stoping the connection from closing, {}", future.cause().toString());
-                    future.channel().close();
-                } else {
-
-                }
-            }
-        };
-
     }
 
     private class AmcrestHandler extends ChannelDuplexHandler {
@@ -791,6 +793,14 @@ public class IpCameraHandler extends BaseThingHandler {
                     updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf("100"));
                 }
 
+                //////////////// Infrared LED /////////////////////
+                if (content.contains("<infraLedState>0</infraLedState>")) {
+                    updateState(CHANNEL_ENABLE_LED, OnOffType.valueOf("OFF"));
+                }
+                if (content.contains("<infraLedState>1</infraLedState>")) {
+                    updateState(CHANNEL_ENABLE_LED, OnOffType.valueOf("ON"));
+                }
+
                 if (content.contains("</CGI_Result>")) {
                     ctx.close();
                     logger.debug("End of FOSCAM handler reached, so closing the channel to the camera now");
@@ -845,7 +855,7 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     private class HikvisionHandler extends ChannelDuplexHandler {
-        byte lineCount, vmdCount, leftCount, takenCount, faceCount = 0;
+        byte lineCount, vmdCount, leftCount, takenCount, faceCount, pirCount, fieldCount = 0;
 
         void countDown() {
             if (lineCount > 1) {
@@ -863,6 +873,12 @@ public class IpCameraHandler extends BaseThingHandler {
             if (faceCount > 1) {
                 faceCount--;
             }
+            if (pirCount > 1) {
+                pirCount--;
+            }
+            if (fieldCount > 1) {
+                fieldCount--;
+            }
         }
 
         @Override
@@ -871,8 +887,8 @@ public class IpCameraHandler extends BaseThingHandler {
             try {
                 content = msg.toString();
                 if (!content.isEmpty()) {
-                    logger.trace("HTTP Result back from camera is \t:{}:", content);
-                    // logger.debug("HTTP Result back from camera is \t:{}:", content);
+                    // logger.trace("HTTP Result back from camera is \t:{}:", content);
+                    logger.debug("HTTP Result back from camera is \t:{}:", content);
                 }
 
                 // Alarm checking goes in here//
@@ -882,6 +898,11 @@ public class IpCameraHandler extends BaseThingHandler {
                         if (content.contains("<eventType>linedetection</eventType>")) {
                             motionDetected(CHANNEL_LINE_CROSSING_ALARM);
                             lineCount = 5;
+                            countDown();
+                        }
+                        if (content.contains("<eventType>fielddetection</eventType>")) {
+                            motionDetected(CHANNEL_FIELD_DETECTION_ALARM);
+                            fieldCount = 5;
                             countDown();
                         }
                         if (content.contains("<eventType>VMD</eventType>")) {
@@ -911,6 +932,11 @@ public class IpCameraHandler extends BaseThingHandler {
                             if (takenCount > 0) {
                                 countDown();
                             }
+                        }
+                        if (content.contains("<eventType>PIR</eventType>")) {
+                            motionDetected(CHANNEL_PIR_ALARM);
+                            pirCount = 5;
+                            countDown();
                         }
                         if (content.contains("<eventType>videoloss</eventType>\r\n<eventState>inactive</eventState>")) {
                             firstMotionAlarm = false;
@@ -1007,6 +1033,25 @@ public class IpCameraHandler extends BaseThingHandler {
                     } else if (content.contains("<ioState>inactive</ioState>")) {
                         updateState(CHANNEL_EXTERNAL_ALARM_INPUT, OnOffType.valueOf("OFF"));
                     }
+                } else if (content.contains("<FieldDetection version=\"2.0\" xmlns=\"http://www.")) {
+                    lock.lock();
+                    try {
+                        byte indexInLists = (byte) listOfRequests
+                                .indexOf("/ISAPI/Smart/FieldDetection/" + nvrChannel + "01");
+                        if (indexInLists >= 0) {
+                            logger.debug(
+                                    "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Storing new FieldDetection reply {}",
+                                    content);
+                            listOfReplies.set(indexInLists, content);
+                        }
+                    } finally {
+                        lock.unlock();
+                    }
+                    if (content.contains("<enabled>true</enabled>")) {
+                        updateState(CHANNEL_ENABLE_FIELD_DETECTION_ALARM, OnOffType.valueOf("ON"));
+                    } else if (content.contains("<enabled>false</enabled>")) {
+                        updateState(CHANNEL_ENABLE_FIELD_DETECTION_ALARM, OnOffType.valueOf("OFF"));
+                    }
                 }
 
             } finally {
@@ -1024,28 +1069,30 @@ public class IpCameraHandler extends BaseThingHandler {
             try {
                 content = msg.toString();
                 if (!content.isEmpty()) {
-                    logger.trace("HTTP Result back from camera is \t:{}:", content);
+                    logger.debug("HTTP Result back from camera is \t:{}:", content);
+                } else {
+                    logger.debug("HTTP Result back from camera is EMPTY");
                 }
 
                 // determine if the motion detection is turned on or off.
-                if (content.contains("table.Alarm[0].Enable=true")) {
+                if (content.contains("table.MotionDetect[" + nvrChannel + "].Enable=true")) {
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
-                } else if (content.contains("table.Alarm[0].Enable=false")) {
+                } else if (content.contains("table.MotionDetect[" + nvrChannel + "].Enable=false")) {
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
                 }
 
                 // Handle motion alarm
-                if (content.contains("Code=VideoMotion;action=Start;index=")) {
+                if (content.contains("Code=VideoMotion;action=Start;index=" + nvrChannel)) {
                     motionDetected(CHANNEL_MOTION_ALARM);
-                } else if (content.contains("Code=VideoMotion;action=Stop;index=")) {
+                } else if (content.contains("Code=VideoMotion;action=Stop;index=" + nvrChannel)) {
                     updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
                 }
 
                 // Handle CrossLineDetection alarm
-                if (content.contains("Code=CrossLineDetection;action=Start;index=")) {
+                if (content.contains("Code=CrossLineDetection;action=Start;index=" + nvrChannel)) {
                     motionDetected(CHANNEL_LINE_CROSSING_ALARM);
-                } else if (content.contains("Code=CrossLineDetection;action=Stop;index=")) {
+                } else if (content.contains("Code=CrossLineDetection;action=Stop;index=" + nvrChannel)) {
                     updateState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
                 }
@@ -1164,12 +1211,29 @@ public class IpCameraHandler extends BaseThingHandler {
                         case "HIKVISION":
                             sendHttpGET("/ISAPI/Smart/LineDetection/" + nvrChannel + "01");
                             break;
+                        case "DAHUA":
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=CrossLineDetection["
+                                    + nvrChannel + "]");
+                            break;
+                    }
+                    break;
+
+                case CHANNEL_ENABLE_FIELD_DETECTION_ALARM:
+                    switch (thing.getThingTypeUID().getId()) {
+                        case "HIKVISION":
+                            logger.debug("FieldDetection command");
+                            sendHttpGET("/ISAPI/Smart/FieldDetection/" + nvrChannel + "01");
+                            break;
                     }
                     break;
 
                 case CHANNEL_ENABLE_MOTION_ALARM:
                     switch (thing.getThingTypeUID().getId()) {
                         case "AMCREST":
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect[" + nvrChannel
+                                    + "]");
+                            break;
+                        case "DAHUA":
                             sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect[" + nvrChannel
                                     + "]");
                             break;
@@ -1191,18 +1255,55 @@ public class IpCameraHandler extends BaseThingHandler {
                 case CHANNEL_ZOOM:
                     getAbsoluteZoom();
                     break;
-
             }
             return; // Return as we have handled the refresh command above and don't need to continue further.
         } // end of "REFRESH"
 
         switch (channelUID.getId()) {
 
+            case CHANNEL_STREAM_VIDEO:
+                if (snapshotUri != null) {
+                    sendHttpGET("http://192.168.1.64/ISAPI/Streaming/channels/102/httppreview");
+                }
+                break;
+
             case CHANNEL_UPDATE_IMAGE_NOW:
                 if (snapshotUri != null) {
                     sendHttpGET(getCorrectUrlFormat(snapshotUri));
                 }
 
+                break;
+
+            case CHANNEL_ENABLE_LED:
+
+                switch (thing.getThingTypeUID().getId()) {
+                    case "FOSCAM":
+                        // Disable the auto mode first
+                        sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setInfraLedConfig&mode=1&usr=" + username + "&pwd="
+                                + password);
+                        updateState(CHANNEL_AUTO_LED, OnOffType.valueOf("OFF"));
+                        if ("ON".equals(command.toString())) {
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=openInfraLed&usr=" + username + "&pwd=" + password);
+                        } else {
+                            sendHttpGET(
+                                    "/cgi-bin/CGIProxy.fcgi?cmd=closeInfraLed&usr=" + username + "&pwd=" + password);
+                        }
+                        break;
+                }
+                break;
+
+            case CHANNEL_AUTO_LED:
+                switch (thing.getThingTypeUID().getId()) {
+                    case "FOSCAM":
+                        if ("ON".equals(command.toString())) {
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setInfraLedConfig&mode=0&usr=" + username + "&pwd="
+                                    + password);
+                        } else {
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setInfraLedConfig&mode=1&usr=" + username + "&pwd="
+                                    + password);
+                        }
+                        break;
+                }
                 break;
 
             case CHANNEL_THRESHOLD_AUDIO_ALARM:
@@ -1353,9 +1454,11 @@ public class IpCameraHandler extends BaseThingHandler {
 
                     case "DAHUA":
                         if ("ON".equals(command.toString())) {
-                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=true");
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[" + nvrChannel
+                                    + "].Enable=true");
                         } else {
-                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=false");
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[" + nvrChannel
+                                    + "].Enable=false");
                         }
                         break;
                 }
@@ -1370,20 +1473,22 @@ public class IpCameraHandler extends BaseThingHandler {
             case CHANNEL_ZOOM:
                 setAbsoluteZoom(Float.valueOf(command.toString()));
                 break;
+            case CHANNEL_ENABLE_FIELD_DETECTION_ALARM:
+                if ("ON".equals(command.toString())) {
+                    hikChangeSetting("/ISAPI/Smart/FieldDetection/" + nvrChannel + "01", "<enabled>false</enabled>",
+                            "<enabled>true</enabled>");
+                } else {
+                    hikChangeSetting("/ISAPI/Smart/FieldDetection/" + nvrChannel + "01", "<enabled>true</enabled>",
+                            "<enabled>false</enabled>");
+                }
+                break;
             case CHANNEL_ACTIVATE_ALARM_OUTPUT:
                 if ("ON".equals(command.toString())) {
                     hikSendXml("/ISAPI/System/IO/outputs/" + nvrChannel + "/trigger",
                             "<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n    <outputState>high</outputState>\r\n</IOPortData>\r\n");
-                    // hikSendXml("/IO/outputs/" + nvrChannel + "/trigger",
-                    // "<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n"
-                    // + " <outputState>high</outputState>\r\n" + "</IOPortData>");
-
                 } else {
                     hikSendXml("/ISAPI/System/IO/outputs/" + nvrChannel + "/trigger",
                             "<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n    <outputState>low</outputState>\r\n</IOPortData>\r\n");
-                    // hikSendXml("/IO/outputs/" + nvrChannel + "/trigger",
-                    // "<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n"
-                    // + " <outputState>low</outputState>\r\n" + "</IOPortData>");
                 }
                 break;
         }
@@ -1683,7 +1788,6 @@ public class IpCameraHandler extends BaseThingHandler {
                         cleanChannels();
                         sendHttpGET("/ISAPI/Event/notification/alertStream");
                     }
-
                     sendHttpGET("/ISAPI/System/IO/inputs/" + nvrChannel + "/status");
 
                     break;
@@ -1695,14 +1799,16 @@ public class IpCameraHandler extends BaseThingHandler {
                     break;
                 case "DAHUA":
                     // Poll the alarm configs ie on/off/...
-                    sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=VideoMotion");
-                    sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=CrossLineDetection");
-                    // Check for alarms, channel is for a NVR and not a single cam.
+                    // videomotion replaced by motiondetect, left as its possible older cameras use different api
+                    // sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=VideoMotion");
+                    // sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect");
+                    // sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=CrossLineDetection");
+
+                    // Check for alarms, channel for NVRs appears not to work at filtering.
                     lock.lock();
                     try {
-                        indexInLists = (byte) listOfRequests.indexOf(
-                                "/cgi-bin/eventManager.cgi?action=attach&codes=[VideoMotion,MDResult,VideoBlind,VideoLoss,CrossLineDetection]&channel=["
-                                        + nvrChannel + "]");
+                        indexInLists = (byte) listOfRequests
+                                .indexOf("/cgi-bin/eventManager.cgi?action=attach&codes=[All][&keepalive]");
                     } finally {
                         lock.unlock();
                     }
@@ -1710,9 +1816,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         logger.warn(
                                 "The alarm checking stream was not running. Cleaning channels and then going to re-start it now.");
                         cleanChannels();
-                        sendHttpGET(
-                                "/cgi-bin/eventManager.cgi?action=attach&codes=[VideoMotion,MDResult,VideoBlind,VideoLoss,CrossLineDetection]&channel=["
-                                        + nvrChannel + "]");
+                        sendHttpGET("/cgi-bin/eventManager.cgi?action=attach&codes=[All][&keepalive]");
                     }
                     break;
             }

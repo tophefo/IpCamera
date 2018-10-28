@@ -6,6 +6,7 @@
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  */
+
 package org.openhab.binding.ipcamera;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -66,4 +67,10 @@ public class IpCameraBindingConstants {
     public static final String CHANNEL_THRESHOLD_AUDIO_ALARM = "thresholdAudioAlarm";
     public static final String CHANNEL_ACTIVATE_ALARM_OUTPUT = "activateAlarmOutput";
     public static final String CHANNEL_EXTERNAL_ALARM_INPUT = "externalAlarmInput";
+    public static final String CHANNEL_AUTO_LED = "autoLED";
+    public static final String CHANNEL_ENABLE_LED = "enableLED";
+    public static final String CHANNEL_PIR_ALARM = "pirAlarm";
+    public static final String CHANNEL_ENABLE_FIELD_DETECTION_ALARM = "enableFieldDetectionAlarm";
+    public static final String CHANNEL_FIELD_DETECTION_ALARM = "fieldDetectionAlarm";
+    public static final String CHANNEL_STREAM_VIDEO = "streamVideo";
 }
