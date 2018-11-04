@@ -1,8 +1,8 @@
 # <bindingName> Binding
 
-This binding allows you to use IP cameras in Openhab2 directly so long as they either have ONVIF or the ability to fetch a snapshot via a http link. Some brands of camera have much better support and will have motion, audio, and other alarms working that can be used to trigger Openhab rules and do much more cool stuff so choose your camera wisely by looking at what the APIs allow you to do. Keep a copy of the API documents as they have a habit of disappearing off manufacturers web sites.
+This binding allows you to use IP cameras in Openhab2 so long as they have the ability to fetch a snapshot (JPG file) via a http link. It does not yet support RTSP streams but the Netty library was chosen as it can be used to provide this support in the future. If the brand does not have a full API then the camera will only fetch a picture and will not have any support for alarms or any of the other cool features that the binding has implemented for certain brands. Each brand that does have an API will have different features  as each API is different and hence the support in this binding will also differ between them. Choose your camera wisely by looking at what the APIs allow you to do. 
 
-In Alphabetical order:
+In Alphabetical order the brands that have an API are:
 
 AMCREST
 
@@ -28,7 +28,7 @@ https://wikiold.instar.de/index.php/List_of_CGI_commands_(HD)
 
 ## Supported Things
 
-If doing manual text configuration and/or when needing to setup HABPANEL or your sitemap you are going to need to know what your camera has as a "thing type". These are listed in BOLD below and are only a single word. Example: The thing type for a generic onvif camera is "ONVIF". 
+If doing manual text configuration and/or when needing to setup HABPANEL/sitemap you are going to need to know what your camera has as a "thing type". These are listed in BOLD below and are only a single word. Example: The thing type for a generic onvif camera is "ONVIF". 
 
 HTTPONLY: For any camera that is not ONVIF compatible, and has the ability to fetch a snapshot with a url.
 
@@ -49,7 +49,7 @@ INSTAR: Use for all current INSTAR Cameras as they support an API as well as ONV
 
 ## Discovery
 
-Auto discovery is not supported currently and I would love a PR if someone has experience finding cameras on a network. ONVIF documents a way to use UDP multicast to find cameras. Currently you need to manually add the IP camera either via PaperUI or textual configuration which is covered below in more detail. Once the camera is added you then need to supply the IP address and port settings you wish to use. Optionally a username and password can also be filled in if the camera is secured with these which I highly recommend. Clicking on the pencil icon in PaperUI is how you reach these parameters and how you make all the settings unless you have chosen to use manual text configuration. You can not mix manual and PaperUI methods, but it is handy to see and read the descriptions of all the controls in PaperUI.
+Auto discovery is not supported currently and I would love a PR if someone has experience finding cameras on a network. ONVIF documents a way to use UDP multicast to find cameras. Currently you need to manually add the IP camera either via PaperUI or textual configuration which is covered below in more detail. Once the camera is added you then supply the IP address and port settings for the camera. Optionally a username and password can also be filled in if the camera is secured with these which I highly recommend. Clicking on the pencil icon in PaperUI is how you reach these parameters and how you make all the settings unless you have chosen to use manual text configuration. You can not mix manual and PaperUI methods, but it is handy to see and read the descriptions of all the controls in PaperUI.
 
 ## Binding Configuration
 
@@ -76,6 +76,10 @@ POLL_CAMERA_MS
 SNAPSHOT_URL_OVERIDE
 
 IMAGE_UPDATE_EVENTS
+
+NVR_CHANNEL
+
+MOTION_URL_OVERIDE
 
 
 
@@ -113,7 +117,7 @@ UID: Can be made up but it must be UNIQUE, hence why it is called uniqueID. If y
 
 IMAGE_UPDATE_EVENTS
 
-Need to add a description on how to use this in textual config.
+If you look in PaperUI you will notice the numbers in brackets that represent the option you wish to use.
 
 ## Channels
 
@@ -190,6 +194,21 @@ Switch CamLineAlarm "Line Alarm detected" { channel="ipcamera:HIKVISION:002:line
 
 ```
 
+## Special notes for different brands
+
+**FOSCAM**
+
+These cameras need to have a detection area listed in the URL when you enable the motion alarm. As each model has a different resolution and two different URLs, this makes it difficult to make this automatic so an override feature was added to create your own enable the alarm url. This setting is called "MOTION_URL_OVERIDE" and the steps to using it are:
+1. Enable the motion alarm in the web interface of your camera and setup any areas you wish movement to be ignored in ie. Tree branches moving in the wind.
+2. Use any web browser to fetch this URL https://x.x.x.x/cgi-bin/CGIProxy.fcgi?cmd=getMotionDetectConfig1&usr=xxxxx&pwd=xxxxx
+3. Use the information returned by the above url to create the override settings.
+
+An example for a Foscam C2 is...
+
+```
+/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig1&isEnable=1&snapInterval=1&schedule0=281474976710655&schedule1=281474976710655&schedule2=281474976710655&schedule3=281474976710655&schedule4=281474976710655&schedule5=281474976710655&schedule6=281474976710655&x1=0&y1=0&width1=10000&height1=10000&sensitivity1=1&valid1=1&linkage=6&usr=xxxxx&pwd=xxxxx
+
+```
 
 
 ## Reducing log sizes
@@ -240,7 +259,7 @@ To re-enable use the same command with INFO instead of WARN.
 
 ## Roadmap for further development
 
-Currently the focus is on stability, speed and creating a good framework that allows multiple brands to be used in RULES in a consistent way. What this means is it should be less work to add functions to this binding instead of people creating scripts which are not easy for new Openhab users to find or use. By consistent I mean if a camera breaks down and you wish to change brands, your rules with this binding should be easy to adapt to the new brand of camera with no/minimal changes. 
+Currently the focus is on stability, speed and creating a good framework that allows multiple brands to be used in RULES in a consistent way. What this means is hopefully the binding is less work to add a new API function to instead of people creating stand alone scripts which are not easy for new Openhab users to find or use. By consistent I mean if a camera breaks down and you wish to change brands, your rules with this binding should be easy to adapt to the new brand of camera with no/minimal changes. 
 
 
 If you need a feature added that is in an API, please raise an issue ticket here at this github project with a sample of what a browser shows when you enter in the URL and it is usually very quick to add these features. 
@@ -248,7 +267,7 @@ If you need a feature added that is in an API, please raise an issue ticket here
 
 If this binding becomes popular, I can look at extending the frame work to support:
 
-RTSP streams to the image channel.
+RTSP streams.
 
 PTZ methods for continuous move.
 
@@ -261,5 +280,5 @@ ONVIF alarms
 1 and 2 way audio.
 
 
-If you wish to contribute then please create an issue ticket first to discuss how things will work before doing any coding on large amounts of changes, this is due to needing to keep things CONSISTENT between brands and also easy to maintain. This list of areas that could be added are a great place to start helping with this binding if you wish to contribute. Any feedback, push requests and ideas are welcome.
+If you wish to contribute then please create an issue ticket first to discuss how things will work before doing any coding. This is for multiple reasons due to needing to keep things CONSISTENT between brands and also easy to maintain. This list of areas that could be added are a great place to start helping with this binding if you wish to contribute. Any feedback, push requests and ideas are welcome.
 
