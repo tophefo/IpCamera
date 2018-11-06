@@ -1089,6 +1089,22 @@ public class IpCameraHandler extends BaseThingHandler {
                     firstMotionAlarm = false;
                 }
 
+                // Handle item taken alarm
+                if (content.contains("Code=TakenAwayDetection;action=Start;index=" + nvrChannel)) {
+                    motionDetected(CHANNEL_ITEM_TAKEN);
+                } else if (content.contains("Code=TakenAwayDetection;action=Stop;index=" + nvrChannel)) {
+                    updateState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("OFF"));
+                    firstMotionAlarm = false;
+                }
+
+                // Handle item left alarm
+                if (content.contains("Code=LeftDetection;action=Start;index=" + nvrChannel)) {
+                    motionDetected(CHANNEL_ITEM_LEFT);
+                } else if (content.contains("Code=LeftDetection;action=Stop;index=" + nvrChannel)) {
+                    updateState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("OFF"));
+                    firstMotionAlarm = false;
+                }
+
                 // Handle CrossLineDetection alarm
                 if (content.contains("Code=CrossLineDetection;action=Start;index=" + nvrChannel)) {
                     motionDetected(CHANNEL_LINE_CROSSING_ALARM);
@@ -1268,6 +1284,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getAudioAlarmConfig&usr=" + username + "&pwd="
                                     + password);
                             break;
+                        case "AMCREST":
                         case "DAHUA":
                             sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=AudioDetect[0]");
                             break;
@@ -1282,6 +1299,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         case "HIKVISION":
                             sendHttpGET("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01");
                             break;
+                        case "AMCREST":
                         case "DAHUA":
                             sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=AudioDetect[0]");
                             break;
@@ -1293,6 +1311,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         case "HIKVISION":
                             sendHttpGET("/ISAPI/Smart/LineDetection/" + nvrChannel + "01");
                             break;
+                        case "AMCREST":
                         case "DAHUA":
                             sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=CrossLineDetection["
                                     + nvrChannel + "]");
@@ -1312,9 +1331,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 case CHANNEL_ENABLE_MOTION_ALARM:
                     switch (thing.getThingTypeUID().getId()) {
                         case "AMCREST":
-                            sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect[" + nvrChannel
-                                    + "]");
-                            break;
                         case "DAHUA":
                             sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect[" + nvrChannel
                                     + "]");
@@ -1391,7 +1407,7 @@ public class IpCameraHandler extends BaseThingHandler {
             case CHANNEL_THRESHOLD_AUDIO_ALARM:
 
                 switch (thing.getThingTypeUID().getId()) {
-
+                    case "AMCREST":
                     case "DAHUA":
                         int threshold = Math.round(Float.valueOf(command.toString()));
 
@@ -1468,6 +1484,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                     "<enabled>true</enabled>", "<enabled>false</enabled>");
                         }
                         break;
+                    case "AMCREST":
                     case "DAHUA":
                         if ("ON".equals(command.toString())) {
                             sendHttpGET(
@@ -1482,6 +1499,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
             case CHANNEL_ENABLE_LINE_CROSSING_ALARM:
                 switch (thing.getThingTypeUID().getId()) {
+                    case "AMCREST":
                     case "DAHUA":
                         if ("ON".equals(command.toString())) {
 
@@ -1507,16 +1525,6 @@ public class IpCameraHandler extends BaseThingHandler {
             case CHANNEL_ENABLE_MOTION_ALARM:
 
                 switch (thing.getThingTypeUID().getId()) {
-                    case "AMCREST":
-                        if ("ON".equals(command.toString())) {
-                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[" + nvrChannel
-                                    + "].Enable=true");
-                        } else {
-                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[" + nvrChannel
-                                    + "].Enable=false");
-                        }
-                        break;
-
                     case "FOSCAM":
                         if ("ON".equals(command.toString())) {
                             if (config.get(CONFIG_MOTION_URL_OVERIDE) == null) {
@@ -1554,7 +1562,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                     "/cgi-bin/hi3510/param.cgi?cmd=setmdattr&-enable=0&-name=1&cmd=setmdattr&-enable=0&-name=2&cmd=setmdattr&-enable=0&-name=3&cmd=setmdattr&-enable=0&-name=4");
                         }
                         break;
-
+                    case "AMCREST":
                     case "DAHUA":
                         if ("ON".equals(command.toString())) {
                             sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[" + nvrChannel
@@ -1577,6 +1585,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 setAbsoluteZoom(Float.valueOf(command.toString()));
                 break;
             case CHANNEL_ENABLE_FIELD_DETECTION_ALARM:
+                // Only HIK has this so far
                 if ("ON".equals(command.toString())) {
                     hikChangeSetting("/ISAPI/Smart/FieldDetection/" + nvrChannel + "01", "<enabled>false</enabled>",
                             "<enabled>true</enabled>");
@@ -1586,6 +1595,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
                 break;
             case CHANNEL_ACTIVATE_ALARM_OUTPUT:
+                // Only HIK has this so far
                 if ("ON".equals(command.toString())) {
                     hikSendXml("/ISAPI/System/IO/outputs/" + nvrChannel + "/trigger",
                             "<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n    <outputState>high</outputState>\r\n</IOPortData>\r\n");

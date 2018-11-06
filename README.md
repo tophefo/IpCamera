@@ -196,7 +196,11 @@ Switch CamLineAlarm "Line Alarm detected" { channel="ipcamera:HIKVISION:002:line
 
 ## Special notes for different brands
 
-**FOSCAM**
+**Amcrest**
+
+It is better to setup your AMCREST camera as a DAHUA thing type as the old alarm checking method is used in AMCREST and the newer method is used in DAHUA that is stream based.
+
+**Foscam**
 
 These cameras need to have a detection area listed in the URL when you enable the motion alarm. As each model has a different resolution and two different URLs, this makes it difficult to make this automatic so an override feature was added to create your own enable the alarm url. This setting is called "MOTION_URL_OVERIDE" and the steps to using it are:
 1. Enable the motion alarm in the web interface of your camera and setup any areas you wish movement to be ignored in ie. Tree branches moving in the wind.
