@@ -1096,6 +1096,66 @@ public class IpCameraHandler extends BaseThingHandler {
                     updateState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
                 }
+
+                // determine if the audio alarm is turned on or off.
+                if (content.contains("table.AudioDetect[0].MutationDetect=true")) {
+                    updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
+                } else if (content.contains("table.AudioDetect[0].MutationDetect=false")) {
+                    updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                }
+
+                // Handle AudioMutation alarm
+                if (content.contains("Code=AudioMutation;action=Start;index=" + nvrChannel)) {
+                    audioDetected();
+                } else if (content.contains("Code=AudioMutation;action=Stop;index=" + nvrChannel)) {
+                    updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                    firstAudioAlarm = false;
+                }
+
+                // Handle AudioMutationThreshold alarm
+                if (content.contains("table.AudioDetect[0].MutationThreold=")) {
+                    String value = returnValueFromString(content, "table.AudioDetect[0].MutationThreold=");
+                    updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf(value));
+                }
+
+                // Handle FaceDetection alarm
+                if (content.contains("Code=FaceDetection;action=Start;index=" + nvrChannel)) {
+                    motionDetected(CHANNEL_FACE_DETECTED);
+                } else if (content.contains("Code=FaceDetection;action=Stop;index=" + nvrChannel)) {
+                    updateState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("OFF"));
+                    firstMotionAlarm = false;
+                }
+
+                // Handle ParkingDetection alarm
+                if (content.contains("Code=ParkingDetection;action=Start;index=" + nvrChannel)) {
+                    motionDetected(CHANNEL_PARKING_ALARM);
+                } else if (content.contains("Code=ParkingDetection;action=Stop;index=" + nvrChannel)) {
+                    updateState(CHANNEL_PARKING_ALARM, OnOffType.valueOf("OFF"));
+                    firstMotionAlarm = false;
+                }
+
+                // Handle CrossRegionDetection alarm
+                if (content.contains("Code=CrossRegionDetection;action=Start;index=" + nvrChannel)) {
+                    motionDetected(CHANNEL_FIELD_DETECTION_ALARM);
+                } else if (content.contains("Code=CrossRegionDetection;action=Stop;index=" + nvrChannel)) {
+                    updateState(CHANNEL_FIELD_DETECTION_ALARM, OnOffType.valueOf("OFF"));
+                    firstMotionAlarm = false;
+                }
+
+                // Handle External Input alarm
+                if (content.contains("Code=AlarmLocal;action=Start;index=0")) {
+                    updateState(CHANNEL_EXTERNAL_ALARM_INPUT, OnOffType.valueOf("ON"));
+                } else if (content.contains("Code=AlarmLocal;action=Stop;index=0")) {
+                    updateState(CHANNEL_EXTERNAL_ALARM_INPUT, OnOffType.valueOf("OFF"));
+                }
+
+                // Handle External Input alarm2
+                if (content.contains("Code=AlarmLocal;action=Start;index=1")) {
+                    updateState(CHANNEL_EXTERNAL_ALARM_INPUT2, OnOffType.valueOf("ON"));
+                } else if (content.contains("Code=AlarmLocal;action=Stop;index=1")) {
+                    updateState(CHANNEL_EXTERNAL_ALARM_INPUT2, OnOffType.valueOf("OFF"));
+                }
+
             } finally {
                 ReferenceCountUtil.release(msg);
                 content = null;
@@ -1126,6 +1186,22 @@ public class IpCameraHandler extends BaseThingHandler {
         } else if (updateImageEvents.contains("5")) {
             sendHttpGET(getCorrectUrlFormat(snapshotUri));
         }
+    }
+
+    private String returnValueFromString(String rawString, String searchedString) {
+        String result = "";
+        int index = rawString.indexOf(searchedString);
+        if (index != -1) // -1 means "not found"
+        {
+            result = rawString.substring(index + searchedString.length(), rawString.length());
+            index = result.indexOf("\r\n"); // find a carriage return to find the end of the value.
+            if (index == -1) {
+                return result; // Did not find a carriage return.
+            } else {
+                return result.substring(0, index);
+            }
+        }
+        return null; // Did not find the String we were searching for
     }
 
     private String searchString(String rawString, String searchedString) {
@@ -1192,6 +1268,9 @@ public class IpCameraHandler extends BaseThingHandler {
                             sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getAudioAlarmConfig&usr=" + username + "&pwd="
                                     + password);
                             break;
+                        case "DAHUA":
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=AudioDetect[0]");
+                            break;
                     }
                     break;
                 case CHANNEL_ENABLE_AUDIO_ALARM:
@@ -1202,6 +1281,9 @@ public class IpCameraHandler extends BaseThingHandler {
                             break;
                         case "HIKVISION":
                             sendHttpGET("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01");
+                            break;
+                        case "DAHUA":
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=AudioDetect[0]");
                             break;
                     }
                     break;
@@ -1310,6 +1392,18 @@ public class IpCameraHandler extends BaseThingHandler {
 
                 switch (thing.getThingTypeUID().getId()) {
 
+                    case "DAHUA":
+                        int threshold = Math.round(Float.valueOf(command.toString()));
+
+                        if (threshold == 0) {
+                            sendHttpGET(
+                                    "/cgi-bin/configManager.cgi?action=setConfig&AudioDetect[0].MutationDetect=false");
+                        } else {
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AudioDetect[0].MutationThreold="
+                                    + threshold);
+                        }
+                        break;
+
                     case "FOSCAM":
                         int value = Math.round(Float.valueOf(command.toString()));
                         if (value == 0) {
@@ -1372,6 +1466,15 @@ public class IpCameraHandler extends BaseThingHandler {
                         } else {
                             hikChangeSetting("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01",
                                     "<enabled>true</enabled>", "<enabled>false</enabled>");
+                        }
+                        break;
+                    case "DAHUA":
+                        if ("ON".equals(command.toString())) {
+                            sendHttpGET(
+                                    "/cgi-bin/configManager.cgi?action=setConfig&AudioDetect[0].MutationDetect=true&AudioDetect[0].EventHandler.Dejitter=1");
+                        } else {
+                            sendHttpGET(
+                                    "/cgi-bin/configManager.cgi?action=setConfig&AudioDetect[0].MutationDetect=false");
                         }
                         break;
                 }
@@ -1455,7 +1558,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     case "DAHUA":
                         if ("ON".equals(command.toString())) {
                             sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[" + nvrChannel
-                                    + "].Enable=true");
+                                    + "].Enable=true&MotionDetect[0].EventHandler.Dejitter=1");
                         } else {
                             sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[" + nvrChannel
                                     + "].Enable=false");

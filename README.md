@@ -1,26 +1,26 @@
 # <bindingName> Binding
 
-This binding allows you to use IP cameras in Openhab2 so long as they have the ability to fetch a snapshot (JPG file) via a http link. It does not yet support RTSP streams but the Netty library was chosen as it can be used to provide this support in the future. If the brand does not have a full API then the camera will only fetch a picture and will not have any support for alarms or any of the other cool features that the binding has implemented for certain brands. Each brand that does have an API will have different features  as each API is different and hence the support in this binding will also differ between them. Choose your camera wisely by looking at what the APIs allow you to do. 
+This binding allows you to use IP cameras in Openhab 2 so long as the camera has the ability to fetch a snapshot (JPG file) via a http link. It does not yet support RTSP streams but the Netty library was chosen as it can be used to provide this support in the future. If the brand does not have a full API then the camera will only fetch a picture and will not have any support for alarms or any of the other cool features that the binding has implemented for certain brands. Each brand that does have an API will have different features  as each API is different and hence the support in this binding will also differ between them. Choose your camera wisely by looking at what the APIs allow you to do. 
 
 In Alphabetical order the brands that have an API are:
 
-AMCREST
+**AMCREST**
 
 https://s3.amazonaws.com/amcrest-files/Amcrest+HTTP+API+3.2017.pdf
 
-DAHUA
+**DAHUA**
 
 ftp://ftp.wintel.fi/drivers/dahua/SDK-HTTP_ohjelmointi/DAHUA_IPC_HTTP_API_V1.00x.pdf
 
-FOSCAM
+**FOSCAM**
 
 https://www.foscam.es/descarga/Foscam-IPCamera-CGI-User-Guide-AllPlatforms-2015.11.06.pdf
 
-HIKVISION
+**HIKVISION**
 
 oversea-download.hikvision.com/uploadfile/Leaflet/ISAPI/HIKVISION%20ISAPI_2.0-IPMD%20Service.pdf
 
-INSTAR
+**INSTAR**
 
 https://wikiold.instar.de/index.php/List_of_CGI_commands_(HD)
 
@@ -28,7 +28,7 @@ https://wikiold.instar.de/index.php/List_of_CGI_commands_(HD)
 
 ## Supported Things
 
-If doing manual text configuration and/or when needing to setup HABPANEL/sitemap you are going to need to know what your camera has as a "thing type". These are listed in BOLD below and are only a single word. Example: The thing type for a generic onvif camera is "ONVIF". 
+If doing manual text configuration and/or when needing to setup HABPANEL/sitemap you are going to need to know what your camera is as a "thing type". These are listed in CAPS below and are only a single word. Example: The thing type for a generic onvif camera is "ONVIF". 
 
 HTTPONLY: For any camera that is not ONVIF compatible, and has the ability to fetch a snapshot with a url.
 
@@ -40,7 +40,7 @@ AXIS: Use for all current Axis Cameras as they support ONVIF.
 
 DAHUA: Use for all current Dahua Cameras as they support an API as well as ONVIF.
 
-FOSCAM: Use for all current FOSCAM Cameras as they support an API as well as ONVIF.
+FOSCAM: Use for all current FOSCAM HD Cameras as they support an API as well as ONVIF.
 
 HIKVISION: Use for all current HIKVISION Cameras as they support an API as well as ONVIF.
 
