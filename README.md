@@ -220,6 +220,10 @@ Another example is:
 ```
 
 
+**Instar**
+
+These cameras have the ability to call the Openhab REST API directly when an alarm occurs hence why the binding does not have the alarm switches as the camera can handle this directly. See the openhab documentation regarding how to use the rest API and if you get this working please send me details how so I can include a more detailed setup guide here.
+
 
 ## Reducing log sizes
 

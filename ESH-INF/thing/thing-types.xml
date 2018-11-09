@@ -176,16 +176,17 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <description>Use for all current Amcrest Cameras, as they support an API as well as ONVIF.</description>
         <channels>
             <channel id="updateImageNow" typeId="updateImageNow"/>          
-            <channel id="image" typeId="image" />            
-            <channel id="enableMotionAlarm" typeId="enableMotionAlarm" />
+            <channel id="image" typeId="image"/>            
+            <channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>
             <channel id="motionAlarm" typeId="motionAlarm" />
             <channel id="enableAudioAlarm" typeId="enableAudioAlarm"/>
-            <channel id="audioAlarm" typeId="audioAlarm" />               
-            <channel id="pan" typeId="pan" />
-            <channel id="tilt" typeId="tilt" />
-            <channel id="zoom" typeId="zoom" />
-            <channel id="videourl" typeId="videourl" />
-            <channel id="imageurl" typeId="imageurl" />     
+            <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm"/>
+            <channel id="audioAlarm" typeId="audioAlarm"/>               
+            <channel id="pan" typeId="pan"/>
+            <channel id="tilt" typeId="tilt"/>
+            <channel id="zoom" typeId="zoom"/>
+            <channel id="videourl" typeId="videourl"/>
+            <channel id="imageurl" typeId="imageurl"/>     
         </channels>     
         <config-description>
         

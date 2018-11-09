@@ -524,7 +524,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
                     if (contentType.contains("image/jpeg")) {
                         if (bytesToRecieve == 0) {
-                            bytesToRecieve = 512000; // 0.512Mbyte when no Content-Length is sent
+                            bytesToRecieve = 768000; // 0.768 Mbyte when no Content-Length is sent
                             logger.debug("Camera has no Content-Length header, we have to guess how much RAM.");
                         }
                         for (int i = 0; i < content.content().capacity(); i++) {
@@ -1262,10 +1262,14 @@ public class IpCameraHandler extends BaseThingHandler {
             }
         } catch (NullPointerException e) {
             logger.error("NPE occured when trying to fetch the cameras PTZ position");
+        } catch (Exception e) {
+            logger.error("Generic Exception occured when trying to fetch the cameras PTZ position. {}", e);
+        } catch (Throwable t) {
+            logger.error("A Throwable occured when trying to fetch the cameras PTZ position. {}", t);
         }
 
         logger.warn(
-                "Camera replied with null when asked what its position was, going to fake the position so PTZ still works.");
+                "Camera did not give a good reply when asked what its position was, going to fake the position so PTZ still works.");
         pv = new PTZVector();
         pv.setPanTilt(new Vector2D());
         pv.setZoom(new Vector1D());
@@ -1412,8 +1416,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         int threshold = Math.round(Float.valueOf(command.toString()));
 
                         if (threshold == 0) {
-                            sendHttpGET(
-                                    "/cgi-bin/configManager.cgi?action=setConfig&AudioDetect[0].MutationDetect=false");
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AudioDetect[0].MutationThreold=1");
                         } else {
                             sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AudioDetect[0].MutationThreold="
                                     + threshold);
@@ -1926,12 +1929,6 @@ public class IpCameraHandler extends BaseThingHandler {
                     sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=getmdattr");
                     break;
                 case "DAHUA":
-                    // Poll the alarm configs ie on/off/...
-                    // videomotion replaced by motiondetect, left as its possible older cameras use different api
-                    // sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=VideoMotion");
-                    // sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect");
-                    // sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=CrossLineDetection");
-
                     // Check for alarms, channel for NVRs appears not to work at filtering.
                     if (streamIsStopped("/cgi-bin/eventManager.cgi?action=attach&codes=[All]")) {
                         logger.warn(
@@ -1960,13 +1957,11 @@ public class IpCameraHandler extends BaseThingHandler {
         if (snapshotUri == null) {
             switch (thing.getThingTypeUID().getId()) {
                 case "AMCREST":
+                case "DAHUA":
                     snapshotUri = "http://" + ipAddress + "/cgi-bin/snapshot.cgi?channel=" + nvrChannel;
                     break;
                 case "HIKVISION":
                     snapshotUri = "http://" + ipAddress + "/ISAPI/Streaming/channels/" + nvrChannel + "01/picture";
-                    break;
-                case "DAHUA":
-                    snapshotUri = "http://" + ipAddress + "/cgi-bin/snapshot.cgi?channel=" + nvrChannel;
                     break;
             }
         }
