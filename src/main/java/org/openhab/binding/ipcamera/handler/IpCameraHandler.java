@@ -1834,10 +1834,14 @@ public class IpCameraHandler extends BaseThingHandler {
                 } catch (NullPointerException e) {
                     logger.warn("Following NPE occured when trying to connect to the camera with ONVIF.{}",
                             e.toString());
-                    if (ptzDevices != null && tiltRange.equals(null)) {
-                        logger.error("NPE occured when asking the camera about PTZ, PTZ controls will not work.");
-                        ptzDevices = null;
-                    }
+                    logger.error(
+                            "Since an NPE occured when asking the camera about PTZ, the PTZ controls will not work. If the camera does not come online, give the camera the wrong ONVIF port number so it can bypass using ONVIF and still come online.");
+                    ptzDevices = null;
+
+                } catch (Exception e) {
+                    logger.error("Generic Exception occured when trying to fetch the cameras PTZ ranges. {}", e);
+                } catch (Throwable t) {
+                    logger.error("A Throwable occured when trying to fetch the cameras PTZ ranges. {}", t);
                 }
 
                 if (snapshotUri != null) {
