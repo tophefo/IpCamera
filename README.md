@@ -200,6 +200,9 @@ Switch CamLineAlarm "Line Alarm detected" { channel="ipcamera:HIKVISION:002:line
 
 It is better to setup your AMCREST camera as a DAHUA thing type as the old alarm checking method is used in AMCREST and the newer method is used in DAHUA that is stream based.
 
+**Hikvision**
+Each alarm you wish to use must have "Notify Surveillance Center" enabled under each alarms settings in the control panel of the camera itself. The API and also ONVIF are disabled by default on the cameras and also are needed to be enabled.
+
 **Foscam**
 
 These cameras need to have a detection area listed in the URL when you enable the motion alarm. As each model has a different resolution and two different URLs, this makes it difficult to make this automatic so an override feature was added to create your own enable the alarm url. This setting is called "MOTION_URL_OVERIDE" and the steps to using it are:
