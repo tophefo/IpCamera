@@ -521,8 +521,8 @@ public class IpCameraHandler extends BaseThingHandler {
 
                 if (msg instanceof HttpContent) {
                     content = (HttpContent) msg;
-
-                    if (contentType.contains("image/jpeg")) {
+                    // Found a TP Link camera uses Content-Type: image/jpg instead of image/jpeg
+                    if (contentType.contains("image/jp")) {
                         if (bytesToRecieve == 0) {
                             bytesToRecieve = 768000; // 0.768 Mbyte when no Content-Length is sent
                             logger.debug("Camera has no Content-Length header, we have to guess how much RAM.");
@@ -538,7 +538,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         }
 
                         if (content instanceof LastHttpContent) {
-                            if (contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
+                            if (contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
                                 updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
                                 lastSnapshot = null;
                                 if (closeConnection) {
@@ -571,7 +571,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
                         // HIKVISION alertStream never has a LastHttpContent as it always stays open//
                         if (contentType.contains("multipart")) {
-                            if (!contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
+                            if (!contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
                                 reply = incomingMessage;
                                 incomingMessage = null;
                                 bytesToRecieve = 0;
@@ -604,7 +604,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     }
 
                     // Foscam and Amcrest cameras need this
-                    else if (!contentType.contains("image/jpeg") && bytesAlreadyRecieved != 0) {
+                    else if (!contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
                         reply = incomingMessage;
                         logger.debug("Packet back from camera is {}", incomingMessage);
                         incomingMessage = null;
@@ -1935,8 +1935,8 @@ public class IpCameraHandler extends BaseThingHandler {
                 case "DAHUA":
                     // Check for alarms, channel for NVRs appears not to work at filtering.
                     if (streamIsStopped("/cgi-bin/eventManager.cgi?action=attach&codes=[All]")) {
-                        logger.warn(
-                                "The alarm checking stream was not running. Cleaning channels and then going to re-start it now.");
+                        logger.debug(
+                                "The alarm checking stream was not running, going to clean channels and re-start it now.");
                         cleanChannels();
                         sendHttpGET("/cgi-bin/eventManager.cgi?action=attach&codes=[All]");
                     }
