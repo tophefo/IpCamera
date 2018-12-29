@@ -132,6 +132,8 @@ public class IpCameraHandler extends BaseThingHandler {
     private String profileToken = "empty";
 
     private String updateImageEvents;
+    boolean audioAlarmUpdateSnapshot = false;
+    boolean motionAlarmUpdateSnapshot = false;
     boolean firstAudioAlarm = false;
     boolean firstMotionAlarm = false;
 
@@ -299,7 +301,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 @Override
                 public void initChannel(SocketChannel socketChannel) throws Exception {
                     // RtspResponseDecoder //RtspRequestEncoder // try in the pipeline soon//
-                    socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(15, 0, 0));
+                    socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(30, 0, 0));
                     socketChannel.pipeline().addLast("HttpClientCodec", new HttpClientCodec());
                     // socketChannel.pipeline().addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
                     socketChannel.pipeline().addLast("authHandler",
@@ -675,7 +677,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 IdleStateEvent e = (IdleStateEvent) evt;
                 // If camera does not use the channel for X time it will close.
                 if (e.state() == IdleState.READER_IDLE) {
-                    logger.debug("!!!! Channel was found idle for more than 15 seconds so closing it down");
+                    logger.debug("!!!! Channel was found idle for more than 30 seconds so closing it down");
                     lock.lock();
                     try {
                         byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
@@ -939,6 +941,8 @@ public class IpCameraHandler extends BaseThingHandler {
                             countDown();
                         }
                         if (content.contains("<eventType>videoloss</eventType>\r\n<eventState>inactive</eventState>")) {
+                            audioAlarmUpdateSnapshot = false;
+                            motionAlarmUpdateSnapshot = false;
                             firstMotionAlarm = false;
                             countDown();
                             countDown();
@@ -946,6 +950,8 @@ public class IpCameraHandler extends BaseThingHandler {
                         }
                     } else if (content.contains("<channelID>0</channelID>")) {// NVR uses channel 0 to say all channels
                         if (content.contains("<eventType>videoloss</eventType>\r\n<eventState>inactive</eventState>")) {
+                            audioAlarmUpdateSnapshot = false;
+                            motionAlarmUpdateSnapshot = false;
                             firstMotionAlarm = false;
                             countDown();
                             countDown();
@@ -1087,6 +1093,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 } else if (content.contains("Code=VideoMotion;action=Stop;index=" + nvrChannel)) {
                     updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
+                    motionAlarmUpdateSnapshot = false;
                 }
 
                 // Handle item taken alarm
@@ -1095,6 +1102,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 } else if (content.contains("Code=TakenAwayDetection;action=Stop;index=" + nvrChannel)) {
                     updateState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
+                    motionAlarmUpdateSnapshot = false;
                 }
 
                 // Handle item left alarm
@@ -1103,6 +1111,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 } else if (content.contains("Code=LeftDetection;action=Stop;index=" + nvrChannel)) {
                     updateState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
+                    motionAlarmUpdateSnapshot = false;
                 }
 
                 // Handle CrossLineDetection alarm
@@ -1111,6 +1120,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 } else if (content.contains("Code=CrossLineDetection;action=Stop;index=" + nvrChannel)) {
                     updateState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
+                    motionAlarmUpdateSnapshot = false;
                 }
 
                 // determine if the audio alarm is turned on or off.
@@ -1126,6 +1136,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 } else if (content.contains("Code=AudioMutation;action=Stop;index=" + nvrChannel)) {
                     updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
                     firstAudioAlarm = false;
+                    audioAlarmUpdateSnapshot = false;
                 }
 
                 // Handle AudioMutationThreshold alarm
@@ -1140,6 +1151,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 } else if (content.contains("Code=FaceDetection;action=Stop;index=" + nvrChannel)) {
                     updateState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
+                    motionAlarmUpdateSnapshot = false;
                 }
 
                 // Handle ParkingDetection alarm
@@ -1148,6 +1160,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 } else if (content.contains("Code=ParkingDetection;action=Stop;index=" + nvrChannel)) {
                     updateState(CHANNEL_PARKING_ALARM, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
+                    motionAlarmUpdateSnapshot = false;
                 }
 
                 // Handle CrossRegionDetection alarm
@@ -1156,6 +1169,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 } else if (content.contains("Code=CrossRegionDetection;action=Stop;index=" + nvrChannel)) {
                     updateState(CHANNEL_FIELD_DETECTION_ALARM, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
+                    motionAlarmUpdateSnapshot = false;
                 }
 
                 // Handle External Input alarm
@@ -1186,21 +1200,32 @@ public class IpCameraHandler extends BaseThingHandler {
 
     private void motionDetected(String thisAlarmsChannel) {
         updateState(thisAlarmsChannel.toString(), OnOffType.valueOf("ON"));
-        if (updateImageEvents.contains("2") && !firstMotionAlarm) {
+        if (updateImageEvents.contains("2")) {
+            if (!firstMotionAlarm) {
+                sendHttpGET(getCorrectUrlFormat(snapshotUri));
+                // motionAlarmUpdateSnapshot = true;
+                firstMotionAlarm = true;
+            } else {
+                // motionAlarmUpdateSnapshot = false;
+            }
+        } else if (updateImageEvents.contains("4")) { // During Motion Alarms
             sendHttpGET(getCorrectUrlFormat(snapshotUri));
-            firstMotionAlarm = true;
-        } else if (updateImageEvents.contains("4")) {
-            sendHttpGET(getCorrectUrlFormat(snapshotUri));
+            motionAlarmUpdateSnapshot = true;
         }
     }
 
     private void audioDetected() {
         updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("ON"));
-        if (updateImageEvents.contains("3") && !firstAudioAlarm) {
+        if (updateImageEvents.contains("3")) {
+            if (!firstAudioAlarm) {
+                sendHttpGET(getCorrectUrlFormat(snapshotUri));
+                firstAudioAlarm = true;
+            } else {
+                // audioAlarmUpdateSnapshot = true;
+            }
+        } else if (updateImageEvents.contains("5")) {// During audio alarms
             sendHttpGET(getCorrectUrlFormat(snapshotUri));
-            firstAudioAlarm = true;
-        } else if (updateImageEvents.contains("5")) {
-            sendHttpGET(getCorrectUrlFormat(snapshotUri));
+            audioAlarmUpdateSnapshot = true;
         }
     }
 
@@ -1373,7 +1398,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 if (snapshotUri != null) {
                     sendHttpGET(getCorrectUrlFormat(snapshotUri));
                 }
-
                 break;
 
             case CHANNEL_ENABLE_LED:
@@ -1903,8 +1927,12 @@ public class IpCameraHandler extends BaseThingHandler {
                 cleanChannels();
             }
 
-            if (snapshotUri != null && updateImageEvents.contains("1")) {
-                sendHttpGET(getCorrectUrlFormat(snapshotUri));
+            if (snapshotUri != null) {
+                if (updateImageEvents.contains("1")) {
+                    sendHttpGET(getCorrectUrlFormat(snapshotUri));
+                } else if (audioAlarmUpdateSnapshot || motionAlarmUpdateSnapshot) {
+                    sendHttpGET(getCorrectUrlFormat(snapshotUri));
+                }
             }
 
             switch (thing.getThingTypeUID().getId()) {
@@ -1940,6 +1968,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         cleanChannels();
                         sendHttpGET("/cgi-bin/eventManager.cgi?action=attach&codes=[All]");
                     }
+
                     break;
             }
         }

@@ -237,9 +237,9 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="NVR_CHANNEL" type="integer" required="true" min="0" max="64" groupName="Settings">
 <label>NVR input channel.</label>
-<description>Set this to 0 if it is a stand alone camera, or to the input channel number of your NVR that the camera is connected to.
+<description>Set this to 1 if it is a stand alone camera, or to the input channel number of your NVR that the camera is connected to.
 </description>
-<default>0</default>
+<default>1</default>
 </parameter>
 
 <parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="false" groupName="Settings">
@@ -338,7 +338,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <option value="0">Never Update Image (0)</option>
 <option value="1">Always Update Image (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
+<option value="3">Start Audio Alarm (3)</option>
+<option value="23">Start of Motion and Audio Alarms (23)</option>
 <option value="4">During Motion Alarm (4)</option>
+<option value="5">During Audio Alarm (5)</option>
+<option value="45">During Motion and Audio Alarms (45)</option>
 </options>
 </parameter>
 
@@ -351,9 +355,9 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="NVR_CHANNEL" type="integer" required="true" min="0" max="255" groupName="Settings">
 <label>NVR input channel.</label>
-<description>Set this to 0 if it is a stand alone camera, or to the input channel number of your NVR that the camera is connected to.
+<description>Set this to 1 if it is a stand alone camera, or to the input channel number of your NVR that the camera is connected to.
 </description>
-<default>0</default>
+<default>1</default>
 </parameter>
 
 <parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">
@@ -575,7 +579,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <option value="0">Never Update Image (0)</option>
 <option value="1">Always Update Image (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
+<option value="3">Start Audio Alarm (3)</option>
+<option value="23">Start of Motion and Audio Alarms (23)</option>
 <option value="4">During Motion Alarm (4)</option>
+<option value="5">During Audio Alarm (5)</option>
+<option value="45">During Motion and Audio Alarms (45)</option>
 </options>
 </parameter>
 
@@ -781,12 +789,6 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <options>
 <option value="0">Never Update Image (0)</option>
 <option value="1">Always Update Image (1)</option>
-<option value="2">Start Motion Alarm (2)</option>
-<option value="3">Start Audio Alarm (3)</option>
-<option value="23">Start of Motion and Audio Alarms (23)</option>
-<option value="4">During Motion Alarm (4)</option>
-<option value="5">During Audio Alarm (5)</option>
-<option value="45">During Motion and Audio Alarms (45)</option>
 </options>
 </parameter>
 
