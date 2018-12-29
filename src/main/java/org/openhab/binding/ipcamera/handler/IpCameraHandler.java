@@ -199,7 +199,6 @@ public class IpCameraHandler extends BaseThingHandler {
     private void cleanChannels() {
         logger.debug("******** Cleaning channels for camera at {} *********", ipAddress);
         lock.lock();
-        logger.debug("Clean channels is now locked");
         for (byte index = 0; index < listOfRequests.size(); index++) {
             logger.debug("Channel status is {} for URL:{}", listOfChStatus.get(index), listOfRequests.get(index));
             if (listOfChStatus.get(index) == (byte) -1) {
@@ -215,7 +214,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 logger.warn("Cleaning the channels has just force closed a connection.");
             }
         }
-        logger.debug("Clean channels is now unlocking");
         lock.unlock();
     }
 
@@ -662,7 +660,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 if (indexInLists >= 0) {
                     listOfChStatus.set(indexInLists, (byte) -1);
                 } else {
-                    logger.warn("!!!! exceptionCaught could not located the channel to close it down");
+                    logger.warn("!!!! exceptionCaught could not locate the channel to close it down");
                 }
             } finally {
                 lock.unlock();
@@ -1088,36 +1086,36 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
 
                 // Handle motion alarm
-                if (content.contains("Code=VideoMotion;action=Start;index=" + nvrChannel)) {
+                if (content.contains("Code=VideoMotion;action=Start;index=0")) {
                     motionDetected(CHANNEL_MOTION_ALARM);
-                } else if (content.contains("Code=VideoMotion;action=Stop;index=" + nvrChannel)) {
+                } else if (content.contains("Code=VideoMotion;action=Stop;index=0")) {
                     updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
                     motionAlarmUpdateSnapshot = false;
                 }
 
                 // Handle item taken alarm
-                if (content.contains("Code=TakenAwayDetection;action=Start;index=" + nvrChannel)) {
+                if (content.contains("Code=TakenAwayDetection;action=Start;index=0")) {
                     motionDetected(CHANNEL_ITEM_TAKEN);
-                } else if (content.contains("Code=TakenAwayDetection;action=Stop;index=" + nvrChannel)) {
+                } else if (content.contains("Code=TakenAwayDetection;action=Stop;index=0")) {
                     updateState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
                     motionAlarmUpdateSnapshot = false;
                 }
 
                 // Handle item left alarm
-                if (content.contains("Code=LeftDetection;action=Start;index=" + nvrChannel)) {
+                if (content.contains("Code=LeftDetection;action=Start;index=0")) {
                     motionDetected(CHANNEL_ITEM_LEFT);
-                } else if (content.contains("Code=LeftDetection;action=Stop;index=" + nvrChannel)) {
+                } else if (content.contains("Code=LeftDetection;action=Stop;index=0")) {
                     updateState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
                     motionAlarmUpdateSnapshot = false;
                 }
 
                 // Handle CrossLineDetection alarm
-                if (content.contains("Code=CrossLineDetection;action=Start;index=" + nvrChannel)) {
+                if (content.contains("Code=CrossLineDetection;action=Start;index=0")) {
                     motionDetected(CHANNEL_LINE_CROSSING_ALARM);
-                } else if (content.contains("Code=CrossLineDetection;action=Stop;index=" + nvrChannel)) {
+                } else if (content.contains("Code=CrossLineDetection;action=Stop;index=0")) {
                     updateState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
                     motionAlarmUpdateSnapshot = false;
@@ -1131,9 +1129,9 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
 
                 // Handle AudioMutation alarm
-                if (content.contains("Code=AudioMutation;action=Start;index=" + nvrChannel)) {
+                if (content.contains("Code=AudioMutation;action=Start;index=0")) {
                     audioDetected();
-                } else if (content.contains("Code=AudioMutation;action=Stop;index=" + nvrChannel)) {
+                } else if (content.contains("Code=AudioMutation;action=Stop;index=0")) {
                     updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
                     firstAudioAlarm = false;
                     audioAlarmUpdateSnapshot = false;
@@ -1146,27 +1144,27 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
 
                 // Handle FaceDetection alarm
-                if (content.contains("Code=FaceDetection;action=Start;index=" + nvrChannel)) {
+                if (content.contains("Code=FaceDetection;action=Start;index=0")) {
                     motionDetected(CHANNEL_FACE_DETECTED);
-                } else if (content.contains("Code=FaceDetection;action=Stop;index=" + nvrChannel)) {
+                } else if (content.contains("Code=FaceDetection;action=Stop;index=0")) {
                     updateState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
                     motionAlarmUpdateSnapshot = false;
                 }
 
                 // Handle ParkingDetection alarm
-                if (content.contains("Code=ParkingDetection;action=Start;index=" + nvrChannel)) {
+                if (content.contains("Code=ParkingDetection;action=Start;index=0")) {
                     motionDetected(CHANNEL_PARKING_ALARM);
-                } else if (content.contains("Code=ParkingDetection;action=Stop;index=" + nvrChannel)) {
+                } else if (content.contains("Code=ParkingDetection;action=Stop;index=0")) {
                     updateState(CHANNEL_PARKING_ALARM, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
                     motionAlarmUpdateSnapshot = false;
                 }
 
                 // Handle CrossRegionDetection alarm
-                if (content.contains("Code=CrossRegionDetection;action=Start;index=" + nvrChannel)) {
+                if (content.contains("Code=CrossRegionDetection;action=Start;index=0")) {
                     motionDetected(CHANNEL_FIELD_DETECTION_ALARM);
-                } else if (content.contains("Code=CrossRegionDetection;action=Stop;index=" + nvrChannel)) {
+                } else if (content.contains("Code=CrossRegionDetection;action=Stop;index=0")) {
                     updateState(CHANNEL_FIELD_DETECTION_ALARM, OnOffType.valueOf("OFF"));
                     firstMotionAlarm = false;
                     motionAlarmUpdateSnapshot = false;
