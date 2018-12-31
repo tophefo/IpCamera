@@ -775,6 +775,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
                         updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
                         firstMotionAlarm = false;
+                        motionAlarmUpdateSnapshot = false;
                     } else if (content.contains("<motionDetectAlarm>2</motionDetectAlarm>")) {// Enabled, alarm on
                         updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
                         motionDetected(CHANNEL_MOTION_ALARM);
@@ -785,12 +786,12 @@ public class IpCameraHandler extends BaseThingHandler {
                 if (content.contains("<soundAlarm>0</soundAlarm>")) {
                     updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
                     updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
-                    firstAudioAlarm = false;
                 }
                 if (content.contains("<soundAlarm>1</soundAlarm>")) {
                     updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
                     updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
                     firstAudioAlarm = false;
+                    audioAlarmUpdateSnapshot = false;
                 }
                 if (content.contains("<soundAlarm>2</soundAlarm>")) {
                     updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
