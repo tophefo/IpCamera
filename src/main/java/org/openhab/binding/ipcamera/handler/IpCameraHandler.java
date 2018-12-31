@@ -136,6 +136,8 @@ public class IpCameraHandler extends BaseThingHandler {
     boolean motionAlarmUpdateSnapshot = false;
     boolean firstAudioAlarm = false;
     boolean firstMotionAlarm = false;
+    boolean shortAudioAlarm = true; // used for when the alarm is less than the polling amount of time.
+    boolean shortMotionAlarm = true; // used for when the alarm is less than the polling amount of time.
 
     private PTZVector ptzLocation;
     private FloatRange panRange;
@@ -714,10 +716,12 @@ public class IpCameraHandler extends BaseThingHandler {
                     if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion".equals(requestUrl)) {
                         updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
                         firstMotionAlarm = false;
+                        motionAlarmUpdateSnapshot = false;
                     } else if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation"
                             .equals(requestUrl)) {
                         updateState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
                         firstAudioAlarm = false;
+                        audioAlarmUpdateSnapshot = false;
                     }
                 } else if (content.contains("channels[0]=0")) {
                     if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion".equals(requestUrl)) {
@@ -728,10 +732,21 @@ public class IpCameraHandler extends BaseThingHandler {
                     }
                 }
 
-                else if (content.contains("table.MotionDetect[" + nvrChannel + "].Enable=false")) {
+                if (content.contains("table.MotionDetect[0].Enable=false")) {
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                } else if (content.contains("table.MotionDetect[" + nvrChannel + "].Enable=true")) {
+                } else if (content.contains("table.MotionDetect[0].Enable=true")) {
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
+                }
+                // determine if the audio alarm is turned on or off.
+                if (content.contains("table.AudioDetect[0].MutationDetect=true")) {
+                    updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
+                } else if (content.contains("table.AudioDetect[0].MutationDetect=false")) {
+                    updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                }
+                // Handle AudioMutationThreshold alarm
+                if (content.contains("table.AudioDetect[0].MutationThreold=")) {
+                    String value = returnValueFromString(content, "table.AudioDetect[0].MutationThreold=");
+                    updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf(value));
                 }
 
             } finally {
@@ -855,28 +870,49 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     private class HikvisionHandler extends ChannelDuplexHandler {
-        byte lineCount, vmdCount, leftCount, takenCount, faceCount, pirCount, fieldCount = 0;
+        int lineCount, vmdCount, leftCount, takenCount, faceCount, pirCount, fieldCount = 0;
 
         void countDown() {
             if (lineCount > 1) {
                 lineCount--;
+            } else if (lineCount == 1) {
+                updateState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
+                lineCount--;
             }
             if (vmdCount > 1) {
+                vmdCount--;
+            } else if (vmdCount == 1) {
+                updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
                 vmdCount--;
             }
             if (leftCount > 1) {
                 leftCount--;
+            } else if (leftCount == 1) {
+                updateState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("OFF"));
+                leftCount--;
             }
             if (takenCount > 1) {
+                takenCount--;
+            } else if (takenCount == 1) {
+                updateState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("OFF"));
                 takenCount--;
             }
             if (faceCount > 1) {
                 faceCount--;
+            } else if (faceCount == 1) {
+                updateState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("OFF"));
+                faceCount--;
             }
             if (pirCount > 1) {
                 pirCount--;
+            } else if (pirCount == 1) {
+                updateState(CHANNEL_PIR_ALARM, OnOffType.valueOf("OFF"));
+                pirCount--;
             }
             if (fieldCount > 1) {
+                fieldCount--;
+            } else if (fieldCount == 1) {
+                updateState(CHANNEL_FIELD_DETECTION_ALARM, OnOffType.valueOf("OFF"));
                 fieldCount--;
             }
         }
@@ -884,6 +920,7 @@ public class IpCameraHandler extends BaseThingHandler {
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
             String content = null;
+            int debounce = 3;
             try {
                 content = msg.toString();
                 if (!content.isEmpty()) {
@@ -897,52 +934,36 @@ public class IpCameraHandler extends BaseThingHandler {
 
                         if (content.contains("<eventType>linedetection</eventType>")) {
                             motionDetected(CHANNEL_LINE_CROSSING_ALARM);
-                            lineCount = 5;
-                            countDown();
+                            lineCount = debounce;
                         }
                         if (content.contains("<eventType>fielddetection</eventType>")) {
                             motionDetected(CHANNEL_FIELD_DETECTION_ALARM);
-                            fieldCount = 5;
-                            countDown();
+                            fieldCount = debounce;
                         }
                         if (content.contains("<eventType>VMD</eventType>")) {
                             motionDetected(CHANNEL_MOTION_ALARM);
-                            vmdCount = 5;
-                            if (vmdCount > 0) {
-                                countDown();
-                            }
+                            vmdCount = debounce;
                         }
                         if (content.contains("<eventType>facedetection</eventType>")) {
                             updateState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("ON"));
-                            faceCount = 5;
-                            if (faceCount > 0) {
-                                countDown();
-                            }
+                            faceCount = debounce;
                         }
                         if (content.contains("<eventType>unattendedBaggage</eventType>")) {
                             updateState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("ON"));
-                            leftCount = 5;
-                            if (leftCount > 0) {
-                                countDown();
-                            }
+                            leftCount = debounce;
                         }
                         if (content.contains("<eventType>attendedBaggage</eventType>")) {
                             updateState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("ON"));
-                            takenCount = 5;
-                            if (takenCount > 0) {
-                                countDown();
-                            }
+                            takenCount = debounce;
                         }
                         if (content.contains("<eventType>PIR</eventType>")) {
                             motionDetected(CHANNEL_PIR_ALARM);
-                            pirCount = 5;
-                            countDown();
+                            pirCount = debounce;
                         }
                         if (content.contains("<eventType>videoloss</eventType>\r\n<eventState>inactive</eventState>")) {
                             audioAlarmUpdateSnapshot = false;
                             motionAlarmUpdateSnapshot = false;
                             firstMotionAlarm = false;
-                            countDown();
                             countDown();
                             countDown();
                         }
@@ -953,24 +974,9 @@ public class IpCameraHandler extends BaseThingHandler {
                             firstMotionAlarm = false;
                             countDown();
                             countDown();
-                            countDown();
                         }
                     }
-                    if (lineCount-- == 1) {
-                        updateState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
-                    }
-                    if (vmdCount-- == 1) {
-                        updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                    }
-                    if (leftCount-- == 1) {
-                        updateState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("OFF"));
-                    }
-                    if (takenCount-- == 1) {
-                        updateState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("OFF"));
-                    }
-                    if (faceCount-- == 1) {
-                        updateState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("OFF"));
-                    }
+                    countDown();
                 }
 
                 // determine if the motion detection is turned on or off.
@@ -1079,7 +1085,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
 
                 // determine if the motion detection is turned on or off.
-                if (content.contains("table.MotionDetect[" + nvrChannel + "].Enable=true")) {
+                if (content.contains("table.MotionDetect[0].Enable=true")) {
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
                 } else if (content.contains("table.MotionDetect[" + nvrChannel + "].Enable=false")) {
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
@@ -1201,14 +1207,11 @@ public class IpCameraHandler extends BaseThingHandler {
         if (updateImageEvents.contains("2")) {
             if (!firstMotionAlarm) {
                 sendHttpGET(getCorrectUrlFormat(snapshotUri));
-                // motionAlarmUpdateSnapshot = true;
                 firstMotionAlarm = true;
-            } else {
-                // motionAlarmUpdateSnapshot = false;
             }
         } else if (updateImageEvents.contains("4")) { // During Motion Alarms
-            sendHttpGET(getCorrectUrlFormat(snapshotUri));
             motionAlarmUpdateSnapshot = true;
+            shortMotionAlarm = true; // used for when the alarm is less than the polling amount of time.
         }
     }
 
@@ -1218,12 +1221,10 @@ public class IpCameraHandler extends BaseThingHandler {
             if (!firstAudioAlarm) {
                 sendHttpGET(getCorrectUrlFormat(snapshotUri));
                 firstAudioAlarm = true;
-            } else {
-                // audioAlarmUpdateSnapshot = true;
             }
         } else if (updateImageEvents.contains("5")) {// During audio alarms
-            sendHttpGET(getCorrectUrlFormat(snapshotUri));
             audioAlarmUpdateSnapshot = true;
+            shortAudioAlarm = true; // used for when the alarm is less than the polling amount of time.
         }
     }
 
@@ -1340,8 +1341,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             break;
                         case "AMCREST":
                         case "DAHUA":
-                            sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=CrossLineDetection["
-                                    + nvrChannel + "]");
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=CrossLineDetection[0]");
                             break;
                     }
                     break;
@@ -1359,8 +1359,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     switch (thing.getThingTypeUID().getId()) {
                         case "AMCREST":
                         case "DAHUA":
-                            sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect[" + nvrChannel
-                                    + "]");
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect[0]");
                             break;
                         case "FOSCAM":
                             sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username + "&pwd=" + password);
@@ -1590,11 +1589,10 @@ public class IpCameraHandler extends BaseThingHandler {
                     case "AMCREST":
                     case "DAHUA":
                         if ("ON".equals(command.toString())) {
-                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[" + nvrChannel
-                                    + "].Enable=true&MotionDetect[0].EventHandler.Dejitter=1");
+                            sendHttpGET(
+                                    "/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=true&MotionDetect[0].EventHandler.Dejitter=1");
                         } else {
-                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[" + nvrChannel
-                                    + "].Enable=false");
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=false");
                         }
                         break;
                 }
@@ -1928,17 +1926,16 @@ public class IpCameraHandler extends BaseThingHandler {
             if (snapshotUri != null) {
                 if (updateImageEvents.contains("1")) {
                     sendHttpGET(getCorrectUrlFormat(snapshotUri));
-                } else if (audioAlarmUpdateSnapshot || motionAlarmUpdateSnapshot) {
+                } else if (audioAlarmUpdateSnapshot || shortAudioAlarm) {
                     sendHttpGET(getCorrectUrlFormat(snapshotUri));
+                    shortAudioAlarm = false;
+                } else if (motionAlarmUpdateSnapshot || shortMotionAlarm) {
+                    sendHttpGET(getCorrectUrlFormat(snapshotUri));
+                    shortMotionAlarm = false;
                 }
             }
 
             switch (thing.getThingTypeUID().getId()) {
-                case "AMCREST":
-                    sendHttpGET("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion");
-                    sendHttpGET("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation");
-                    break;
-
                 case "FOSCAM":
                     sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username + "&pwd=" + password);
                     break;
@@ -1957,6 +1954,10 @@ public class IpCameraHandler extends BaseThingHandler {
                     sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=getaudioalarmattr");
                     // Poll the motion alarm on/off/settings/...
                     sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=getmdattr");
+                    break;
+                case "AMCREST":
+                    sendHttpGET("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion");
+                    sendHttpGET("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation");
                     break;
                 case "DAHUA":
                     // Check for alarms, channel for NVRs appears not to work at filtering.
