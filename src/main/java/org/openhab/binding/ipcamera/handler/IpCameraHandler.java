@@ -1481,18 +1481,19 @@ public class IpCameraHandler extends BaseThingHandler {
             case CHANNEL_ENABLE_AUDIO_ALARM:
 
                 switch (thing.getThingTypeUID().getId()) {
-
                     case "FOSCAM":
-
                         if ("ON".equals(command.toString())) {
-                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&usr=" + username
-                                    + "&pwd=" + password);
+                            if (config.get(CONFIG_AUDIO_URL_OVERIDE) == null) {
+                                sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&usr=" + username
+                                        + "&pwd=" + password);
+                            } else {
+                                sendHttpGET(config.get(CONFIG_AUDIO_URL_OVERIDE).toString());
+                            }
                         } else {
                             sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=0&usr=" + username
                                     + "&pwd=" + password);
                         }
                         break;
-
                     case "INSTAR":
                         if ("ON".equals(command.toString())) {
                             sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1");
@@ -1619,13 +1620,34 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
                 break;
             case CHANNEL_ACTIVATE_ALARM_OUTPUT:
-                // Only HIK has this so far
-                if ("ON".equals(command.toString())) {
-                    hikSendXml("/ISAPI/System/IO/outputs/" + nvrChannel + "/trigger",
-                            "<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n    <outputState>high</outputState>\r\n</IOPortData>\r\n");
-                } else {
-                    hikSendXml("/ISAPI/System/IO/outputs/" + nvrChannel + "/trigger",
-                            "<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n    <outputState>low</outputState>\r\n</IOPortData>\r\n");
+                switch (thing.getThingTypeUID().getId()) {
+                    case "HIKVISION":
+                        if ("ON".equals(command.toString())) {
+                            hikSendXml("/ISAPI/System/IO/outputs/" + nvrChannel + "/trigger",
+                                    "<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n    <outputState>high</outputState>\r\n</IOPortData>\r\n");
+                        } else {
+                            hikSendXml("/ISAPI/System/IO/outputs/" + nvrChannel + "/trigger",
+                                    "<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n    <outputState>low</outputState>\r\n</IOPortData>\r\n");
+                        }
+                        break;
+                    case "DAHUA":
+                        if ("ON".equals(command.toString())) {
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AlarmOut[0].Mode=1");
+                        } else {
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AlarmOut[0].Mode=0");
+                        }
+                        break;
+                }
+                break;
+            case CHANNEL_ACTIVATE_ALARM_OUTPUT2:
+                switch (thing.getThingTypeUID().getId()) {
+                    case "DAHUA":
+                        if ("ON".equals(command.toString())) {
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AlarmOut[1].Mode=1");
+                        } else {
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AlarmOut[1].Mode=0");
+                        }
+                        break;
                 }
                 break;
         }

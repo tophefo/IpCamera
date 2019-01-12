@@ -46,6 +46,7 @@ public class IpCameraBindingConstants {
     public static final String CONFIG_IMAGE_UPDATE_EVENTS = "IMAGE_UPDATE_EVENTS";
     public static final String CONFIG_NVR_CHANNEL = "NVR_CHANNEL";
     public static final String CONFIG_MOTION_URL_OVERIDE = "MOTION_URL_OVERIDE";
+    public static final String CONFIG_AUDIO_URL_OVERIDE = "AUDIO_URL_OVERIDE";
 
     // List of all Channel ids
     public static final String CHANNEL_UPDATE_IMAGE_NOW = "updateImageNow";
@@ -66,6 +67,7 @@ public class IpCameraBindingConstants {
     public static final String CHANNEL_ENABLE_AUDIO_ALARM = "enableAudioAlarm";
     public static final String CHANNEL_THRESHOLD_AUDIO_ALARM = "thresholdAudioAlarm";
     public static final String CHANNEL_ACTIVATE_ALARM_OUTPUT = "activateAlarmOutput";
+    public static final String CHANNEL_ACTIVATE_ALARM_OUTPUT2 = "activateAlarmOutput2";
     public static final String CHANNEL_EXTERNAL_ALARM_INPUT = "externalAlarmInput";
     public static final String CHANNEL_EXTERNAL_ALARM_INPUT2 = "externalAlarmInput2";
     public static final String CHANNEL_AUTO_LED = "autoLED";

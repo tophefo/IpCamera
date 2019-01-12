@@ -305,6 +305,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="parkingAlarm" typeId="parkingAlarm"/>  
             <channel id="externalAlarmInput" typeId="externalAlarmInput"/>
             <channel id="externalAlarmInput2" typeId="externalAlarmInput2"/>
+            <channel id="activateAlarmOutput" typeId="activateAlarmOutput"/>
+            <channel id="activateAlarmOutput2" typeId="activateAlarmOutput2"/>
             <channel id="itemLeft" typeId="itemLeft"/> 
             <channel id="itemTaken" typeId="itemTaken"/>          
             <channel id="pan" typeId="pan"/>
@@ -487,6 +489,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <parameter name="MOTION_URL_OVERIDE" type="text" required="false" groupName="Settings">
 <context>url</context>
 <label>Create your own custom enable Motion Alarm settings by entering a custom URL</label>
+<description>Leave this empty to use the default, or create your own setting.
+</description>        
+</parameter>
+
+<parameter name="AUDIO_URL_OVERIDE" type="text" required="false" groupName="Settings">
+<context>url</context>
+<label>Create your own custom enable Audio Alarm settings by entering a custom URL</label>
 <description>Leave this empty to use the default, or create your own setting.
 </description>        
 </parameter>
@@ -1035,6 +1044,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <item-type>Switch</item-type>
         <label>Trigger the cameras alarm output</label>
         <description>You can use the cameras output to trigger a device like a burglar alarm.</description>
+        <category>Alarm</category>
+        </channel-type>
+        
+        <channel-type id="activateAlarmOutput2">
+        <item-type>Switch</item-type>
+        <label>Trigger the cameras alarm output2</label>
+        <description>You can use the cameras output 2 to trigger a device like a burglar alarm.</description>
         <category>Alarm</category>
         </channel-type>
         
