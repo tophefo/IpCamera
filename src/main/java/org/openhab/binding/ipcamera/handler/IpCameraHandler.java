@@ -138,6 +138,8 @@ public class IpCameraHandler extends BaseThingHandler {
     boolean firstMotionAlarm = false;
     boolean shortAudioAlarm = true; // used for when the alarm is less than the polling amount of time.
     boolean shortMotionAlarm = true; // used for when the alarm is less than the polling amount of time.
+    boolean movePTZ = false; // used to delay PTZ movements for when a rule changes all 3 at the same time so only 1
+                             // movement is made.
 
     private PTZVector ptzLocation;
     private FloatRange panRange;
@@ -1690,17 +1692,13 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     void setAbsolutePan(Float panValue) {
-
         if (ptzDevices != null) {
-
             if (onvifCamera != null && panRange != null && tiltRange != null) {
                 try {
                     currentPanCamValue = ((((panRange.getMin() - panRange.getMax()) * -1) / 100) * panValue
                             + panRange.getMin());
                     logger.debug("Cameras Pan  has changed to:{}", currentPanCamValue);
-                    ptzDevices.absoluteMove(profileToken, currentPanCamValue, currentTiltCamValue, currentZoomCamValue);
-                } catch (SOAPException e) {
-                    logger.error("SOAP exception occured");
+                    movePTZ = true;
                 } catch (NullPointerException e) {
                     logger.error("NPE occured when trying to move the cameras Pan with ONVIF");
                 }
@@ -1710,15 +1708,12 @@ public class IpCameraHandler extends BaseThingHandler {
 
     void setAbsoluteTilt(Float tiltValue) {
         if (ptzDevices != null) {
-
             if (onvifCamera != null && panRange != null && tiltRange != null) {
                 try {
                     currentTiltCamValue = ((((tiltRange.getMin() - tiltRange.getMax()) * -1) / 100) * tiltValue
                             + tiltRange.getMin());
                     logger.debug("Cameras Tilt has changed to:{}", currentTiltCamValue);
-                    ptzDevices.absoluteMove(profileToken, currentPanCamValue, currentTiltCamValue, currentZoomCamValue);
-                } catch (SOAPException e) {
-                    logger.error("SOAP exception occured");
+                    movePTZ = true;
                 } catch (NullPointerException e) {
                     logger.error("NPE occured when trying to move the cameras Tilt with ONVIF");
                 }
@@ -1727,15 +1722,12 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     void setAbsoluteZoom(Float zoomValue) {
-
         if (ptzDevices != null) {
             if (onvifCamera != null && panRange != null && tiltRange != null) {
                 try {
                     currentZoomCamValue = ((((zoomMin - zoomMax) * -1) / 100) * zoomValue + zoomMin);
-                    logger.info("Cameras Zoom has changed to:{}", currentZoomCamValue);
-                    ptzDevices.absoluteMove(profileToken, currentPanCamValue, currentTiltCamValue, currentZoomCamValue);
-                } catch (SOAPException e) {
-                    logger.error("SOAP exception occured");
+                    logger.debug("Cameras Zoom has changed to:{}", currentZoomCamValue);
+                    movePTZ = true;
                 } catch (NullPointerException e) {
                     logger.error("NPE occured when trying to move the cameras Zoom with ONVIF");
                 }
@@ -1958,6 +1950,17 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
             }
 
+            if (movePTZ) {
+                movePTZ = false;
+                try {
+                    ptzDevices.absoluteMove(profileToken, currentPanCamValue, currentTiltCamValue, currentZoomCamValue);
+                } catch (SOAPException e) {
+                    logger.error("SOAP exception occured");
+                } catch (NullPointerException e) {
+                    logger.error("NPE occured when trying to move the cameras with ONVIF");
+                }
+            }
+
             switch (thing.getThingTypeUID().getId()) {
                 case "FOSCAM":
                     sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username + "&pwd=" + password);
@@ -2024,7 +2027,6 @@ public class IpCameraHandler extends BaseThingHandler {
         selectedMediaProfile = (config.get(CONFIG_ONVIF_PROFILE_NUMBER) == null) ? 0
                 : Integer.parseInt(config.get(CONFIG_ONVIF_PROFILE_NUMBER).toString());
         updateImageEvents = config.get(CONFIG_IMAGE_UPDATE_EVENTS).toString();
-
         cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 0, 64, TimeUnit.SECONDS);
     }
 
