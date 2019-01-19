@@ -65,9 +65,9 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
-<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
+<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
-<default>5000</default>
+<default>2000</default>
 </parameter>
 
 </config-description>
@@ -163,9 +163,9 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
-<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
+<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
-<default>5000</default>
+<default>2000</default>
 </parameter>
 
 </config-description>
@@ -278,9 +278,9 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="15000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
-<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
+<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
-<default>5000</default>
+<default>2000</default>
 </parameter>
 
 </config-description>
@@ -405,9 +405,9 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
-<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
+<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
-<default>5000</default>
+<default>2000</default>
 </parameter>
 
 </config-description>
@@ -529,9 +529,9 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
-<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
+<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
-<default>5000</default>
+<default>2000</default>
 </parameter>
 
 </config-description>
@@ -653,9 +653,9 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
-<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
+<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
-<default>5000</default>
+<default>2000</default>
 </parameter>
 
 </config-description>
@@ -752,9 +752,9 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
-<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
+<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
-<default>5000</default>
+<default>2000</default>
 </parameter>
 </config-description>
 </thing-type>
@@ -851,15 +851,12 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="15000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching an Image.</label>
-<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "5000" which is 5 seconds.
+<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
-<default>5000</default>
+<default>2000</default>
 </parameter>
-
 </config-description>
 </thing-type>
-
-
 
 
 <channel-type id="alphaTest">

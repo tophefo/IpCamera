@@ -134,6 +134,7 @@ public class IpCameraHandler extends BaseThingHandler {
     private String updateImageEvents;
     boolean audioAlarmUpdateSnapshot = false;
     boolean motionAlarmUpdateSnapshot = false;
+    boolean isOnline = false; // Used so only 1 error is logged when a network issue occurs.
     boolean firstAudioAlarm = false;
     boolean firstMotionAlarm = false;
     boolean shortAudioAlarm = true; // used for when the alarm is less than the polling amount of time.
@@ -219,6 +220,31 @@ public class IpCameraHandler extends BaseThingHandler {
             }
         }
         lock.unlock();
+    }
+
+    private void closeAllChannels() {
+        logger.debug("Closing all channels for camera at {}", ipAddress);
+        lock.lock();
+        try {
+            for (byte index = 0; index < listOfRequests.size(); index++) {
+                logger.debug("Channel status is {} for URL:{}", listOfChStatus.get(index), listOfRequests.get(index));
+                switch (listOfChStatus.get(index)) {
+                    case 1: // Still open
+                    case 0: // Marked as closing but channel still needs to be closed.
+                        Channel chan = listOfChannels.get(index);
+                        chan.close();
+                    case -1: // closed already
+                        listOfRequests.remove(index);
+                        listOfChStatus.remove(index);
+                        listOfChannels.remove(index);
+                        listOfReplies.remove(index);
+                        index--;
+                        break;
+                }
+            }
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void hikChangeSetting(String httpGetPutURL, String findOldValue, String newValue) {
@@ -377,7 +403,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     if (listOfChStatus.get(index) == (byte) 1) { // open
                         ch = listOfChannels.get(index);
                         if (ch.isOpen()) {
-                            logger.debug("****Using the already open channel:{} \t{}:{}", index, httpMethod,
+                            logger.debug("!!!!Using the already open channel:{} \t{}:{}", index, httpMethod,
                                     httpRequestURL);
                             commonHandler = (CommonCameraHandler) ch.pipeline().get("commonHandler");
                             commonHandler.setURL(httpRequestURL);
@@ -404,10 +430,13 @@ public class IpCameraHandler extends BaseThingHandler {
         if (!chFuture.isSuccess()) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                     "Connection Timeout: Check your IP is correct and the camera can be reached.");
-            logger.error("Can not connect with HTTP to the camera at {}:{} check your network for issues.", ipAddress,
-                    port);
+            if (isOnline) {
+                logger.error("Can not connect with HTTP to the camera at {}:{} check your network for issues.",
+                        ipAddress, port);
+                isOnline = false; // Stop multiple errors when camera only goes offline once.
+            }
             restart();
-            cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 54, 60,
+            cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 54, 60,
                     TimeUnit.SECONDS);
             return false;
         }
@@ -466,7 +495,7 @@ public class IpCameraHandler extends BaseThingHandler {
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
             HttpContent content = null;
             try {
-                logger.debug(msg.toString());
+                logger.trace(msg.toString());
 
                 if (msg instanceof HttpResponse) {
                     HttpResponse response = (HttpResponse) msg;
@@ -509,9 +538,14 @@ public class IpCameraHandler extends BaseThingHandler {
                             try {
                                 byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
                                 if (indexInLists >= 0) {
-                                    listOfChStatus.set(indexInLists, (byte) 0);
-                                    logger.debug("Channel marked as closing, channel:{} \tURL:{}", indexInLists,
-                                            requestUrl);
+                                    if (listOfChStatus.get(indexInLists) == 1) {
+                                        listOfChStatus.set(indexInLists, (byte) 0);
+                                        logger.debug("Channel marked as closing, channel:{} \tURL:{}", indexInLists,
+                                                requestUrl);
+                                    } else {
+                                        logger.debug("Channel was not open.....  channel:{} \tURL:{}", indexInLists,
+                                                requestUrl);
+                                    }
                                 } else {
                                     logger.debug("!!!! Could not find the ch for a Connection: close URL:{}",
                                             requestUrl);
@@ -554,7 +588,6 @@ public class IpCameraHandler extends BaseThingHandler {
                             }
                         }
                     } else { // incomingMessage that is not an IMAGE
-                        logger.debug("Camera has sent some kind of message.Bytes={}", bytesAlreadyRecieved);
                         if (incomingMessage == null) {
                             incomingMessage = content.content().toString(CharsetUtil.UTF_8);
                         } else {
@@ -562,7 +595,6 @@ public class IpCameraHandler extends BaseThingHandler {
                         }
                         bytesAlreadyRecieved = incomingMessage.length();
                         if (content instanceof LastHttpContent) {
-                            logger.debug("Camera has sent last part of the message.Bytes={}", bytesAlreadyRecieved);
                             // If it is not an image send it on to the next handler//
                             if (bytesAlreadyRecieved != 0) {
                                 reply = incomingMessage;
@@ -596,7 +628,6 @@ public class IpCameraHandler extends BaseThingHandler {
                     // logger.debug("Packet back from camera is not matching HttpContent");
                     if (contentType.contains("multipart")) {
                         logger.debug("Packet back from camera is multipart");
-                        ///////// new
                         if (msg instanceof HttpMessage) {
                             logger.debug("Packet back from camera is HttpMessage");
                         } else if (msg instanceof HttpResponse) {
@@ -604,7 +635,6 @@ public class IpCameraHandler extends BaseThingHandler {
                         } else if (msg instanceof HttpContent) {
                             logger.debug("Packet back from camera is HttpContent");
                         }
-
                     }
 
                     // Foscam and Amcrest cameras need this
@@ -927,8 +957,7 @@ public class IpCameraHandler extends BaseThingHandler {
             try {
                 content = msg.toString();
                 if (!content.isEmpty()) {
-                    // logger.trace("HTTP Result back from camera is \t:{}:", content);
-                    logger.debug("HTTP Result back from camera is \t:{}:", content);
+                    logger.trace("HTTP Result back from camera is \t:{}:", content);
                 }
 
                 // Alarm checking goes in here//
@@ -1082,9 +1111,7 @@ public class IpCameraHandler extends BaseThingHandler {
             try {
                 content = msg.toString();
                 if (!content.isEmpty()) {
-                    logger.debug("HTTP Result back from camera is \t:{}:", content);
-                } else {
-                    logger.debug("HTTP Result back from camera is EMPTY");
+                    logger.trace("HTTP Result back from camera is \t:{}:", content);
                 }
 
                 // determine if the motion detection is turned on or off.
@@ -1661,7 +1688,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     / ((panRange.getMin() - panRange.getMax()) * -1)) * 100;
             currentPanCamValue = ((((panRange.getMin() - panRange.getMax()) * -1) / 100) * currentPanPercentage
                     + panRange.getMin());
-            logger.info("Pan is updating to:{} and the cam value is {}", Math.round(currentPanPercentage),
+            logger.debug("Pan is updating to:{} and the cam value is {}", Math.round(currentPanPercentage),
                     currentPanCamValue);
             updateState(CHANNEL_PAN, new PercentType(Math.round(currentPanPercentage)));
         }
@@ -1673,7 +1700,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     / ((tiltRange.getMin() - tiltRange.getMax()) * -1)) * 100;
             currentTiltCamValue = ((((tiltRange.getMin() - tiltRange.getMax()) * -1) / 100) * currentTiltPercentage
                     + tiltRange.getMin());
-            logger.info("Tilt is updating to:{} and the cam value is {}", Math.round(currentTiltPercentage),
+            logger.debug("Tilt is updating to:{} and the cam value is {}", Math.round(currentTiltPercentage),
                     currentTiltCamValue);
             updateState(CHANNEL_TILT, new PercentType(Math.round(currentTiltPercentage)));
         }
@@ -1685,7 +1712,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     * 100;
             currentZoomCamValue = ((((zoomMin - zoomMax) * -1) / 100) * currentZoomPercentage + zoomMin);
 
-            logger.info("Zoom is updating to:{} and the cam value is {}", Math.round(currentZoomPercentage),
+            logger.debug("Zoom is updating to:{} and the cam value is {}", Math.round(currentZoomPercentage),
                     currentZoomCamValue);
             updateState(CHANNEL_ZOOM, new PercentType(Math.round(currentZoomPercentage)));
         }
@@ -1740,32 +1767,29 @@ public class IpCameraHandler extends BaseThingHandler {
         public void run() {
 
             if (thing.getThingTypeUID().getId().equals("HTTPONLY")) {
-
                 if (!snapshotUri.isEmpty()) {
                     logger.debug("Camera at {} has a snapshot address of:{}:", ipAddress, snapshotUri);
                     if (sendHttpRequest("GET", getCorrectUrlFormat(snapshotUri), null)) {
                         updateStatus(ThingStatus.ONLINE);
+                        isOnline = true;
                         cameraConnectionJob.cancel(true);
                         cameraConnectionJob = null;
-
                         fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 5000,
                                 Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
                         sendHttpGET(getCorrectUrlFormat(snapshotUri));
                         updateState(CHANNEL_IMAGE_URL, new StringType(snapshotUri));
                     }
-                } else {
-                    updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
-                            "Can not find a valid url, check camera setup settings by clicking on the pencil icon in PaperUI.");
-                    logger.error(" Camera at IP {} has no url entered in its camera setup.", ipAddress);
                 }
-
                 return;
-            } /////////////// end of HTTPONLY connection maker//
+            } /////////////// end
+              /////////////// of
+              /////////////// HTTPONLY
+              /////////////// connection
+              /////////////// maker//
 
             if (onvifCamera == null) {
-
                 try {
-                    logger.info("About to connect to the IP Camera using the ONVIF PORT at IP:{}:{}", ipAddress,
+                    logger.debug("About to connect to the IP Camera using the ONVIF PORT at IP:{}:{}", ipAddress,
                             config.get(CONFIG_ONVIF_PORT).toString());
 
                     if (username != null && password != null) {
@@ -1827,7 +1851,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         if (ptzDevices.isPtzOperationsSupported(profileToken)
                                 && ptzDevices.isAbsoluteMoveSupported(profileToken)) {
 
-                            logger.info(
+                            logger.debug(
                                     "Camera is reporting that it supports PTZ control with Absolute movement via ONVIF");
 
                             logger.debug("Checking Pan now.");
@@ -1849,17 +1873,18 @@ public class IpCameraHandler extends BaseThingHandler {
                             ptzLocation = getPtzPosition();
 
                         } else {
-                            logger.info("Camera is reporting that it does NOT support Absolute PTZ controls via ONVIF");
+                            logger.debug(
+                                    "Camera is reporting that it does NOT support Absolute PTZ controls via ONVIF");
                             // null will stop code from running on cameras that do not support PTZ features.
                             ptzDevices = null;
                         }
                     }
-                    logger.info(
+                    logger.debug(
                             "Finished with PTZ with no errors, now fetching the Video URL for RTSP from the camera.");
                     videoStreamUri = onvifCamera.getMedia().getRTSPStreamUri(profileToken);
 
                 } catch (ConnectException e) {
-                    logger.warn(
+                    logger.debug(
                             "Can not connect with ONVIF to the camera at {}, check the ONVIF_PORT is correct. Fault was {}",
                             ipAddress, e.toString());
                 } catch (SOAPException e) {
@@ -1894,6 +1919,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                 Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
 
                         updateStatus(ThingStatus.ONLINE);
+                        isOnline = true;
                     }
                 } else {
                     updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
@@ -1933,7 +1959,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
             if (listOfRequests.size() > 12) {
                 logger.warn(
-                        "There are {} channels being tracked, cleaning out old channels now to try and reduce this to below 12.",
+                        "There are {} channels being tracked, cleaning out old channels now to try and reduce this to 12 or below.",
                         listOfRequests.size());
                 cleanChannels();
             }
@@ -1950,7 +1976,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
             }
 
-            if (movePTZ) {
+            if (movePTZ) { // Delay movements so when rules changes all 3, only 1 movement is made.
                 movePTZ = false;
                 try {
                     ptzDevices.absoluteMove(profileToken, currentPanCamValue, currentTiltCamValue, currentZoomCamValue);
@@ -1993,7 +2019,6 @@ public class IpCameraHandler extends BaseThingHandler {
                         cleanChannels();
                         sendHttpGET("/cgi-bin/eventManager.cgi?action=attach&codes=[All]");
                     }
-
                     break;
             }
         }
@@ -2027,14 +2052,14 @@ public class IpCameraHandler extends BaseThingHandler {
         selectedMediaProfile = (config.get(CONFIG_ONVIF_PROFILE_NUMBER) == null) ? 0
                 : Integer.parseInt(config.get(CONFIG_ONVIF_PROFILE_NUMBER).toString());
         updateImageEvents = config.get(CONFIG_IMAGE_UPDATE_EVENTS).toString();
-        cameraConnectionJob = cameraConnection.scheduleAtFixedRate(pollingCameraConnection, 0, 64, TimeUnit.SECONDS);
+        cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 0, 60, TimeUnit.SECONDS); // scheduleAtFixedDelay(pollingCameraConnection
     }
 
     private void restart() {
         onvifCamera = null;
         basicAuth = null; // clear out stored hash
         useDigestAuth = false;
-        cleanChannels();
+        closeAllChannels();
         lock.lock();
         listOfRequests.clear();
         listOfChannels.clear();
@@ -2053,23 +2078,6 @@ public class IpCameraHandler extends BaseThingHandler {
 
     @Override
     public void dispose() {
-        onvifCamera = null;
-        basicAuth = null; // clear out stored hash
-        useDigestAuth = false;
-        cleanChannels();
-        lock.lock();
-        listOfRequests.clear();
-        listOfChannels.clear();
-        listOfChStatus.clear();
-        listOfReplies.clear();
-        lock.unlock();
-        if (cameraConnectionJob != null) {
-            cameraConnectionJob.cancel(true);
-            cameraConnectionJob = null;
-        }
-        if (fetchCameraOutputJob != null) {
-            fetchCameraOutputJob.cancel(true);
-            fetchCameraOutputJob = null;
-        }
+        restart();
     }
 }

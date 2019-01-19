@@ -1,6 +1,6 @@
 # <bindingName> Binding
 
-This binding allows you to use IP cameras in Openhab 2 so long as the camera has the ability to fetch a snapshot (JPG file) via a http link. It does not yet support RTSP streams but the Netty library was chosen as it can be used to provide this support in the future. If the brand does not have a full API then the camera will only fetch a picture and will not have any support for alarms or any of the other cool features that the binding has implemented for certain brands. Each brand that does have an API will have different features  as each API is different and hence the support in this binding will also differ between them. Choose your camera wisely by looking at what the APIs allow you to do. 
+This binding allows you to use IP cameras in Openhab 2 so long as the camera has the ability to fetch a snapshot (JPG file) via a http link. It does not yet support RTSP streams (see the issue thread at this github project for more info) but the Netty library was chosen as it can be used to provide this support in the future. If the brand does not have a full API then the camera will only fetch a picture and will not have any support for alarms or any of the other cool features that the binding has implemented for certain brands. Each brand that does have an API will have different features, as each API is different and hence the support in this binding will also differ. Choose your camera wisely by looking at what the APIs allow you to do. 
 
 In Alphabetical order the brands that have an API are:
 
@@ -28,17 +28,17 @@ https://wikiold.instar.de/index.php/List_of_CGI_commands_(HD)
 
 ## Supported Things
 
-If doing manual text configuration and/or when needing to setup HABPANEL/sitemap you are going to need to know what your camera is as a "thing type". These are listed in CAPS below and are only a single word. Example: The thing type for a generic onvif camera is "ONVIF". 
+If doing manual text configuration and/or when needing to setup HABPANEL/sitemap you are going to need to know what your camera is as a "thing type". These are listed in CAPS below and are only a single word. Example: The thing type for a generic onvif camera is "ONVIF".
 
 HTTPONLY: For any camera that is not ONVIF compatible, and has the ability to fetch a snapshot with a url.
 
-ONVIF: Use for all ONVIF Cameras from any brand that do not have an API.
+ONVIF: Use for all ONVIF Cameras from any brand that do not have an API. You gain PTZ and auto finding of the snapshot url over httponly things. If your camera does not have PTZ you may prefer to set it up as httponly due to a faster connection time as onvif is skipped.
 
-AMCREST: Use for all current Amcrest Cameras as they support an API as well as ONVIF.
+AMCREST: Use for all Amcrest Cameras that do not work as a dahua thing as this uses an older polling method for alarm detection which is not as efficient as the newer method used in dahua. Amcrest are made by Dahua and hence their cameras can be setup as a Dahua thing.
 
 AXIS: Use for all current Axis Cameras as they support ONVIF.
 
-DAHUA: Use for all current Dahua Cameras as they support an API as well as ONVIF.
+DAHUA: Use for all current Dahua and Amcrest cameras as they support an API as well as ONVIF.
 
 FOSCAM: Use for all current FOSCAM HD Cameras as they support an API as well as ONVIF.
 
@@ -49,7 +49,7 @@ INSTAR: Use for all current INSTAR Cameras as they support an API as well as ONV
 
 ## Discovery
 
-Auto discovery is not supported currently and I would love a PR if someone has experience finding cameras on a network. ONVIF documents a way to use UDP multicast to find cameras. Currently you need to manually add the IP camera either via PaperUI or textual configuration which is covered below in more detail. Once the camera is added you then supply the IP address and port settings for the camera. Optionally a username and password can also be filled in if the camera is secured with these which I highly recommend. Clicking on the pencil icon in PaperUI is how you reach these parameters and how you make all the settings unless you have chosen to use manual text configuration. You can not mix manual and PaperUI methods, but it is handy to see and read the descriptions of all the controls in PaperUI.
+Auto discovery is not supported currently and I would love a PR if someone has experience finding cameras on a network. ONVIF documents a way to use UDP multicast to find cameras. Currently you need to manually add the IP camera either via PaperUI or textual configuration which is covered below in more detail. Once the camera is added you then supply the IP address and port settings for the camera. Optionally a username and password can also be filled in if the camera is secured with these, which I highly recommend. Clicking on the pencil icon in PaperUI is how you reach these parameters and how you make all the settings unless you have chosen to use manual text configuration. You can not mix manual and PaperUI methods, but it is handy to see and read the descriptions of all the controls in PaperUI.
 
 ## Binding Configuration
 
@@ -87,20 +87,15 @@ Create a file called 'ipcamera.things' and save it to your things folder. Inside
 
 
 ```
+Thing ipcamera:DAHUA:001 [IPADDRESS="192.168.1.5", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000]
 
-Thing ipcamera:ONVIF:001 [ IPADDRESS="192.168.1.21", PASSWORD="suitcase123456", USERNAME="Admin", ONVIF_PORT=80, PORT=80]
+Thing ipcamera:HIKVISION:002 [IPADDRESS="192.168.1.6", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000]
 
-```
+Thing ipcamera:ONVIF:003 [ IPADDRESS="192.168.1.21", PASSWORD="suitcase123456", USERNAME="admin", ONVIF_PORT=80, PORT=80, POLL_CAMERA_MS=2000]
 
-A second example, this time for a camera that does not have API or ONVIF support.
-
-
-```
-
-Thing ipcamera:HTTPONLY:002 [ IPADDRESS="192.168.1.22", PASSWORD="suitcase123456", USERNAME="admin", SNAPSHOT_URL_OVERIDE="http://192.168.1.22/cgi-bin/CGIProxy.fcgi?cmd=snapPicture2&usr=admin&pwd=suitcase123456", PORT=80]
+Thing ipcamera:HTTPONLY:004 [ IPADDRESS="192.168.1.22", PASSWORD="suitcase123456", USERNAME="admin", SNAPSHOT_URL_OVERIDE="http://192.168.1.22/cgi-bin/CGIProxy.fcgi?cmd=snapPicture2&usr=admin&pwd=suitcase123456", PORT=80, POLL_CAMERA_MS=2000]
 
 ```
-
 
 
 Here you see the format is: bindingID:THINGTYPE:UID [param1="string",param2=x,param3=x]
@@ -110,14 +105,14 @@ BindingID: is always ipcamera.
 
 THINGTYPE: is found listed above under the heading "supported things"
 
-UID: Can be made up but it must be UNIQUE, hence why it is called uniqueID. If you use PaperUI you will notice the UID will be something like "0A78687F" which is not very nice when using it in sitemaps and rules, also paperui will choose a new random ID each time you remove and add the camera causing you to edit your rules, items and sitemaps to make them match. Consider learning textual config which is covered above.
+UID: Can be made up but it must be UNIQUE, hence why it is called uniqueID. If you use PaperUI you will notice the UID will be something like "0A78687F" which is not very nice when using it in sitemaps and rules, also paperui will choose a new random ID each time you remove and add the camera causing you to edit your rules, items and sitemaps to make them match. 
 
 
 ## Thing Configuration
 
-IMAGE_UPDATE_EVENTS
+**IMAGE_UPDATE_EVENTS**
 
-If you look in PaperUI you will notice the numbers in brackets that represent the option you wish to use.
+If you look in PaperUI you will notice the numbers are in brackets after each option, remember the number that represents the option you wish to use and enter this into the thing file which is described above.
 
 ## Channels
 
@@ -127,7 +122,7 @@ See PaperUI for a full list of channels and the descriptions. Each camera brand 
 
 Use the following examples to base your setup on to save some time. NOTE: If your camera is secured with a user and password the links will not work and you will have to use the IMAGE channel to see a picture. FOSCAM cameras are the exception to this as they use the user and pass in plain text in the URL. In the example below you need to leave a fake address in the "Image url=" line otherwise it does not work, the item= overrides the url. Feel free to let me know if this is wrong or if you find a better way.
 
-NOTE: You need to ensure the 001 is replaced with the cameras UID which may look like "0A78687F" if you used PaperUI to add the camera. Also replace AMCREST or HIKVISION with the name of the supported thing you are using from the list above.
+NOTE: If you used paperUI to create the camera thing instead of textual config, you will need to ensure the 001 is replaced with the cameras UID which may look like "0A78687F". Also replace AMCREST or HIKVISION with the name of the supported thing you are using from the list above.
 
 
                 
@@ -137,8 +132,9 @@ NOTE: You need to ensure the 001 is replaced with the cameras UID which may look
 
 ```
 
-Thing ipcamera:AMCREST:001 [IPADDRESS="192.168.3.2", PASSWORD="suitcase123456", USERNAME="DVadar", POLL_CAMERA_MS=5000]
-Thing ipcamera:HIKVISION:002 [IPADDRESS="192.168.3.6", PASSWORD="suitcase123456", USERNAME="LukeS", POLL_CAMERA_MS=5000]
+Thing ipcamera:DAHUA:001 [IPADDRESS="192.168.1.5", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000]
+
+Thing ipcamera:HIKVISION:002 [IPADDRESS="192.168.1.6", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000]
 
 ```
 
@@ -148,14 +144,17 @@ Thing ipcamera:HIKVISION:002 [IPADDRESS="192.168.3.6", PASSWORD="suitcase123456"
 
 ```
 
-Image BabyCamImage { channel="ipcamera:AMCREST:001:image" }
-Switch BabyCamUpdateImage "Get new picture" { channel="ipcamera:AMCREST:001:updateImageNow" }
-Dimmer BabyCamPan "Pan left/right" { channel="ipcamera:AMCREST:001:pan" }
-Dimmer BabyCamTilt "Tilt up/down" { channel="ipcamera:AMCREST:001:tilt" }
-Dimmer BabyCamZoom "Zoom in/out" { channel="ipcamera:AMCREST:001:zoom" }
-Switch BabyCamEnableMotion "MotionAlarm on/off" { channel="ipcamera:AMCREST:001:enableMotionAlarm" }
-Switch BabyCamMotionAlarm "Motion detected" { channel="ipcamera:AMCREST:001:motionAlarm" }
-Switch BabyCamAudioAlarm "Audio detected" { channel="ipcamera:AMCREST:001:audioAlarm" }
+Image BabyCamImage { channel="ipcamera:DAHUA:001:image" }
+Switch BabyCamUpdateImage "Get new picture" { channel="ipcamera:DAHUA:001:updateImageNow" }
+Number BabyCamDirection "Camera Direction"
+Dimmer BabyCamPan "Pan left/right" { channel="ipcamera:DAHUA:001:pan" }
+Dimmer BabyCamTilt "Tilt up/down" { channel="ipcamera:DAHUA:001:tilt" }
+Dimmer BabyCamZoom "Zoom in/out" { channel="ipcamera:DAHUA:001:zoom" }
+Switch BabyCamEnableMotion "MotionAlarm on/off" { channel="ipcamera:DAHUA:001:enableMotionAlarm" }
+Switch BabyCamMotionAlarm "Motion detected" { channel="ipcamera:DAHUA:001:motionAlarm" }
+Switch BabyCamEnableAudioAlarm "AudioAlarm on/off" { channel="ipcamera:DAHUA:001:enableAudioAlarm" }
+Switch BabyCamAudioAlarm "Audio detected" { channel="ipcamera:DAHUA:001:audioAlarm" }
+Dimmer BabyCamAudioThreshold "Audio Threshold" { channel="ipcamera:DAHUA:001:thresholdAudioAlarm" }
 
 Image CamImage { channel="ipcamera:HIKVISION:002:image" }
 Switch CamUpdateImage "Get new picture" { channel="ipcamera:HIKVISION:002:updateImageNow" }
@@ -171,20 +170,23 @@ Switch CamLineAlarm "Line Alarm detected" { channel="ipcamera:HIKVISION:002:line
 
 ```
 
-        Text label="BabyMonitor" icon="camera" 
-        {   
-        Image url="http://google.com/leaveLinkAsThis" item=BabyCamImage refresh=5000
-        Switch item=BabyCamImage label="Get new picture"
-        Slider item=BabyCamPan label="Pan left/right"
-        Slider item=BabyCamTilt label="Tilt up/down"
-        Slider item=BabyCamZoom label="Zoom in/out"
-        Switch item=BabyCamEnableMotion label="Turn motion on/off"
-        Switch item=BabyCamMotionAlarm label="Motion detected"
-        Switch item=BabyCamAudioAlarm label="Audio detected"    
+        Text label="BabyMonitor" icon="camera"{
+            Switch item=BabyMonitor label="Baby Monitor Rules"
+            Image url="http://google.com/leaveLinkAsThis" item=BabyCamImage refresh=2000
+            Switch item=BabyCamDirection label="Camera Direction" mappings=[0="Door", 1="Cot", 2="Room"]
+            Switch item=BabyCamImage
+            Slider item=BabyCamPan label="Pan [%d]"
+            Slider item=BabyCamTilt label="Tilt [%d]"
+            Slider item=BabyCamZoom label="Zoom [%d]"
+            Switch item=BabyCamEnableMotion
+            Switch item=BabyCamMotionAlarm
+            Switch item=BabyCamEnableAudioAlarm
+            Switch item=BabyCamAudioAlarm
+            Slider item=BabyCamAudioThreshold label="Audio Threshold [%d]"
         }   
         Text label="Driveway Camera" icon="camera" 
         {   
-            Image url="http://google.com/leaveLinkAsThis" item=CamImage refresh=5000
+            Image url="http://google.com/leaveLinkAsThis" item=CamImage refresh=2000
             Switch item=CamUpdateImage label="Fetch new picture of Driveway"
             Switch item=CamEnableMotionAlarm
             Switch item=CamMotionAlarm
@@ -194,11 +196,43 @@ Switch CamLineAlarm "Line Alarm detected" { channel="ipcamera:HIKVISION:002:line
 
 ```
 
+*.rules
+
+```
+rule "Move cameras direction"
+    when
+    Item BabyCamDirection changed
+    then
+    switch (BabyCamDirection.state as DecimalType) {
+        case 0 :{
+        //Door
+        BabyCamPan.sendCommand(22)
+        BabyCamTilt.sendCommand(60)
+        BabyCamZoom.sendCommand(0)
+        }
+        case 1 :{
+        //Cot
+        BabyCamPan.sendCommand(22)
+        BabyCamTilt.sendCommand(0)
+        BabyCamZoom.sendCommand(0)
+        }
+        case 2 : {
+        //Room
+        BabyCamPan.sendCommand(15)
+        BabyCamTilt.sendCommand(75)
+        BabyCamZoom.sendCommand(1)
+        }
+    }
+end
+
+```
+
+
 ## Special notes for different brands
 
 **Amcrest**
 
-It is better to setup your AMCREST camera as a DAHUA thing type as the old alarm checking method is used in AMCREST and the newer method is used in DAHUA that is stream based.
+It is better to setup your AMCREST camera as a DAHUA thing type as the old alarm checking method is used in AMCREST and the newer method is used in DAHUA that is stream based. This means less CPU and load on your server if you setup as Dahua.
 
 **Hikvision**
 Each alarm you wish to use must have "Notify Surveillance Center" enabled under each alarms settings in the control panel of the camera itself. The API and also ONVIF are disabled by default on the cameras and also are needed to be enabled.
@@ -231,10 +265,10 @@ These cameras have the ability to call the Openhab REST API directly when an ala
 
 ## Reducing log sizes
 
-There are two log files discussed here, openhab.log and events.log please take the time to consider both logs if a fast and stable setup is something you care about. On some systems with slow disk access like SD cards the writing of a log file can greatly impact on performance. We can turn on/up logs to fault find issues, and then disable them to get the performance back when everything is working.
+There are two log files discussed here, openhab.log and events.log please take the time to consider both logs if a fast and stable setup is something you care about. On some systems with slow disk access like SD cards, the writing of a log file can greatly impact on performance. We can turn on/up logs to fault find issues, and then disable them to get the performance back when everything is working.
 
 
-To watch the logs in realtime with openhabian setups use this linux command which can be done via SSH with a program called putty from a windows or mac machine. 
+To watch the logs in realtime with Linux based setups you can use this linux command which can be done via SSH with a program called putty from a windows or mac machine.
 
 ```
 
@@ -262,7 +296,9 @@ log:set TRACE org.openhab.binding.ipcamera
 ```
 
 
-events.log By default Openhab will log all image updates as an event into a file called events.log, this file can quickly grow if you have multiple cameras all updating pictures every second. To reduce this if you do not want to switch to only updating the image on EVENTS like motion alarms, you then only have 1 option and that is to turn off all events. Openhab does not allow filtering at a binding level due to the log being a pure output from the event bus. To disable use this command in Karaf.
+events.log By default Openhab will log all image updates as an event into a file called events.log, this file can quickly grow if you have multiple cameras all updating pictures every second. To reduce this if you do not want to switch to only updating the image on EVENTS like motion alarms, you then have 2 options. One is to turn off all events, the other is to filter the events before they reach the log file. Openhab does not allow normal filtering at a binding level due to the log being a pure output from the event bus. 
+
+To disable the event.log use this command in Karaf.
 
 
 ```
@@ -271,8 +307,28 @@ log:set WARN smarthome.event
 
 ```
 
-
 To re-enable use the same command with INFO instead of WARN. 
+
+To filter out the events do the following:
+
+```
+sudo nano /var/lib/openhab2/etc/org.ops4j.pax.logging.cfg
+```
+
+Inside that file paste the following, save and then reboot.
+
+```
+############ CUSTOM FILTERS START HERE #################
+# event log filter
+log4j2.appender.event.filter.myfilter1.type = RegexFilter
+log4j2.appender.event.filter.myfilter1.regex = .*changed from raw type.*
+log4j2.appender.event.filter.myfilter1.onMatch = DENY
+log4j2.appender.event.filter.myfilter1.onMisMatch = ACCEPT
+################# END OF FILTERS ######################
+
+```
+
+You can specify the item name in the filter to remove just 1 camera, or you can use the above without the item name to remove all events from images updating which will be for other bindings as well.
 
 
 ## Roadmap for further development
@@ -280,23 +336,24 @@ To re-enable use the same command with INFO instead of WARN.
 Currently the focus is on stability, speed and creating a good framework that allows multiple brands to be used in RULES in a consistent way. What this means is hopefully the binding is less work to add a new API function to instead of people creating stand alone scripts which are not easy for new Openhab users to find or use. By consistent I mean if a camera breaks down and you wish to change brands, your rules with this binding should be easy to adapt to the new brand of camera with no/minimal changes. 
 
 
-If you need a feature added that is in an API, please raise an issue ticket here at this github project with a sample of what a browser shows when you enter in the URL and it is usually very quick to add these features. 
+If you need a feature added that is in an API and you can not program, please raise an issue ticket here at this github project with a sample of what a browser shows when you enter in the URL and it is usually very quick to add these features. 
+
+If you wish to contribute then please create an issue ticket first to discuss how things will work before doing any coding. This is for multiple reasons due to needing to keep things CONSISTENT between brands and also easy to maintain. This list of areas that could be added are a great place to start helping with this binding if you wish to contribute. Any feedback, push requests and ideas are welcome.
+
 
 
 If this binding becomes popular, I can look at extending the frame work to support:
 
-RTSP streams.
+RTSP Video streams.
+
+Auto find and setup cameras on your network.
 
 PTZ methods for continuous move.
 
 FTP/NAS features to save the images and delete old files.
 
-Auto find and setup cameras on your network.
-
 ONVIF alarms
 
 1 and 2 way audio.
 
-
-If you wish to contribute then please create an issue ticket first to discuss how things will work before doing any coding. This is for multiple reasons due to needing to keep things CONSISTENT between brands and also easy to maintain. This list of areas that could be added are a great place to start helping with this binding if you wish to contribute. Any feedback, push requests and ideas are welcome.
 
