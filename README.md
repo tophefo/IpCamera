@@ -59,6 +59,8 @@ It can also be manually configured with text files by doing the following. DO NO
 
 The parameters that can be used in textual configuration are:
 
+```
+
 IPADDRESS
 
 PORT
@@ -81,6 +83,9 @@ NVR_CHANNEL
 
 MOTION_URL_OVERIDE
 
+AUDIO_URL_OVERIDE
+
+```
 
 
 Create a file called 'ipcamera.things' and save it to your things folder. Inside this file enter this in plain text and modify it to your needs...

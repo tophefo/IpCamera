@@ -36,7 +36,6 @@ public class IpCameraBindingConstants {
     // List of all Thing Config items
     public static final String CONFIG_IPADDRESS = "IPADDRESS";
     public static final String CONFIG_PORT = "PORT";
-    public static final String CONFIG_USE_HTTPS = "USE_HTTPS";
     public static final String CONFIG_ONVIF_PORT = "ONVIF_PORT";
     public static final String CONFIG_USERNAME = "USERNAME";
     public static final String CONFIG_PASSWORD = "PASSWORD";

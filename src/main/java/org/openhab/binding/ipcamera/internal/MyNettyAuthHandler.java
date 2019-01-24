@@ -180,7 +180,6 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
         if (msg instanceof HttpResponse) {
             HttpResponse response = (HttpResponse) msg;
             if (response.status().code() == 401) {
-                logger.trace("401: Normal for DIGEST authorization. \tURL:{}", httpUrl);
                 if (!response.headers().isEmpty()) {
                     for (CharSequence name : response.headers().names()) {
                         for (CharSequence value : response.headers().getAll(name)) {
@@ -193,22 +192,29 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                             }
                         }
                     }
-                    // Need to mark the channel as closing so when we resend with digest we get a new channel.
-                    if (closeConnection) {
-                        myHandler.lock.lock();
-                        try {
-                            byte indexInLists = (byte) myHandler.listOfChannels.indexOf(ctx.channel());
-                            if (indexInLists >= 0) {
+
+                    myHandler.lock.lock();
+                    try {
+                        byte indexInLists = (byte) myHandler.listOfChannels.indexOf(ctx.channel());
+                        if (indexInLists >= 0) {
+                            if (closeConnection) {
+                                // Need to mark the channel as closing so the digest gets a new ch
                                 myHandler.listOfChStatus.set(indexInLists, (byte) 0);
                                 logger.debug("401: Mark as closing, the  channel:{} \t{}:{}", indexInLists, httpMethod,
                                         httpUrl);
                             } else {
-                                logger.warn("!!!! 401: Could not find the channel to mark as closing");
+                                myHandler.listOfChStatus.set(indexInLists, (byte) 2);
+                                logger.debug("401: Mark to re-use,  the  channel:{} \t{}:{}", indexInLists, httpMethod,
+                                        httpUrl);
                             }
-                        } finally {
-                            myHandler.lock.unlock();
+
+                        } else {
+                            logger.warn("!!!! 401: Could not find the channel to mark as closing or reusable");
                         }
+                    } finally {
+                        myHandler.lock.unlock();
                     }
+
                     if (authenticate != null) {
                         processAuth(authenticate, httpMethod, httpUrl, true);
                     } else {

@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ActivationPolicy: lazy
 Bundle-ClassPath: .,
- lib/netty-all-4.1.32.Final.jar,
+ lib/netty-all-4.1.33.Final.jar,
  lib/onvif-2016-03-16.jar
 Bundle-ManifestVersion: 2
 Bundle-Name: IpCamera Binding
