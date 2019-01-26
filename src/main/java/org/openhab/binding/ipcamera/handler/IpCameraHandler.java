@@ -339,7 +339,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 @Override
                 public void initChannel(SocketChannel socketChannel) throws Exception {
                     // RtspResponseDecoder //RtspRequestEncoder // try in the pipeline soon//
-                    socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(30, 0, 0));
+                    socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(15, 0, 0));
                     socketChannel.pipeline().addLast("HttpClientCodec", new HttpClientCodec());
                     // socketChannel.pipeline().addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
                     socketChannel.pipeline().addLast("authHandler",
@@ -403,7 +403,7 @@ public class IpCameraHandler extends BaseThingHandler {
             }
         }
 
-        logger.debug("Sending camera at IP:{}, \tURL:{}", ipAddress, httpRequestURL);
+        logger.debug("Sending camera at IP:{}:{}, \tURL:{}", ipAddress, port, httpRequestURL);
         lock.lock();
 
         byte indexInLists = -1;
@@ -425,6 +425,9 @@ public class IpCameraHandler extends BaseThingHandler {
                                 ch.writeAndFlush(request);
                                 request = null;
                                 return true;
+                            } else {
+                                logger.debug("!!!! Closed Channel was marked as open, channel:{} \t{}:{}", index,
+                                        httpMethod, httpRequestURL);
                             }
 
                         case -1: // Closed
@@ -445,6 +448,7 @@ public class IpCameraHandler extends BaseThingHandler {
         chFuture.awaitUninterruptibly(); // ChannelOption.CONNECT_TIMEOUT_MILLIS means this will not hang here
 
         if (!chFuture.isSuccess()) {
+            restart();
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                     "Connection Timeout: Check your IP is correct and the camera can be reached.");
             if (isOnline) {
@@ -452,7 +456,6 @@ public class IpCameraHandler extends BaseThingHandler {
                         ipAddress, port);
                 isOnline = false; // Stop multiple errors when camera only goes offline once.
             }
-            restart();
             cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 54, 60,
                     TimeUnit.SECONDS);
             return false;
@@ -734,7 +737,7 @@ public class IpCameraHandler extends BaseThingHandler {
         public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
             if (evt instanceof IdleStateEvent) {
                 IdleStateEvent e = (IdleStateEvent) evt;
-                // If camera does not use the channel for X time it will close.
+                // If camera does not use the channel for X amount of time it will close.
                 if (e.state() == IdleState.READER_IDLE) {
 
                     lock.lock();
@@ -744,14 +747,13 @@ public class IpCameraHandler extends BaseThingHandler {
                             if ("DAHUA".equals(thing.getThingTypeUID().getId())) {
                                 String url = listOfRequests.get(indexInLists);
                                 if ("/cgi-bin/eventManager.cgi?action=attach&codes=[All]".contentEquals(url)) {
-                                    logger.debug("Dahua Alarm stream is still running fine");
                                     return;
                                 }
                             }
-                            logger.debug("!!!! Channel was found idle for more than 30 seconds so closing it down");
+                            logger.debug("! Channel was found idle for more than 15 seconds so closing it down. !");
                             listOfChStatus.set(indexInLists, (byte) 0);
                         } else {
-                            logger.warn("!!!! Channel that was found idle could not be located in our tracking.");
+                            logger.warn("!?! Channel that was found idle could not be located in our tracking. !?!");
                         }
                     } finally {
                         lock.unlock();
@@ -994,6 +996,8 @@ public class IpCameraHandler extends BaseThingHandler {
                 content = msg.toString();
                 if (!content.isEmpty()) {
                     logger.trace("HTTP Result back from camera is \t:{}:", content);
+                } else {
+                    return;
                 }
 
                 // Alarm checking goes in here//
@@ -1818,7 +1822,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     }
                 }
                 return;
-            } // end of httponly
+            } // end of httponly, all other types start below..
 
             if (onvifCamera == null) {
                 try {
@@ -1936,31 +1940,31 @@ public class IpCameraHandler extends BaseThingHandler {
                 } catch (Throwable t) {
                     logger.error("A Throwable occured when trying to fetch the cameras PTZ ranges. {}", t);
                 }
+            }
+            // We may be able to skip ONVIF if we have already tried and connected or failed previously.
+            if (snapshotUri != null) {
+                if (sendHttpRequest("GET", getCorrectUrlFormat(snapshotUri), null)) {
 
-                if (snapshotUri != null) {
-                    if (sendHttpRequest("GET", getCorrectUrlFormat(snapshotUri), null)) {
-
-                        updateState(CHANNEL_IMAGE_URL, new StringType(snapshotUri));
-                        if (videoStreamUri != null) {
-                            updateState(CHANNEL_VIDEO_URL, new StringType(videoStreamUri));
-                        }
-
-                        cameraConnectionJob.cancel(false);
-                        cameraConnectionJob = null;
-
-                        fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 1000,
-                                Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
-
-                        updateStatus(ThingStatus.ONLINE);
-                        isOnline = true;
-                        logger.info("IP Camera at {}:{} is now online.", ipAddress, config.get(CONFIG_PORT).toString());
+                    updateState(CHANNEL_IMAGE_URL, new StringType(snapshotUri));
+                    if (videoStreamUri != null) {
+                        updateState(CHANNEL_VIDEO_URL, new StringType(videoStreamUri));
                     }
-                } else {
-                    updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
-                            "Camera failed to report a valid Snaphot URL, try over-riding the Snapshot URL auto detection by entering a known URL.");
-                    logger.error(
-                            "Camera failed to report a valid Snaphot URL, try over-riding the Snapshot URL auto detection by entering a known URL.");
+
+                    cameraConnectionJob.cancel(false);
+                    cameraConnectionJob = null;
+
+                    fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 1000,
+                            Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
+
+                    updateStatus(ThingStatus.ONLINE);
+                    isOnline = true;
+                    logger.info("IP Camera at {}:{} is now online.", ipAddress, config.get(CONFIG_PORT).toString());
                 }
+            } else {
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
+                        "Camera failed to report a valid Snaphot URL, try over-riding the Snapshot URL auto detection by entering a known URL.");
+                logger.error(
+                        "Camera failed to report a valid Snaphot URL, try over-riding the Snapshot URL auto detection by entering a known URL.");
             }
         }
     };
@@ -1978,7 +1982,7 @@ public class IpCameraHandler extends BaseThingHandler {
             // Status can be -1=closed, 0=closing (do not re-use channel), 1=open , 2=open and ok to reuse
             else if (listOfChStatus.get(indexInLists) < 1) {
                 // may need to check if more than one is in the lists.
-                return true; // Stream was open but no longer is
+                return true; // Stream was open, but not now.
             }
         } finally {
             lock.unlock();
@@ -1990,6 +1994,7 @@ public class IpCameraHandler extends BaseThingHandler {
         @Override
         public void run() {
 
+            // Snapshot should be first to keep consistent time between shots
             if (snapshotUri != null) {
                 if (updateImageEvents.contains("1")) {
                     sendHttpGET(getCorrectUrlFormat(snapshotUri));
@@ -2046,9 +2051,9 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
             }
 
-            if (listOfRequests.size() > 10) {
+            if (listOfRequests.size() > 7) {
                 logger.warn(
-                        "There are {} channels being tracked, cleaning out old channels now to try and reduce this to 10 or below.",
+                        "There are {} channels being tracked, cleaning out old channels now to try and reduce this to 7 or below.",
                         listOfRequests.size());
                 cleanChannels();
             }
@@ -2057,6 +2062,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
     @Override
     public void initialize() {
+        logger.debug("init called.");
         config = thing.getConfiguration();
         ipAddress = config.get(CONFIG_IPADDRESS).toString();
         logger.debug("Getting configuration to initialize a new IP Camera at IP {}", ipAddress);
@@ -2068,6 +2074,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
         nvrChannel = (config.get(CONFIG_NVR_CHANNEL) == null) ? null : config.get(CONFIG_NVR_CHANNEL).toString();
 
+        // Known cameras will connect quicker if we skip ONVIF questions.
         if (snapshotUri == null) {
             switch (thing.getThingTypeUID().getId()) {
                 case "AMCREST":
@@ -2088,8 +2095,9 @@ public class IpCameraHandler extends BaseThingHandler {
 
     private void restart() {
         onvifCamera = null;
-        basicAuth = null; // clear out stored hash
+        basicAuth = null; // clear out stored password hash
         useDigestAuth = false;
+        logger.debug("Closing all channels to camera now.");
         closeAllChannels();
         lock.lock();
         listOfRequests.clear();
@@ -2097,18 +2105,21 @@ public class IpCameraHandler extends BaseThingHandler {
         listOfChStatus.clear();
         listOfReplies.clear();
         lock.unlock();
-        if (cameraConnectionJob != null) {
-            cameraConnectionJob.cancel(true);
-            cameraConnectionJob = null;
-        }
+        logger.debug("Closing cameraoutput job now.");
         if (fetchCameraOutputJob != null) {
             fetchCameraOutputJob.cancel(true);
             fetchCameraOutputJob = null;
+        }
+        logger.debug("Closing connectionjob now.");
+        if (cameraConnectionJob != null) {
+            cameraConnectionJob.cancel(false);
+            cameraConnectionJob = null;
         }
     }
 
     @Override
     public void dispose() {
+        logger.debug("dispose called.");
         restart();
     }
 }
