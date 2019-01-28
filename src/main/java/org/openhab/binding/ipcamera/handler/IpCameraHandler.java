@@ -208,12 +208,16 @@ public class IpCameraHandler extends BaseThingHandler {
             logger.debug("Channel status is {} for URL:{}", listOfChStatus.get(index), listOfRequests.get(index));
 
             switch (listOfChStatus.get(index)) {
-                case 0: // closing but still open
-                    Channel chan = listOfChannels.get(index);
-                    chan.close();
-                    listOfChStatus.set(index, (byte) -1);
-                    logger.warn("Cleaning the channels has just force closed a connection.");
-                    break;
+
+                /*
+                 * case 0: // closing but still open
+                 * Channel chan = listOfChannels.get(index);
+                 * chan.close();
+                 * listOfChStatus.set(index, (byte) -1);
+                 * logger.warn("Cleaning the channels has just force closed a connection.");
+                 * break;
+                 */
+
                 case -1: // closed
                     listOfRequests.remove(index);
                     listOfChStatus.remove(index);
@@ -2051,9 +2055,9 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
             }
 
-            if (listOfRequests.size() > 7) {
+            if (listOfRequests.size() > 12) {
                 logger.warn(
-                        "There are {} channels being tracked, cleaning out old channels now to try and reduce this to 7 or below.",
+                        "There are {} channels being tracked, cleaning out old channels now to try and reduce this to 12 or below.",
                         listOfRequests.size());
                 cleanChannels();
             }

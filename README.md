@@ -242,6 +242,20 @@ It is better to setup your AMCREST camera as a DAHUA thing type as the old alarm
 **Hikvision**
 Each alarm you wish to use must have "Notify Surveillance Center" enabled under each alarms settings in the control panel of the camera itself. The API and also ONVIF are disabled by default on the cameras and also are needed to be enabled.
 
+If you need a channel updated you can call a refresh on it by using a cron rule.
+
+```
+rule "refresh"
+when
+    Time cron "0 */15 * * * ? *"
+then
+    //your ITEMS to refresh every 15 minutes here
+    Item.sendCommand(RefreshType.REFRESH)
+end
+
+```
+
+
 **Foscam**
 
 These cameras need to have a detection area listed in the URL when you enable the motion alarm. As each model has a different resolution and two different URLs, this makes it difficult to make this automatic so an override feature was added to create your own enable the alarm url. This setting is called "MOTION_URL_OVERIDE" and the steps to using it are:
