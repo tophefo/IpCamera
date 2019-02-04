@@ -181,7 +181,9 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="motionAlarm" typeId="motionAlarm" />
             <channel id="enableAudioAlarm" typeId="enableAudioAlarm"/>
             <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm"/>
-            <channel id="audioAlarm" typeId="audioAlarm"/>               
+            <channel id="audioAlarm" typeId="audioAlarm"/>  
+            <channel id="autoLED" typeId="autoLED" />                  
+            <channel id="enableLED" typeId="enableLED" />              
             <channel id="pan" typeId="pan"/>
             <channel id="tilt" typeId="tilt"/>
             <channel id="zoom" typeId="zoom"/>
@@ -308,7 +310,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="activateAlarmOutput" typeId="activateAlarmOutput"/>
             <channel id="activateAlarmOutput2" typeId="activateAlarmOutput2"/>
             <channel id="itemLeft" typeId="itemLeft"/> 
-            <channel id="itemTaken" typeId="itemTaken"/>          
+            <channel id="itemTaken" typeId="itemTaken"/>
+            <channel id="autoLED" typeId="autoLED"/>                  
+            <channel id="enableLED" typeId="enableLED"/>
+            <channel id="textOverlay" typeId="textOverlay"/>
+            <channel id="apiAccess" typeId="apiAccess"/>                    
             <channel id="pan" typeId="pan"/>
             <channel id="tilt" typeId="tilt"/>
             <channel id="zoom" typeId="zoom"/>
@@ -1052,9 +1058,9 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         </channel-type>
         
         <channel-type id="enableLED">
-        <item-type>Switch</item-type>
-        <label>Enable/Disable the Infrared LED</label>
-        <description>Turn the LED on and off.</description>
+        <item-type>Dimmer</item-type>
+        <label>Enable/Disable/Dim the Infrared LED</label>
+        <description>Turn the LED on and off and if supported allow Dimming.</description>
         <category>Light</category>
         </channel-type>
         
@@ -1071,5 +1077,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <category>Camera</category>
         </channel-type>
         
+        <channel-type id="textOverlay">
+        <item-type>String</item-type>
+        <label>Text Overlay</label>
+        <description>Some custom text you wish to overlay onto the cameras snapshot and video stream.</description>
+        </channel-type>
+        
+        <channel-type id="apiAccess">
+        <item-type>String</item-type>
+        <label>Direct API access</label>
+        <description>Change the string to the correct URL format and the binding will send the GET request to the camera.</description>
+        </channel-type>                    
                          
 </thing:thing-descriptions>

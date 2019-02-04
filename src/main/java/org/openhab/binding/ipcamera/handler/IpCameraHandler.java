@@ -342,7 +342,8 @@ public class IpCameraHandler extends BaseThingHandler {
                 @Override
                 public void initChannel(SocketChannel socketChannel) throws Exception {
                     // RtspResponseDecoder //RtspRequestEncoder // try in the pipeline soon//
-                    socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(10, 0, 0));
+                    // HIK stream needs > 9sec idle to stop stream closing
+                    socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(11, 0, 0));
                     socketChannel.pipeline().addLast("HttpClientCodec", new HttpClientCodec());
                     // socketChannel.pipeline().addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
                     socketChannel.pipeline().addLast("authHandler",
@@ -1460,15 +1461,34 @@ public class IpCameraHandler extends BaseThingHandler {
                 case CHANNEL_ZOOM:
                     getAbsoluteZoom();
                     break;
+                case CHANNEL_TEXT_OVERLAY:
+                    // only Dahua and Amcrest have this channel currently and leaving it 1 way for now.
+                    // Below url does work, just need to handle it in brandhandler.
+                    // sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=ChannelTitle");
+                    break;
             }
             return; // Return as we have handled the refresh command above and don't need to continue further.
         } // end of "REFRESH"
 
         switch (channelUID.getId()) {
 
+            case CHANNEL_TEXT_OVERLAY:
+                if (command.toString() != null) {
+                    logger.debug("Text Overlay was sent this command :{}", command.toString());
+                    sendHttpGET(
+                            "/cgi-bin/configManager.cgi?action=setConfig&ChannelTitle[0].Name=" + command.toString());
+                }
+                break;
+            case CHANNEL_API_ACCESS:
+                if (command.toString() != null) {
+                    logger.info("API Access was sent this command :{}", command.toString());
+                    sendHttpGET(command.toString());
+                }
+                break;
+
             case CHANNEL_STREAM_VIDEO:
                 if (snapshotUri != null) {
-                    sendHttpGET("http://192.168.1.64/ISAPI/Streaming/channels/102/httppreview");
+                    sendHttpGET("/ISAPI/Streaming/channels/102/httppreview");
                 }
                 break;
 
@@ -1486,11 +1506,24 @@ public class IpCameraHandler extends BaseThingHandler {
                         sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setInfraLedConfig&mode=1&usr=" + username + "&pwd="
                                 + password);
                         updateState(CHANNEL_AUTO_LED, OnOffType.valueOf("OFF"));
-                        if ("ON".equals(command.toString())) {
-                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=openInfraLed&usr=" + username + "&pwd=" + password);
-                        } else {
+                        if ("0".equals(command.toString()) || "OFF".equals(command.toString())) {
                             sendHttpGET(
                                     "/cgi-bin/CGIProxy.fcgi?cmd=closeInfraLed&usr=" + username + "&pwd=" + password);
+                        } else {
+                            sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=openInfraLed&usr=" + username + "&pwd=" + password);
+                        }
+                        break;
+                    case "AMCREST":
+                    case "DAHUA":
+                        updateState(CHANNEL_AUTO_LED, OnOffType.valueOf("OFF"));
+                        if ("0".equals(command.toString()) || "OFF".equals(command.toString())) {
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&Lighting[0][0].Mode=Off");
+                        } else if ("ON".equals(command.toString())) {
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&Lighting[0][0].Mode=Manual");
+                        } else {
+                            sendHttpGET(
+                                    "/cgi-bin/configManager.cgi?action=setConfig&Lighting[0][0].Mode=Manual&Lighting[0][0].MiddleLight[0].Light="
+                                            + command.toString());
                         }
                         break;
                 }
@@ -1505,6 +1538,12 @@ public class IpCameraHandler extends BaseThingHandler {
                         } else {
                             sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setInfraLedConfig&mode=1&usr=" + username + "&pwd="
                                     + password);
+                        }
+                        break;
+                    case "AMCREST":
+                    case "DAHUA":
+                        if ("ON".equals(command.toString())) {
+                            sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&Lighting[0][0].Mode=Auto");
                         }
                         break;
                 }
