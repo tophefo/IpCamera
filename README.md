@@ -123,6 +123,28 @@ If you look in PaperUI you will notice the numbers are in brackets after each op
 
 See PaperUI for a full list of channels and the descriptions. Each camera brand will have different channels depending on how much of the support for an API has been added. The channels are kept consistent as much as possible from brand to brand when possible to make upgrading to a different branded camera easier without the need to edit your rules as much.
 
+## API Access Channel
+
+A special String channel has been added that allows you to send any GET request to Dahua cameras only due to the HTTP binding not supporting DIGEST method that these cameras must use in latest firmwares. For other brands you can use the HTTP binding.
+
+The reply from the camera is not captured nor returned, so this is only a 1 way GET request.
+To use this feature you can simply use this command inside any rule at any time and with as many url Strings as you wish.
+
+item:
+
+```
+String CamAPIAccess "Access the API" { channel="ipcamera:DAHUA:001:apiAccess" }
+```
+
+
+Command to use in rules:
+
+```
+CamAPIAccess.sendCommand('/cgi-bin/configManager.cgi?action=setConfig&Lighting[0][0].Mode=Off')
+```
+
+The URL must be in this format without the IP:Port info and the binding will handle the user and password for you making it far simpler to change a password on a camera.
+
 ## Full Example
 
 Use the following examples to base your setup on to save some time. NOTE: If your camera is secured with a user and password the links will not work and you will have to use the IMAGE channel to see a picture. FOSCAM cameras are the exception to this as they use the user and pass in plain text in the URL. In the example below you need to leave a fake address in the "Image url=" line otherwise it does not work, the item= overrides the url. Feel free to let me know if this is wrong or if you find a better way.
@@ -152,14 +174,18 @@ Thing ipcamera:HIKVISION:002 [IPADDRESS="192.168.1.6", PASSWORD="suitcase123456"
 Image BabyCamImage { channel="ipcamera:DAHUA:001:image" }
 Switch BabyCamUpdateImage "Get new picture" { channel="ipcamera:DAHUA:001:updateImageNow" }
 Number BabyCamDirection "Camera Direction"
-Dimmer BabyCamPan "Pan left/right" { channel="ipcamera:DAHUA:001:pan" }
-Dimmer BabyCamTilt "Tilt up/down" { channel="ipcamera:DAHUA:001:tilt" }
-Dimmer BabyCamZoom "Zoom in/out" { channel="ipcamera:DAHUA:001:zoom" }
+Dimmer BabyCamPan "Pan [%d] left/right" { channel="ipcamera:DAHUA:001:pan" }
+Dimmer BabyCamTilt "Tilt [%d] up/down" { channel="ipcamera:DAHUA:001:tilt" }
+Dimmer BabyCamZoom "Zoom [%d] in/out" { channel="ipcamera:DAHUA:001:zoom" }
 Switch BabyCamEnableMotion "MotionAlarm on/off" { channel="ipcamera:DAHUA:001:enableMotionAlarm" }
 Switch BabyCamMotionAlarm "Motion detected" { channel="ipcamera:DAHUA:001:motionAlarm" }
 Switch BabyCamEnableAudioAlarm "AudioAlarm on/off" { channel="ipcamera:DAHUA:001:enableAudioAlarm" }
 Switch BabyCamAudioAlarm "Audio detected" { channel="ipcamera:DAHUA:001:audioAlarm" }
-Dimmer BabyCamAudioThreshold "Audio Threshold" { channel="ipcamera:DAHUA:001:thresholdAudioAlarm" }
+Dimmer BabyCamAudioThreshold "Audio Threshold [%d]" { channel="ipcamera:DAHUA:001:thresholdAudioAlarm" }
+Dimmer BabyCamLED "IR LED [%d]" { channel="ipcamera:DAHUA:001:enableLED" }
+Switch BabyCamAutoLED "Auto IR LED" { channel="ipcamera:DAHUA:001:autoLED" }
+String BabyCamTextOverlay "Text to overlay" { channel="ipcamera:DAHUA:001:textOverlay" }
+String BabyCamAPIAccess "Access the API" { channel="ipcamera:DAHUA:001:apiAccess" }
 
 Image CamImage { channel="ipcamera:HIKVISION:002:image" }
 Switch CamUpdateImage "Get new picture" { channel="ipcamera:HIKVISION:002:updateImageNow" }
@@ -175,20 +201,24 @@ Switch CamLineAlarm "Line Alarm detected" { channel="ipcamera:HIKVISION:002:line
 
 ```
 
-        Text label="BabyMonitor" icon="camera"{
-            Switch item=BabyMonitor label="Baby Monitor Rules"
+Text label="BabyMonitor" icon="camera"{
             Image url="http://google.com/leaveLinkAsThis" item=BabyCamImage refresh=2000
-            Switch item=BabyCamDirection label="Camera Direction" mappings=[0="Door", 1="Cot", 2="Room"]
-            Switch item=BabyCamImage
-            Slider item=BabyCamPan label="Pan [%d]"
-            Slider item=BabyCamTilt label="Tilt [%d]"
-            Slider item=BabyCamZoom label="Zoom [%d]"
-            Switch item=BabyCamEnableMotion
-            Switch item=BabyCamMotionAlarm
-            Switch item=BabyCamEnableAudioAlarm
-            Switch item=BabyCamAudioAlarm
-            Slider item=BabyCamAudioThreshold label="Audio Threshold [%d]"
-        }   
+            Switch item=BabyCamDirection label="Camera Direction" mappings=[0="Room", 1="Cot", 2="Door"]
+            Switch item=BabyCamUpdateImage
+            Default item=BabyCamMotionAlarm
+            Default item=BabyCamAudioAlarm
+            Text label="Advanced Controls" icon="settings"{
+                Switch item=BabyCamEnableMotion
+                Default item=BabyCamEnableAudioAlarm
+                Default item=BabyCamAudioThreshold
+                Slider item=BabyCamLED
+                Default item=BabyCamAutoLED
+                Slider item=BabyCamPan
+                Slider item=BabyCamTilt
+                Slider item=BabyCamZoom
+            }
+        }
+          
         Text label="Driveway Camera" icon="camera" 
         {   
             Image url="http://google.com/leaveLinkAsThis" item=CamImage refresh=2000
@@ -210,7 +240,7 @@ rule "Move cameras direction"
     then
     switch (BabyCamDirection.state as DecimalType) {
         case 0 :{
-        //Door
+        //Room
         BabyCamPan.sendCommand(22)
         BabyCamTilt.sendCommand(60)
         BabyCamZoom.sendCommand(0)
@@ -222,7 +252,7 @@ rule "Move cameras direction"
         BabyCamZoom.sendCommand(0)
         }
         case 2 : {
-        //Room
+        //Door
         BabyCamPan.sendCommand(15)
         BabyCamTilt.sendCommand(75)
         BabyCamZoom.sendCommand(1)
@@ -237,12 +267,16 @@ end
 
 **Amcrest**
 
-It is better to setup your AMCREST camera as a DAHUA thing type as the old alarm checking method is used in AMCREST and the newer method is used in DAHUA that is stream based. This means less CPU and load on your server if you setup as Dahua.
+It is better to setup your AMCREST camera as a DAHUA thing type as the old alarm checking method is used in AMCREST and the newer method is used in DAHUA that is stream based. This means less CPU and load on your server if you setup as Dahua. See special notes for Dahua.
+
+**Dahua**
+
+The camera I have requires the snapshot set to 1 second updates and also the schedule set to record it before the snapshot will respond at 1 second rates. I found setting it to send it to a NAS without it having any NAS setup allowed the snapshot to be generated. The cameras default settings worked.
 
 **Hikvision**
-Each alarm you wish to use must have "Notify Surveillance Center" enabled under each alarms settings in the control panel of the camera itself. The API and also ONVIF are disabled by default on the cameras and also are needed to be enabled.
+Each alarm you wish to use must have "Notify Surveillance Center" enabled under each alarms settings in the control panel of the camera itself. The CGI/API and also ONVIF are disabled by default on the cameras and also are needed to be enabled and a user created that is the same as what you have given the binding. If your camera does not have PTZ then you can leave ONVIF disabled and just enable the CGI/API that way the camera connects faster.
 
-If you need a channel updated you can call a refresh on it by using a cron rule.
+If you need a channel or control updated in case you have made a change with the cameras app, you can call a refresh on it by using a cron rule.
 
 ```
 rule "refresh"

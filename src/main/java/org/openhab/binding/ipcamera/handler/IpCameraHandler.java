@@ -41,6 +41,7 @@ import org.eclipse.smarthome.core.thing.ThingStatusDetail;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
 import org.eclipse.smarthome.core.types.Command;
+import org.eclipse.smarthome.core.types.UnDefType;
 import org.onvif.ver10.schema.FloatRange;
 import org.onvif.ver10.schema.PTZVector;
 import org.onvif.ver10.schema.Profile;
@@ -239,6 +240,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     case 0: // Marked as closing but channel still needs to be closed.
                         Channel chan = listOfChannels.get(index);
                         chan.close();
+                        // Disabled temporarily. Handlers get closed by Openhab if delay >5 secs.
                         /*
                          * ChannelFuture chFuture = chan.close();
                          * try {
@@ -1533,6 +1535,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 switch (thing.getThingTypeUID().getId()) {
                     case "FOSCAM":
                         if ("ON".equals(command.toString())) {
+                            updateState(CHANNEL_ENABLE_LED, UnDefType.valueOf("UNDEF"));
                             sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setInfraLedConfig&mode=0&usr=" + username + "&pwd="
                                     + password);
                         } else {
@@ -1543,6 +1546,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     case "AMCREST":
                     case "DAHUA":
                         if ("ON".equals(command.toString())) {
+                            updateState(CHANNEL_ENABLE_LED, UnDefType.valueOf("UNDEF"));
                             sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&Lighting[0][0].Mode=Auto");
                         }
                         break;
