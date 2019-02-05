@@ -1475,11 +1475,13 @@ public class IpCameraHandler extends BaseThingHandler {
         switch (channelUID.getId()) {
 
             case CHANNEL_TEXT_OVERLAY:
-                if (command.toString() != null) {
-                    logger.debug("Text Overlay was sent this command :{}", command.toString());
-                    sendHttpGET(
-                            "/cgi-bin/configManager.cgi?action=setConfig&ChannelTitle[0].Name=" + command.toString());
+
+                String text = command.toString();
+                if ("".contentEquals(text)) {
+                    text = "%20";
                 }
+                text = text.replace(" ", "%20");
+                sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&ChannelTitle[0].Name=" + text);
                 break;
             case CHANNEL_API_ACCESS:
                 if (command.toString() != null) {
