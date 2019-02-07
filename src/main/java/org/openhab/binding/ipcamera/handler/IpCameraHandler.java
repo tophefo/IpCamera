@@ -11,10 +11,12 @@ package org.openhab.binding.ipcamera.handler;
 
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.*;
 
+import java.io.UnsupportedEncodingException;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -462,9 +464,11 @@ public class IpCameraHandler extends BaseThingHandler {
                 logger.error("Can not connect with HTTP to the camera at {}:{} check your network for issues.",
                         ipAddress, port);
                 isOnline = false; // Stop multiple errors when camera takes a while to connect.
+                cameraConnectionJob = cameraConnection.schedule(pollingCameraConnection, 9, TimeUnit.SECONDS);
+            } else {
+                cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 54, 60,
+                        TimeUnit.SECONDS);
             }
-            cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 54, 60,
-                    TimeUnit.SECONDS);
             return false;
         }
 
@@ -502,8 +506,6 @@ public class IpCameraHandler extends BaseThingHandler {
         }
 
         ch.writeAndFlush(request);
-        // chFuture = ch.writeAndFlush(request);
-
         // Cleanup
         request = null;
         chFuture = null;
@@ -1417,7 +1419,6 @@ public class IpCameraHandler extends BaseThingHandler {
                             break;
                     }
                     break;
-
                 case CHANNEL_ENABLE_LINE_CROSSING_ALARM:
                     switch (thing.getThingTypeUID().getId()) {
                         case "HIKVISION":
@@ -1429,7 +1430,6 @@ public class IpCameraHandler extends BaseThingHandler {
                             break;
                     }
                     break;
-
                 case CHANNEL_ENABLE_FIELD_DETECTION_ALARM:
                     switch (thing.getThingTypeUID().getId()) {
                         case "HIKVISION":
@@ -1438,7 +1438,6 @@ public class IpCameraHandler extends BaseThingHandler {
                             break;
                     }
                     break;
-
                 case CHANNEL_ENABLE_MOTION_ALARM:
                     switch (thing.getThingTypeUID().getId()) {
                         case "AMCREST":
@@ -1453,7 +1452,6 @@ public class IpCameraHandler extends BaseThingHandler {
                             break;
                     }
                     break;
-
                 case CHANNEL_PAN:
                     getAbsolutePan();
                     break;
@@ -1462,11 +1460,6 @@ public class IpCameraHandler extends BaseThingHandler {
                     break;
                 case CHANNEL_ZOOM:
                     getAbsoluteZoom();
-                    break;
-                case CHANNEL_TEXT_OVERLAY:
-                    // only Dahua and Amcrest have this channel currently and leaving it 1 way for now.
-                    // Below url does work, just need to handle it in brandhandler.
-                    // sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=ChannelTitle");
                     break;
             }
             return; // Return as we have handled the refresh command above and don't need to continue further.
@@ -1478,15 +1471,25 @@ public class IpCameraHandler extends BaseThingHandler {
 
                 String text = command.toString();
                 if ("".contentEquals(text)) {
-                    text = "%20";
+                    sendHttpGET(
+                            "/cgi-bin/configManager.cgi?action=setConfig&VideoWidget[0].CustomTitle[0].EncodeBlend=false");
+                } else {
+                    // sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&ChannelTitle[0].Name=" + text);
+                    try {
+                        text = URLEncoder.encode(text, "UTF-8").replace("+", "%20");
+                    } catch (UnsupportedEncodingException e) {
+
+                    }
+                    sendHttpGET(
+                            "/cgi-bin/configManager.cgi?action=setConfig&VideoWidget[0].CustomTitle[0].EncodeBlend=true&VideoWidget[0].CustomTitle[0].Text="
+                                    + text);
                 }
-                text = text.replace(" ", "%20");
-                sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&ChannelTitle[0].Name=" + text);
                 break;
             case CHANNEL_API_ACCESS:
                 if (command.toString() != null) {
                     logger.info("API Access was sent this command :{}", command.toString());
                     sendHttpGET(command.toString());
+                    updateState(CHANNEL_API_ACCESS, StringType.valueOf(""));
                 }
                 break;
 
@@ -1878,14 +1881,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     }
                 }
                 return;
-            } // end
-              // of
-              // httponly,
-              // all
-              // other
-              // types
-              // start
-              // below..
+            }
 
             if (onvifCamera == null) {
                 try {
