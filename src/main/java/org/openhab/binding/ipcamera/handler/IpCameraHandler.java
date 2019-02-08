@@ -411,7 +411,7 @@ public class IpCameraHandler extends BaseThingHandler {
             }
         }
 
-        logger.debug("Sending camera at IP:{}:{}, \tURL:{}", ipAddress, port, httpRequestURL);
+        logger.debug("Sending camera {} http://{}:{}{}", httpMethod, ipAddress, port, httpRequestURL);
         lock.lock();
 
         byte indexInLists = -1;
@@ -1469,17 +1469,11 @@ public class IpCameraHandler extends BaseThingHandler {
 
             case CHANNEL_TEXT_OVERLAY:
 
-                String text = command.toString();
+                String text = encodeSpecialChars(command.toString());
                 if ("".contentEquals(text)) {
                     sendHttpGET(
                             "/cgi-bin/configManager.cgi?action=setConfig&VideoWidget[0].CustomTitle[0].EncodeBlend=false");
                 } else {
-                    // sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&ChannelTitle[0].Name=" + text);
-                    try {
-                        text = URLEncoder.encode(text, "UTF-8").replace("+", "%20");
-                    } catch (UnsupportedEncodingException e) {
-
-                    }
                     sendHttpGET(
                             "/cgi-bin/configManager.cgi?action=setConfig&VideoWidget[0].CustomTitle[0].EncodeBlend=true&VideoWidget[0].CustomTitle[0].Text="
                                     + text);
@@ -1861,6 +1855,16 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     }
 
+    String encodeSpecialChars(String text) {
+        String Processed = null;
+        try {
+            Processed = URLEncoder.encode(text, "UTF-8").replace("+", "%20");
+        } catch (UnsupportedEncodingException e) {
+
+        }
+        return Processed;
+    }
+
     Runnable pollingCameraConnection = new Runnable() {
         @Override
         public void run() {
@@ -2135,6 +2139,13 @@ public class IpCameraHandler extends BaseThingHandler {
         port = Integer.parseInt(config.get(CONFIG_PORT).toString());
         username = (config.get(CONFIG_USERNAME) == null) ? null : config.get(CONFIG_USERNAME).toString();
         password = (config.get(CONFIG_PASSWORD) == null) ? null : config.get(CONFIG_PASSWORD).toString();
+
+        if ("FOSCAM".contentEquals(thing.getThingTypeUID().getId())) {
+            // Foscam needs any special char like spaces (%20) to be encoded for URLs.
+            username = encodeSpecialChars(username);
+            password = encodeSpecialChars(password);
+        }
+
         snapshotUri = (config.get(CONFIG_SNAPSHOT_URL_OVERIDE) == null) ? null
                 : config.get(CONFIG_SNAPSHOT_URL_OVERIDE).toString();
 
