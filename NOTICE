@@ -1,9 +1,13 @@
-All auto-generated binding code is SPDX-License-Identifier: EPL-2.0
-So all new code I write will be released under this License as well.
-Please note that two libraries and some sample code for those libraries that my code is based off use
-Apache License 2.0
+This content is produced and maintained by the openHAB project.
 
-https://github.com/milg0/onvif-java-lib
-https://netty.io/
+* Project home: https://www.openhab.org
 
-Big THANKS to all the contributors that created both of these two libraries and the example code that they have provided.
+== Declared Project Licenses
+
+This program and the accompanying materials are made available under the terms
+of the Eclipse Public License 2.0 which is available at
+https://www.eclipse.org/legal/epl-2.0/.
+
+== Source Code
+
+https://github.com/openhab/openhab2-addons
