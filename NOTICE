@@ -11,3 +11,15 @@ https://www.eclipse.org/legal/epl-2.0/.
 == Source Code
 
 https://github.com/openhab/openhab2-addons
+
+== Third-party Content
+
+Netty
+* License: Apache License 2.0
+* Project: https://netty.io/
+* Source:  https://github.com/netty/netty
+
+Onvif Java Lib
+* License: Apache License 2.0
+* Project: http://www.milgo.de/onvif/java-library
+* Source:  https://github.com/milg0/onvif-java-lib
