@@ -210,11 +210,9 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     private void cleanChannels() {
-        logger.debug("!!!!! Cleaning channels for camera at {} !!!!!", ipAddress);
         lock.lock();
         for (byte index = 0; index < listOfRequests.size(); index++) {
             logger.debug("Channel status is {} for URL:{}", listOfChStatus.get(index), listOfRequests.get(index));
-
             switch (listOfChStatus.get(index)) {
                 case 0: // closing but still open
                     Channel chan = listOfChannels.get(index);
@@ -235,7 +233,6 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     private void closeAllChannels() {
-        logger.debug("Closing all channels for camera at {}", ipAddress);
         lock.lock();
         try {
             for (byte index = 0; index < listOfRequests.size(); index++) {
@@ -428,7 +425,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         case 2: // Open and ok to reuse
                             ch = listOfChannels.get(index);
                             if (ch.isOpen()) {
-                                logger.debug("!!!!Using the already open channel:{} \t{}:{}", index, httpMethod,
+                                logger.debug("!!!! Using the already open channel:{} \t{}:{}", index, httpMethod,
                                         httpRequestURL);
                                 commonHandler = (CommonCameraHandler) ch.pipeline().get("commonHandler");
                                 commonHandler.setURL(httpRequestURL);
@@ -444,6 +441,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
                         case -1: // Closed
                             indexInLists = index;
+                            listOfChStatus.set(indexInLists, (byte) 1);
                             done = true;
                             break;
                     }
@@ -468,7 +466,8 @@ public class IpCameraHandler extends BaseThingHandler {
                 logger.error("Can not connect with HTTP to the camera at {}:{} check your network for issues.",
                         ipAddress, port);
                 isOnline = false; // Stop multiple errors when camera takes a while to connect.
-                cameraConnectionJob = cameraConnection.schedule(pollingCameraConnection, 9, TimeUnit.SECONDS);
+                cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 9, 9,
+                        TimeUnit.SECONDS);
             } else {
                 cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 54, 60,
                         TimeUnit.SECONDS);
@@ -489,7 +488,7 @@ public class IpCameraHandler extends BaseThingHandler {
         if (indexInLists >= 0) {
             lock.lock();
             try {
-                listOfChStatus.set(indexInLists, (byte) 1);
+                // listOfChStatus.set(indexInLists, (byte) 1);
                 listOfChannels.set(indexInLists, ch);
             } finally {
                 lock.unlock();
@@ -2038,7 +2037,6 @@ public class IpCameraHandler extends BaseThingHandler {
 
     boolean streamIsStopped(String url) {
         byte indexInLists = 0;
-
         lock.lock();
         try {
             indexInLists = (byte) listOfRequests.lastIndexOf(url);
@@ -2085,7 +2083,6 @@ public class IpCameraHandler extends BaseThingHandler {
                         sendHttpGET("/ISAPI/Event/notification/alertStream");
                     }
                     sendHttpGET("/ISAPI/System/IO/inputs/" + nvrChannel + "/status");
-
                     break;
                 case "INSTAR":
                     // Poll the audio alarm on/off/threshold/...
@@ -2100,8 +2097,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 case "DAHUA":
                     // Check for alarms, channel for NVRs appears not to work at filtering.
                     if (streamIsStopped("/cgi-bin/eventManager.cgi?action=attach&codes=[All]")) {
-                        logger.debug(
-                                "The alarm checking stream was not running, going to clean channels and re-start it now.");
+                        logger.debug("The alarm checking stream was not running, going to re-start it now.");
                         sendHttpGET("/cgi-bin/eventManager.cgi?action=attach&codes=[All]");
                     }
                     break;
@@ -2113,7 +2109,7 @@ public class IpCameraHandler extends BaseThingHandler {
             }
 
             if (listOfRequests.size() > 12) {
-                logger.warn(
+                logger.info(
                         "There are {} channels being tracked, cleaning out old channels now to try and reduce this to 12 or below.",
                         listOfRequests.size());
                 cleanChannels();
@@ -2171,14 +2167,14 @@ public class IpCameraHandler extends BaseThingHandler {
         selectedMediaProfile = (config.get(CONFIG_ONVIF_PROFILE_NUMBER) == null) ? 0
                 : Integer.parseInt(config.get(CONFIG_ONVIF_PROFILE_NUMBER).toString());
         updateImageEvents = config.get(CONFIG_IMAGE_UPDATE_EVENTS).toString();
-        cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 0, 60, TimeUnit.SECONDS); // scheduleAtFixedDelay(pollingCameraConnection
+        cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 0, 60, TimeUnit.SECONDS);
     }
 
     private void restart() {
         onvifCamera = null;
         basicAuth = null; // clear out stored password hash
         useDigestAuth = false;
-        logger.debug("Closing all channels to camera now.");
+        logger.info("Closing all channels to camera now.");
         closeAllChannels();
         lock.lock();
         try {
