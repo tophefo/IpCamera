@@ -338,7 +338,7 @@ public class IpCameraHandler extends BaseThingHandler {
             mainBootstrap.group(mainEventLoopGroup);
             mainBootstrap.channel(NioSocketChannel.class);
             mainBootstrap.option(ChannelOption.SO_KEEPALIVE, true);
-            mainBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 4000);
+            mainBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000);
             mainBootstrap.option(ChannelOption.SO_SNDBUF, 1024 * 8);
             mainBootstrap.option(ChannelOption.SO_RCVBUF, 1024 * 1024);
             mainBootstrap.option(ChannelOption.TCP_NODELAY, true);
@@ -458,19 +458,16 @@ public class IpCameraHandler extends BaseThingHandler {
         chFuture.awaitUninterruptibly(); // ChannelOption.CONNECT_TIMEOUT_MILLIS means this will not hang here
 
         if (!chFuture.isSuccess()) {
-            logger.warn("?!? Channel can not connect to the camera, so going to restart and close all channels.");
-            restart();
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                     "Connection Timeout: Check your IP is correct and the camera can be reached.");
+            restart();
             if (isOnline) {
-                logger.error("Can not connect with HTTP to the camera at {}:{} check your network for issues.",
+                logger.error("Can not connect with HTTP to the camera at {}:{} check your network for issues!",
                         ipAddress, port);
                 isOnline = false; // Stop multiple errors when camera takes a while to connect.
-                cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 9, 9,
-                        TimeUnit.SECONDS);
+                cameraConnectionJob = cameraConnection.schedule(pollingCameraConnection, 9, TimeUnit.SECONDS);
             } else {
-                cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 54, 60,
-                        TimeUnit.SECONDS);
+                cameraConnectionJob = cameraConnection.schedule(pollingCameraConnection, 56, TimeUnit.SECONDS);
             }
             return false;
         }
@@ -589,8 +586,8 @@ public class IpCameraHandler extends BaseThingHandler {
                                 byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
                                 if (indexInLists >= 0) {
                                     listOfChStatus.set(indexInLists, (byte) 0);
-                                    logger.debug("Channel marked as closing, channel:{} \tURL:{}", indexInLists,
-                                            requestUrl);
+                                    // logger.debug("Channel marked as closing, channel:{} \tURL:{}", indexInLists,
+                                    // requestUrl);
                                 } else {
                                     logger.debug("!!!! Could not find the ch for a Connection: close URL:{}",
                                             requestUrl);
@@ -692,9 +689,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         super.channelRead(ctx, reply);
                     }
                 }
-            } finally
-
-            {
+            } finally {
                 ReferenceCountUtil.release(msg);
             }
         }
@@ -2019,7 +2014,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     cameraConnectionJob.cancel(false);
                     cameraConnectionJob = null;
 
-                    fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 1000,
+                    fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 2000,
                             Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
 
                     updateStatus(ThingStatus.ONLINE);
@@ -2132,7 +2127,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
     @Override
     public void initialize() {
-        logger.debug("init called.");
+        logger.debug("initialize() called.");
         config = thing.getConfiguration();
         ipAddress = config.get(CONFIG_IPADDRESS).toString();
         logger.debug("Getting configuration to initialize a new IP Camera at IP {}", ipAddress);
@@ -2167,24 +2162,10 @@ public class IpCameraHandler extends BaseThingHandler {
         selectedMediaProfile = (config.get(CONFIG_ONVIF_PROFILE_NUMBER) == null) ? 0
                 : Integer.parseInt(config.get(CONFIG_ONVIF_PROFILE_NUMBER).toString());
         updateImageEvents = config.get(CONFIG_IMAGE_UPDATE_EVENTS).toString();
-        cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 0, 60, TimeUnit.SECONDS);
+        cameraConnectionJob = cameraConnection.schedule(pollingCameraConnection, 1, TimeUnit.SECONDS);
     }
 
     private void restart() {
-        onvifCamera = null;
-        basicAuth = null; // clear out stored password hash
-        useDigestAuth = false;
-        logger.info("Closing all channels to camera now.");
-        closeAllChannels();
-        lock.lock();
-        try {
-            listOfRequests.clear();
-            listOfChannels.clear();
-            listOfChStatus.clear();
-            listOfReplies.clear();
-        } finally {
-            lock.unlock();
-        }
         logger.debug("Closing cameraoutput job now.");
         if (fetchCameraOutputJob != null) {
             fetchCameraOutputJob.cancel(true);
@@ -2195,11 +2176,26 @@ public class IpCameraHandler extends BaseThingHandler {
             cameraConnectionJob.cancel(false);
             cameraConnectionJob = null;
         }
+
+        basicAuth = null; // clear out stored password hash
+        useDigestAuth = false;
+
+        closeAllChannels();
+        lock.lock();
+        try {
+            listOfRequests.clear();
+            listOfChannels.clear();
+            listOfChStatus.clear();
+            listOfReplies.clear();
+        } finally {
+            lock.unlock();
+        }
     }
 
     @Override
     public void dispose() {
-        logger.debug("dispose called.");
+        logger.debug("Dispose() called.");
+        onvifCamera = null; // needed in case user edits passwords.
         restart();
     }
 }
