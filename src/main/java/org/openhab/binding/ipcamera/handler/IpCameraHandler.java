@@ -465,7 +465,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 logger.error("Can not connect with HTTP to the camera at {}:{} check your network for issues!",
                         ipAddress, port);
                 isOnline = false; // Stop multiple errors when camera takes a while to connect.
-                cameraConnectionJob = cameraConnection.schedule(pollingCameraConnection, 9, TimeUnit.SECONDS);
+                cameraConnectionJob = cameraConnection.schedule(pollingCameraConnection, 8, TimeUnit.SECONDS);
             } else {
                 cameraConnectionJob = cameraConnection.schedule(pollingCameraConnection, 56, TimeUnit.SECONDS);
             }
