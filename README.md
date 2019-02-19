@@ -259,6 +259,26 @@ rule "Move cameras direction"
     }
 end
 
+rule "Camera detected crying"
+	when
+	Item BabyCamAudioAlarm changed from OFF to ON
+	then
+	if(BabyMonitor.state==ON){
+	
+		if(MumAlerts.state==ON){
+		sendNotification("dad@parentCo.com", "Mum, the baby is awake.")
+		}
+
+		if(DadAlerts.state==ON){
+		sendNotification("dad@parentCo.com", "Dad, the baby is awake.")
+		}
+
+		if(TvAlerts.state==ON){
+		myKodi_notification.sendCommand("Baby is crying.")
+		}
+	}
+end
+
 ```
 
 
