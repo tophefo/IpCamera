@@ -10,11 +10,21 @@ https://s3.amazonaws.com/amcrest-files/Amcrest+HTTP+API+3.2017.pdf
 
 **DAHUA**
 
-ftp://ftp.wintel.fi/drivers/dahua/SDK-HTTP_ohjelmointi/DAHUA_IPC_HTTP_API_V1.00x.pdf
+See the Amcrest API link above.
+
+**Doorbird**
+Not implemented but should be possible to add.
+
+https://www.doorbird.com/api
 
 **FOSCAM**
 
 https://www.foscam.es/descarga/Foscam-IPCamera-CGI-User-Guide-AllPlatforms-2015.11.06.pdf
+
+**Grandstream**
+Not implemented but should be possible to add.
+
+https://www.grandstream.com/sites/default/files/Resources/grandstream_http_api_1.0.0.54.pdf
 
 **HIKVISION**
 
@@ -200,34 +210,23 @@ Switch CamLineAlarm "Line Alarm detected" { channel="ipcamera:HIKVISION:002:line
 *.sitemap
 
 ```
-
-Text label="BabyMonitor" icon="camera"{
-            Image url="http://google.com/leaveLinkAsThis" item=BabyCamImage refresh=2000
-            Switch item=BabyCamDirection label="Camera Direction" mappings=[0="Room", 1="Cot", 2="Door"]
-            Switch item=BabyCamUpdateImage
-            Default item=BabyCamMotionAlarm
-            Default item=BabyCamAudioAlarm
-            Text label="Advanced Controls" icon="settings"{
-                Switch item=BabyCamEnableMotion
-                Default item=BabyCamEnableAudioAlarm
-                Default item=BabyCamAudioThreshold
-                Slider item=BabyCamLED
-                Default item=BabyCamAutoLED
-                Slider item=BabyCamPan
-                Slider item=BabyCamTilt
-                Slider item=BabyCamZoom
-            }
-        }
-          
-        Text label="Driveway Camera" icon="camera" 
-        {   
-            Image url="http://google.com/leaveLinkAsThis" item=CamImage refresh=2000
-            Switch item=CamUpdateImage label="Fetch new picture of Driveway"
-            Switch item=CamEnableMotionAlarm
-            Switch item=CamMotionAlarm
-            Switch item=CamEnableLineAlarm
-            Switch item=CamLineAlarm        
-        }
+		Text label="BabyMonitor" icon="camera"{
+			Image url="http://google.com/leaveLinkAsThis" item=BabyCamImage refresh=2000
+			Switch item=BabyCamDirection icon=movecontrol label="Camera Direction" mappings=[0="Room", 1="Cot", 2="Door"]
+			Switch item=BabyCamUpdateImage
+			Default item=BabyCamMotionAlarm icon=siren
+			Default item=BabyCamAudioAlarm icon=siren
+			Text label="Advanced Controls" icon="settings"{
+				Switch item=BabyCamEnableMotion
+				Default item=BabyCamEnableAudioAlarm
+				Default item=BabyCamAudioThreshold icon=recorder
+				Slider item=BabyCamLED
+				Default item=BabyCamAutoLED
+				Slider item=BabyCamPan icon=movecontrol
+				Slider item=BabyCamTilt icon=movecontrol
+				Slider item=BabyCamZoom icon=zoom
+			}
+		}
 
 ```
 
