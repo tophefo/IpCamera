@@ -2156,6 +2156,10 @@ public class IpCameraHandler extends BaseThingHandler {
                 case "HIKVISION":
                     snapshotUri = "http://" + ipAddress + "/ISAPI/Streaming/channels/" + nvrChannel + "01/picture";
                     break;
+                case "FOSCAM":
+                    snapshotUri = "http://" + ipAddress + "/cgi-bin/CGIProxy.fcgi?usr=" + username + "&pwd=" + password
+                            + "&cmd=snapPicture2";
+                    break;
             }
         }
 
