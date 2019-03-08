@@ -7,13 +7,30 @@
         <label>"HTTPONLY" Generic IP camera with only HTTP/S support.</label>
         <description>Use when your camera is not ONVIF compatible.</description>
         <channels>
-        <channel id="updateImageNow" typeId="updateImageNow" />
-        <channel id="streamVideo" typeId="streamVideo" />
-        
-            <channel id="image" typeId="image" />
-            <channel id="imageurl" typeId="imageurl" />        
+        <channel id="updateImageNow" typeId="updateImageNow"/>
+        <channel id="streamUrl" typeId="streamUrl"/>
+        <channel id="image" typeId="image"/>
+        <channel id="imageUrl" typeId="imageUrl"/>        
         </channels>     
         <config-description>
+        
+<parameter-group name="Image Settings">
+<label>Image Settings</label>
+<description>Settings for the snapshot features.</description>
+<advanced>false</advanced>
+</parameter-group>
+    
+<parameter-group name="Settings">
+<label>Main Settings</label>
+<description>Settings required to connect to the camera.</description>
+<advanced>false</advanced>
+</parameter-group>
+
+<parameter-group name="Streaming Setup">
+<label>Stream Settings</label>
+<description>Settings that setup or effect the video stream.</description>
+<advanced>false</advanced>
+</parameter-group>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
 <label>Update the Image when:</label>
@@ -43,11 +60,32 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>80</default>
 </parameter>
 
-<parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="true" groupName="Settings">
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="true" groupName="Settings">
 <context>url</context>
 <label>Snapshot http address for your camera.</label>
 <description>Full http address to where a snapshot can be seen from your camera if entered into any browser.
 </description>        
+</parameter>
+
+<parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>Http address for your cameras MJPEG stream.</label>
+<description>Full http address to where a MJPEG stream can be watched if entered into any browser. 
+</description>        
+</parameter>
+
+<parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
+<label>The port used to send files back to Openhab/Habpanel.</label>
+<description>This port must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+</description>
+<default>-1</default>
+</parameter>
+
+<parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
+<label>Whitelist of IP's that can access stream.</label>
+<description>Enter any IP's or hostnames that you wish to allow to access the video stream.
+</description>
+<default>(127.0.0.1)</default>        
 </parameter>
 
 <parameter name="USERNAME" type="text" required="false" groupName="Settings">
@@ -69,7 +107,6 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>2000</default>
 </parameter>
-
 </config-description>
 </thing-type>
 
@@ -77,25 +114,32 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <label>"ONVIF" Generic IP camera with ONVIF support.</label>
         <description>Use when the binding does not list your brand of ONVIF compatible Camera</description>
         <channels>
-        <channel id="updateImageNow" typeId="updateImageNow" />
-            <channel id="image" typeId="image" />
-            <channel id="pan" typeId="pan" />
-            <channel id="tilt" typeId="tilt" />
-            <channel id="zoom" typeId="zoom" />   
-            <channel id="videourl" typeId="videourl" />
-            <channel id="imageurl" typeId="imageurl" />         
+        <channel id="updateImageNow" typeId="updateImageNow"/>
+            <channel id="image" typeId="image"/>
+            <channel id="pan" typeId="pan"/>
+            <channel id="tilt" typeId="tilt"/>
+            <channel id="zoom" typeId="zoom"/>
+            <channel id="streamUrl" typeId="streamUrl"/>   
+            <channel id="rtspUrl" typeId="rtspUrl"/>
+            <channel id="imageUrl" typeId="imageUrl"/>         
         </channels>     
         <config-description>
         
 <parameter-group name="Image Settings">
 <label>Image Settings</label>
-<description>Image Settings</description>
+<description>Settings for the snapshot features.</description>
 <advanced>false</advanced>
 </parameter-group>
     
 <parameter-group name="Settings">
 <label>Main Settings</label>
-<description>Main Settings</description>
+<description>Settings required to connect to the camera.</description>
+<advanced>false</advanced>
+</parameter-group>
+
+<parameter-group name="Streaming Setup">
+<label>Stream Settings</label>
+<description>Settings that setup or effect the video stream.</description>
 <advanced>false</advanced>
 </parameter-group>
         
@@ -113,7 +157,28 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </options>
 </parameter>
 
-<parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="false" groupName="Settings">
+<parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>Http address for your cameras MJPEG stream.</label>
+<description>Full http address to where a MJPEG stream can be watched if entered into any browser. 
+</description>        
+</parameter>
+
+<parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
+<label>The port used to send files back to Openhab/Habpanel.</label>
+<description>This port must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+</description>
+<default>-1</default>
+</parameter>
+
+<parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
+<label>Whitelist of IP's that can access stream.</label>
+<description>Enter any IP's or hostnames that you wish to allow to access the video stream.
+</description>
+<default>(127.0.0.1)</default>        
+</parameter>
+
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
 <context>url</context>
 <label>Over-ride the auto detected snapshot http address for your camera.</label>
 <description>Recommend you leave this empty to use the auto detected snapshot method. Only enter a http address if you wish to over-ride with a different address.
@@ -154,7 +219,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 </parameter>
 
-<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Image Settings">
+<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Streaming Setup">
 <label>ONVIF Media Profile stream number.</label>
 <description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
 </description>
@@ -178,31 +243,59 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="updateImageNow" typeId="updateImageNow"/>          
             <channel id="image" typeId="image"/>            
             <channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>
-            <channel id="motionAlarm" typeId="motionAlarm" />
+            <channel id="motionAlarm" typeId="motionAlarm"/>
             <channel id="enableAudioAlarm" typeId="enableAudioAlarm"/>
             <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm"/>
             <channel id="audioAlarm" typeId="audioAlarm"/>  
-            <channel id="autoLED" typeId="autoLED" />                  
-            <channel id="enableLED" typeId="enableLED" />              
+            <channel id="autoLED" typeId="autoLED"/>                  
+            <channel id="enableLED" typeId="enableLED"/>              
             <channel id="pan" typeId="pan"/>
             <channel id="tilt" typeId="tilt"/>
             <channel id="zoom" typeId="zoom"/>
-            <channel id="videourl" typeId="videourl"/>
-            <channel id="imageurl" typeId="imageurl"/>     
+            <channel id="streamUrl" typeId="streamUrl"/>
+            <channel id="rtspUrl" typeId="rtspUrl"/>
+            <channel id="imageUrl" typeId="imageUrl"/>     
         </channels>     
         <config-description>
         
 <parameter-group name="Image Settings">
 <label>Image Settings</label>
-<description>Image Settings</description>
+<description>Settings for the snapshot features.</description>
 <advanced>false</advanced>
 </parameter-group>
     
 <parameter-group name="Settings">
 <label>Main Settings</label>
-<description>Main Settings</description>
+<description>Settings required to connect to the camera.</description>
 <advanced>false</advanced>
 </parameter-group>
+
+<parameter-group name="Streaming Setup">
+<label>Stream Settings</label>
+<description>Settings that setup or effect the video stream.</description>
+<advanced>false</advanced>
+</parameter-group>
+
+<parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>Http address for your cameras MJPEG stream.</label>
+<description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
+</description>        
+</parameter>
+
+<parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
+<label>The port used to send files back to Openhab/Habpanel.</label>
+<description>This port must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+</description>
+<default>-1</default>
+</parameter>
+
+<parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
+<label>Whitelist of IP's that can access stream.</label>
+<description>Enter any IP's or hostnames that you wish to allow to access the video stream.
+</description>
+<default>(127.0.0.1)</default>        
+</parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
 <label>Update the Image when:</label>
@@ -244,7 +337,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>1</default>
 </parameter>
 
-<parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="false" groupName="Settings">
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
 <context>url</context>
 <label>Over-ride the auto detected snapshot http address for your camera.</label>
 <description>Leave this empty to auto detect the snapshot url. Enter a http address if you wish to over-ride with a different address which also makes the camera connect quicker.
@@ -271,11 +364,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 </parameter>
 
-<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Image Settings">
+<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Streaming Setup">
 <label>ONVIF Media Profile stream number.</label>
 <description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
 </description>
-<default>0</default>
+<default>1</default>
 </parameter>
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="15000" groupName="Image Settings">
@@ -295,10 +388,10 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <channels>
             <channel id="updateImageNow" typeId="updateImageNow"/>          
             <channel id="image" typeId="image"/>            
-            <channel id="enableMotionAlarm" typeId="enableMotionAlarm" />
-            <channel id="motionAlarm" typeId="motionAlarm" />
+            <channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>
+            <channel id="motionAlarm" typeId="motionAlarm"/>
             <channel id="enableAudioAlarm" typeId="enableAudioAlarm"/>
-            <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm" />
+            <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm"/>
             <channel id="audioAlarm" typeId="audioAlarm"/>   
             <channel id="enableLineCrossingAlarm" typeId="enableLineCrossingAlarm"/>
             <channel id="lineCrossingAlarm" typeId="lineCrossingAlarm"/>                         
@@ -318,22 +411,50 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="pan" typeId="pan"/>
             <channel id="tilt" typeId="tilt"/>
             <channel id="zoom" typeId="zoom"/>
-            <channel id="videourl" typeId="videourl"/>
-            <channel id="imageurl" typeId="imageurl"/>     
+            <channel id="streamUrl" typeId="streamUrl"/>
+            <channel id="rtspUrl" typeId="rtspUrl"/>
+            <channel id="imageUrl" typeId="imageUrl"/>     
         </channels>     
         <config-description>
         
 <parameter-group name="Image Settings">
 <label>Image Settings</label>
-<description>Image Settings</description>
+<description>Settings for the snapshot features.</description>
 <advanced>false</advanced>
 </parameter-group>
     
 <parameter-group name="Settings">
 <label>Main Settings</label>
-<description>Main Settings</description>
+<description>Settings required to connect to the camera.</description>
 <advanced>false</advanced>
 </parameter-group>
+
+<parameter-group name="Streaming Setup">
+<label>Stream Settings</label>
+<description>Settings that setup or effect the video stream.</description>
+<advanced>false</advanced>
+</parameter-group>
+
+<parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>Http address for your cameras MJPEG stream.</label>
+<description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
+</description>        
+</parameter>
+
+<parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
+<label>The port used to send files back to Openhab/Habpanel.</label>
+<description>This port must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+</description>
+<default>-1</default>
+</parameter>
+
+<parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
+<label>Whitelist of IP's that can access stream.</label>
+<description>Enter any IP's or hostnames that you wish to allow to access the video stream.
+</description>
+<default>(127.0.0.1)</default>        
+</parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
 <label>Update the Image when:</label>
@@ -375,7 +496,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>80</default>
 </parameter>
 
-<parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="false" groupName="Settings">
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
 <context>url</context>
 <label>Over-ride the auto detected snapshot http address for your camera.</label>
 <description>Recommend you leave this empty to use the auto detected snapshot method. Only enter a http address if you wish to over-ride with a different address.
@@ -402,11 +523,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 </parameter>
 
-<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Image Settings">
+<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Streaming Setup">
 <label>ONVIF Media Profile stream number.</label>
 <description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
 </description>
-<default>0</default>
+<default>1</default>
 </parameter>
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
@@ -423,34 +544,62 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <label>"FOSCAM" IP camera with ONVIF and API support.</label>
         <description>Use for all current HD FOSCAM Cameras as they support an API as well as ONVIF.</description>
         <channels>
-        <channel id="updateImageNow" typeId="updateImageNow" />
-            <channel id="image" typeId="image" />
-            <channel id="enableMotionAlarm" typeId="enableMotionAlarm" />               
-            <channel id="motionAlarm" typeId="motionAlarm" />
-            <channel id="enableAudioAlarm" typeId="enableAudioAlarm" />
-            <channel id="audioAlarm" typeId="audioAlarm" />
-            <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm" />   
-            <channel id="autoLED" typeId="autoLED" />                  
-            <channel id="enableLED" typeId="enableLED" />         
-            <channel id="pan" typeId="pan" />
-            <channel id="tilt" typeId="tilt" />
-            <channel id="zoom" typeId="zoom" />
-            <channel id="videourl" typeId="videourl" />
-            <channel id="imageurl" typeId="imageurl" />          
+        <channel id="updateImageNow" typeId="updateImageNow"/>
+            <channel id="image" typeId="image"/>
+            <channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>               
+            <channel id="motionAlarm" typeId="motionAlarm"/>
+            <channel id="enableAudioAlarm" typeId="enableAudioAlarm"/>
+            <channel id="audioAlarm" typeId="audioAlarm"/>
+            <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm"/>   
+            <channel id="autoLED" typeId="autoLED"/>                  
+            <channel id="enableLED" typeId="enableLED"/>         
+            <channel id="pan" typeId="pan"/>
+            <channel id="tilt" typeId="tilt"/>
+            <channel id="zoom" typeId="zoom"/>
+            <channel id="streamUrl" typeId="streamUrl"/>
+            <channel id="rtspUrl" typeId="rtspUrl"/>
+            <channel id="imageUrl" typeId="imageUrl"/>          
         </channels>     
         <config-description>
         
 <parameter-group name="Image Settings">
 <label>Image Settings</label>
-<description>Image Settings</description>
+<description>Settings for the snapshot features.</description>
 <advanced>false</advanced>
 </parameter-group>
     
 <parameter-group name="Settings">
 <label>Main Settings</label>
-<description>Main Settings</description>
+<description>Settings required to connect to the camera.</description>
 <advanced>false</advanced>
 </parameter-group>
+
+<parameter-group name="Streaming Setup">
+<label>Stream Settings</label>
+<description>Settings that setup or effect the video stream.</description>
+<advanced>false</advanced>
+</parameter-group>
+
+<parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>Http address for your cameras MJPEG stream.</label>
+<description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
+</description>        
+</parameter>
+
+<parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
+<label>The port used to send files back to Openhab/Habpanel.</label>
+<description>This port must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+</description>
+<default>-1</default>
+</parameter>
+
+<parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
+<label>Whitelist of IP's that can access stream.</label>
+<description>Enter any IP's or hostnames that you wish to allow to access the video stream.
+</description>
+<default>(127.0.0.1)</default>        
+</parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
 <label>Update the Image when:</label>
@@ -485,21 +634,21 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>88</default>
 </parameter>
 
-<parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="false" groupName="Settings">
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
 <context>url</context>
 <label>Over-ride the auto detected snapshot http address for your camera.</label>
 <description>Recommend you leave this empty to use the auto detected snapshot method. Only enter a http address if you wish to over-ride with a different address.
 </description>        
 </parameter>
 
-<parameter name="MOTION_URL_OVERIDE" type="text" required="false" groupName="Settings">
+<parameter name="MOTION_URL_OVERRIDE" type="text" required="false" groupName="Settings">
 <context>url</context>
 <label>Create your own custom enable Motion Alarm settings by entering a custom URL</label>
 <description>Leave this empty to use the default, or create your own setting.
 </description>        
 </parameter>
 
-<parameter name="AUDIO_URL_OVERIDE" type="text" required="false" groupName="Settings">
+<parameter name="AUDIO_URL_OVERRIDE" type="text" required="false" groupName="Settings">
 <context>url</context>
 <label>Create your own custom enable Audio Alarm settings by entering a custom URL</label>
 <description>Leave this empty to use the default, or create your own setting.
@@ -526,7 +675,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 </parameter>
 
-<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Image Settings">
+<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Streaming Setup">
 <label>ONVIF Media Profile stream number.</label>
 <description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
 </description>
@@ -566,22 +715,50 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="pan" typeId="pan"/>
             <channel id="tilt" typeId="tilt"/>
             <channel id="zoom" typeId="zoom"/>
-            <channel id="videourl" typeId="videourl"/>
-            <channel id="imageurl" typeId="imageurl"/>     
+            <channel id="streamUrl" typeId="streamUrl"/>
+            <channel id="rtspUrl" typeId="rtspUrl"/>        
+            <channel id="imageUrl" typeId="imageUrl"/>     
         </channels>     
         <config-description>
         
 <parameter-group name="Image Settings">
 <label>Image Settings</label>
-<description>Image Settings</description>
+<description>Settings for the snapshot features.</description>
 <advanced>false</advanced>
 </parameter-group>
     
 <parameter-group name="Settings">
 <label>Main Settings</label>
-<description>Main Settings</description>
+<description>Settings required to connect to the camera.</description>
 <advanced>false</advanced>
 </parameter-group>
+
+<parameter-group name="Streaming Setup">
+<label>Stream Settings</label>
+<description>Settings that setup or effect the video stream.</description>
+<advanced>false</advanced>
+</parameter-group>
+
+<parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>Http address for your cameras MJPEG stream.</label>
+<description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
+</description>        
+</parameter>
+
+<parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
+<label>The port used to send files back to Openhab/Habpanel.</label>
+<description>This port must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+</description>
+<default>-1</default>
+</parameter>
+
+<parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
+<label>Whitelist of IP's that can access stream.</label>
+<description>Enter any IP's or hostnames that you wish to allow to access the video stream.
+</description>
+<default>(127.0.0.1)</default>        
+</parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
 <label>Update the Image when:</label>
@@ -623,7 +800,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>1</default>
 </parameter>
 
-<parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="false" groupName="Settings">
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
 <context>url</context>
 <label>Over-ride the auto detected snapshot http address for your camera.</label>
 <description>Leave this empty to use the auto detected snapshot method, or enter a http address if you wish to over-ride with a different address to connect faster.
@@ -650,11 +827,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 </parameter>
 
-<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Image Settings">
+<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Streaming Setup">
 <label>ONVIF Media Profile stream number.</label>
 <description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
 </description>
-<default>0</default>
+<default>1</default>
 </parameter>
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
@@ -667,32 +844,59 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </config-description>
 </thing-type>
 
-
   <thing-type id="AXIS">
         <label>"AXIS" IP camera with ONVIF and API support.</label>
         <description>Use for all current Axis Cameras as they support an API as well as ONVIF.</description>
         <channels>
-        <channel id="updateImageNow" typeId="updateImageNow" />
-            <channel id="image" typeId="image" />
-            <channel id="videourl" typeId="videourl" />
-            <channel id="imageurl" typeId="imageurl" />
-            <channel id="pan" typeId="pan" />
-            <channel id="tilt" typeId="tilt" />
-            <channel id="zoom" typeId="zoom" />            
+        <channel id="updateImageNow" typeId="updateImageNow"/>
+            <channel id="image" typeId="image"/>            
+            <channel id="pan" typeId="pan"/>
+            <channel id="tilt" typeId="tilt"/>
+            <channel id="zoom" typeId="zoom"/> 
+            <channel id="streamUrl" typeId="streamUrl"/>
+            <channel id="rtspUrl" typeId="rtspUrl"/>
+            <channel id="imageUrl" typeId="imageUrl"/>           
         </channels>     
         <config-description>
         
 <parameter-group name="Image Settings">
 <label>Image Settings</label>
-<description>Image Settings</description>
+<description>Settings for the snapshot features.</description>
 <advanced>false</advanced>
 </parameter-group>
     
 <parameter-group name="Settings">
 <label>Main Settings</label>
-<description>Main Settings</description>
+<description>Settings required to connect to the camera.</description>
 <advanced>false</advanced>
 </parameter-group>
+
+<parameter-group name="Streaming Setup">
+<label>Stream Settings</label>
+<description>Settings that setup or effect the video stream.</description>
+<advanced>false</advanced>
+</parameter-group>
+
+<parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>Http address for your cameras MJPEG stream.</label>
+<description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
+</description>        
+</parameter>
+
+<parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
+<label>The port used to send files back to Openhab/Habpanel.</label>
+<description>This port must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+</description>
+<default>-1</default>
+</parameter>
+
+<parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
+<label>Whitelist of IP's that can access stream.</label>
+<description>Enter any IP's or hostnames that you wish to allow to access the video stream.
+</description>
+<default>(127.0.0.1)</default>        
+</parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
 <label>Update the Image when:</label>
@@ -722,7 +926,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>80</default>
 </parameter>
 
-<parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="false" groupName="Settings">
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
 <context>url</context>
 <label>Over-ride the auto detected snapshot http address for your camera.</label>
 <description>Recommend you leave this empty to use the auto detected snapshot method. Only enter a http address if you wish to over-ride with a different address.
@@ -749,7 +953,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 </parameter>
 
-<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Image Settings">
+<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Streaming Setup">
 <label>ONVIF Media Profile stream number.</label>
 <description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
 </description>
@@ -770,29 +974,57 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <description>Use for all current INSTAR HD Cameras, as they support an API as well as ONVIF.</description>
         <channels>
             <channel id="updateImageNow" typeId="updateImageNow"/>          
-            <channel id="image" typeId="image" />            
-            <channel id="enableMotionAlarm" typeId="enableMotionAlarm" />
-            <channel id="enableAudioAlarm" typeId="enableAudioAlarm" />
-            <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm" />
-            <channel id="pan" typeId="pan" />
-            <channel id="tilt" typeId="tilt" />
-            <channel id="zoom" typeId="zoom" />
-            <channel id="videourl" typeId="videourl" />
-            <channel id="imageurl" typeId="imageurl" />     
+            <channel id="image" typeId="image"/>            
+            <channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>
+            <channel id="enableAudioAlarm" typeId="enableAudioAlarm"/>
+            <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm"/>
+            <channel id="pan" typeId="pan"/>
+            <channel id="tilt" typeId="tilt"/>
+            <channel id="zoom" typeId="zoom"/>
+            <channel id="streamUrl" typeId="streamUrl"/>
+            <channel id="rtspUrl" typeId="rtspUrl"/>
+            <channel id="imageUrl" typeId="imageUrl"/>     
         </channels>     
         <config-description>
         
 <parameter-group name="Image Settings">
 <label>Image Settings</label>
-<description>Image Settings</description>
+<description>Settings for the snapshot features.</description>
 <advanced>false</advanced>
 </parameter-group>
     
 <parameter-group name="Settings">
 <label>Main Settings</label>
-<description>Main Settings</description>
+<description>Settings required to connect to the camera.</description>
 <advanced>false</advanced>
 </parameter-group>
+
+<parameter-group name="Streaming Setup">
+<label>Stream Settings</label>
+<description>Settings that setup or effect the video stream.</description>
+<advanced>false</advanced>
+</parameter-group>
+
+<parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>Http address for your cameras MJPEG stream.</label>
+<description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
+</description>        
+</parameter>
+
+<parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
+<label>The port used to send files back to Openhab/Habpanel.</label>
+<description>This port must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+</description>
+<default>-1</default>
+</parameter>
+
+<parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
+<label>Whitelist of IP's that can access stream.</label>
+<description>Enter any IP's or hostnames that you wish to allow to access the video stream.
+</description>
+<default>(127.0.0.1)</default>        
+</parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
 <label>Update the Image when:</label>
@@ -821,7 +1053,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>80</default>
 </parameter>
 
-<parameter name="SNAPSHOT_URL_OVERIDE" type="text" required="false" groupName="Settings">
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
 <context>url</context>
 <label>Over-ride the auto detected snapshot http address for your camera.</label>
 <description>Recommend you leave this empty to use the auto detected snapshot method. Only enter a http address if you wish to over-ride with a different address.
@@ -848,7 +1080,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 </parameter>
 
-<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Image Settings">
+<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Streaming Setup">
 <label>ONVIF Media Profile stream number.</label>
 <description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
 </description>
@@ -864,13 +1096,6 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </config-description>
 </thing-type>
 
-
-<channel-type id="alphaTest">
-<item-type>Switch</item-type>
-<label>Button to test new code</label>
-<description>Pressing this will trigger new code that is not fully tested.</description>   
-</channel-type>
-
 <channel-type id="updateImageNow">
 <item-type>Switch</item-type>
 <label>Update the Image</label>
@@ -884,7 +1109,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <category>Camera</category>
         </channel-type>
     
-        <channel-type id="imageurl">
+        <channel-type id="imageUrl">
         <item-type>String</item-type>
         <label>Image URL</label>
         <description>A link you can use to fetch a static image from the camera.</description>
@@ -892,10 +1117,18 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <state readOnly="true" />
         </channel-type>
     
-        <channel-type id="videourl">
+        <channel-type id="rtspUrl">
         <item-type>String</item-type>
-        <label>Video URL</label>
-        <description>A link you can use to fetch a video feed from the camera.</description>
+        <label>RTSP URL</label>
+        <description>A link that the camera uses for RTSP, not used currently.</description>
+        <category>Camera</category>
+        <state readOnly="true" />
+        </channel-type>
+        
+        <channel-type id="streamUrl">
+        <item-type>String</item-type>
+        <label>Stream URL</label>
+        <description>A link you can use in Openhab/Habpanel to fetch a MJPEG video feed from the camera.</description>
         <category>Camera</category>
         <state readOnly="true" />
         </channel-type>
@@ -1069,14 +1302,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <label>Auto control the Infrared LED</label>
         <description>Turn automatic mode for the LED on and off.</description>
         </channel-type>
-        
-        <channel-type id="streamVideo">
-        <item-type>Switch</item-type>
-        <label>Enable/Disable the Video streaming (experimental)</label>
-        <description>Experimental, ignore this for now.</description>
-        <category>Camera</category>
-        </channel-type>
-        
+                
         <channel-type id="textOverlay">
         <item-type>String</item-type>
         <label>Text Overlay</label>

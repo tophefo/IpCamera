@@ -41,21 +41,25 @@ public class IpCameraBindingConstants {
     public static final String CONFIG_IPADDRESS = "IPADDRESS";
     public static final String CONFIG_PORT = "PORT";
     public static final String CONFIG_ONVIF_PORT = "ONVIF_PORT";
+    public static final String CONFIG_SERVER_PORT = "SERVER_PORT";
     public static final String CONFIG_USERNAME = "USERNAME";
     public static final String CONFIG_PASSWORD = "PASSWORD";
     public static final String CONFIG_ONVIF_PROFILE_NUMBER = "ONVIF_MEDIA_PROFILE";
     public static final String CONFIG_POLL_CAMERA_MS = "POLL_CAMERA_MS";
-    public static final String CONFIG_SNAPSHOT_URL_OVERIDE = "SNAPSHOT_URL_OVERIDE";
+    public static final String CONFIG_SNAPSHOT_URL_OVERRIDE = "SNAPSHOT_URL_OVERRIDE";
     public static final String CONFIG_IMAGE_UPDATE_EVENTS = "IMAGE_UPDATE_EVENTS";
     public static final String CONFIG_NVR_CHANNEL = "NVR_CHANNEL";
-    public static final String CONFIG_MOTION_URL_OVERIDE = "MOTION_URL_OVERIDE";
-    public static final String CONFIG_AUDIO_URL_OVERIDE = "AUDIO_URL_OVERIDE";
+    public static final String CONFIG_MOTION_URL_OVERRIDE = "MOTION_URL_OVERRIDE";
+    public static final String CONFIG_AUDIO_URL_OVERRIDE = "AUDIO_URL_OVERRIDE";
+    public static final String CONFIG_STREAM_URL_OVERRIDE = "STREAM_URL_OVERRIDE";
+    public static final String CONFIG_IP_WHITELIST = "IP_WHITELIST";
 
     // List of all Channel ids
     public static final String CHANNEL_UPDATE_IMAGE_NOW = "updateImageNow";
     public static final String CHANNEL_IMAGE = "image";
-    public static final String CHANNEL_VIDEO_URL = "videourl";
-    public static final String CHANNEL_IMAGE_URL = "imageurl";
+    public static final String CHANNEL_RTSP_URL = "rtspUrl";
+    public static final String CHANNEL_IMAGE_URL = "imageUrl";
+    public static final String CHANNEL_STREAM_URL = "streamUrl";
     public static final String CHANNEL_PAN = "pan";
     public static final String CHANNEL_TILT = "tilt";
     public static final String CHANNEL_ZOOM = "zoom";
@@ -78,7 +82,6 @@ public class IpCameraBindingConstants {
     public static final String CHANNEL_PIR_ALARM = "pirAlarm";
     public static final String CHANNEL_ENABLE_FIELD_DETECTION_ALARM = "enableFieldDetectionAlarm";
     public static final String CHANNEL_FIELD_DETECTION_ALARM = "fieldDetectionAlarm";
-    public static final String CHANNEL_STREAM_VIDEO = "streamVideo";
     public static final String CHANNEL_PARKING_ALARM = "parkingAlarm";
     public static final String CHANNEL_TEXT_OVERLAY = "textOverlay";
     public static final String CHANNEL_API_ACCESS = "apiAccess";

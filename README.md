@@ -77,6 +77,8 @@ PORT
 
 ONVIF_PORT
 
+SERVER_PORT
+
 USERNAME
 
 PASSWORD
@@ -85,15 +87,19 @@ ONVIF_MEDIA_PROFILE
 
 POLL_CAMERA_MS
 
-SNAPSHOT_URL_OVERIDE
+SNAPSHOT_URL_OVERRIDE
 
 IMAGE_UPDATE_EVENTS
 
 NVR_CHANNEL
 
-MOTION_URL_OVERIDE
+MOTION_URL_OVERRIDE
 
-AUDIO_URL_OVERIDE
+AUDIO_URL_OVERRIDE
+
+STREAM_URL_OVERRIDE
+
+IP_WHITELIST
 
 ```
 
@@ -108,7 +114,7 @@ Thing ipcamera:HIKVISION:002 [IPADDRESS="192.168.1.6", PASSWORD="suitcase123456"
 
 Thing ipcamera:ONVIF:003 [ IPADDRESS="192.168.1.21", PASSWORD="suitcase123456", USERNAME="admin", ONVIF_PORT=80, PORT=80, POLL_CAMERA_MS=2000]
 
-Thing ipcamera:HTTPONLY:004 [ IPADDRESS="192.168.1.22", PASSWORD="suitcase123456", USERNAME="admin", SNAPSHOT_URL_OVERIDE="http://192.168.1.22/cgi-bin/CGIProxy.fcgi?cmd=snapPicture2&usr=admin&pwd=suitcase123456", PORT=80, POLL_CAMERA_MS=2000]
+Thing ipcamera:HTTPONLY:004 [ IPADDRESS="192.168.1.22", PASSWORD="suitcase123456", USERNAME="admin", SNAPSHOT_URL_OVERRIDE="http://192.168.1.22/cgi-bin/CGIProxy.fcgi?cmd=snapPicture2&usr=admin&pwd=suitcase123456", PORT=80, POLL_CAMERA_MS=2000]
 
 ```
 
@@ -120,7 +126,7 @@ BindingID: is always ipcamera.
 
 THINGTYPE: is found listed above under the heading "supported things"
 
-UID: Can be made up but it must be UNIQUE, hence why it is called uniqueID. If you use PaperUI you will notice the UID will be something like "0A78687F" which is not very nice when using it in sitemaps and rules, also paperui will choose a new random ID each time you remove and add the camera causing you to edit your rules, items and sitemaps to make them match. 
+UID: Can be made up but it must be UNIQUE, hence why it is called uniqueID. If you use PaperUI you will notice the UID will be something like "0A78687F" which is not very nice when using it in sitemaps and rules, also paperui will choose a new random ID each time you remove and add the camera causing you to edit your rules, items and sitemaps to make them match. You can use text to name it something useful like DrivewayCamera if you wish.
 
 
 ## Thing Configuration
@@ -131,11 +137,11 @@ If you look in PaperUI you will notice the numbers are in brackets after each op
 
 ## Channels
 
-See PaperUI for a full list of channels and the descriptions. Each camera brand will have different channels depending on how much of the support for an API has been added. The channels are kept consistent as much as possible from brand to brand when possible to make upgrading to a different branded camera easier without the need to edit your rules as much.
+See PaperUI for a full list of channels and the descriptions. Each camera brand will have different channels depending on how much of the support for an API has been added. The channels are kept consistent as much as possible from brand to brand to make upgrading to a different branded camera easier and help when sharing rules with other users.
 
 ## API Access Channel
 
-A special String channel has been added that allows you to send any GET request to Dahua cameras only due to the HTTP binding not supporting DIGEST method that these cameras must use in latest firmwares. For other brands you can use the HTTP binding.
+A special String channel has been added that allows you to send any GET request to Dahua cameras only due to the HTTP binding not supporting the DIGEST method that these cameras must use in the latest firmwares. For other brands you can use the HTTP binding. It is far better to add or request a feature gets added to the binding so that all future users benefit.
 
 The reply from the camera is not captured nor returned, so this is only a 1 way GET request.
 To use this feature you can simply use this command inside any rule at any time and with as many url Strings as you wish.
@@ -266,7 +272,7 @@ rule "Camera detected crying"
 	if(BabyMonitor.state==ON){
 	
 		if(MumAlerts.state==ON){
-		sendNotification("dad@parentCo.com", "Mum, the baby is awake.")
+		sendNotification("mum@parentCo.com", "Mum, the baby is awake.")
 		}
 
 		if(DadAlerts.state==ON){
@@ -281,19 +287,21 @@ end
 
 ```
 
+For the above notifications to work you will need to setup multiple users with the same email address's at the Openhab cloud. 
+
 
 ## Special notes for different brands
 
 **Amcrest**
 
-It is better to setup your AMCREST camera as a DAHUA thing type as the old alarm checking method is used in AMCREST and the newer method is used in DAHUA that is stream based. This means less CPU and load on your server if you setup as Dahua. See special notes for Dahua.
+It is better to setup your AMCREST camera as a DAHUA thing type as the old alarm checking method is used in AMCREST and the newer method is used in DAHUA that is stream based. This means less CPU load on your server and far better response to alarms if you setup as Dahua. Please read the special notes for Dahua as they will apply.
 
 **Dahua**
 
-The camera I have requires the snapshot set to 1 second updates and also the schedule set to record it before the snapshot will respond at 1 second rates. I found setting it to send it to a NAS without it having any NAS setup allowed the snapshot to be generated. The cameras default settings worked.
+The camera I have requires the snapshot set to 1 second updates and also the schedule set to record it before the snapshot will respond at 1 second rates. I found that chaning the settings to send the snapshot to a NAS without it having any NAS settings allowed the snapshot to be generated every second. The cameras default settings worked, but it improved when the motion schedule was removed for snapshots.
 
 **Hikvision**
-Each alarm you wish to use must have "Notify Surveillance Center" enabled under each alarms settings in the control panel of the camera itself. The CGI/API and also ONVIF are disabled by default on the cameras and also are needed to be enabled and a user created that is the same as what you have given the binding. If your camera does not have PTZ then you can leave ONVIF disabled and just enable the CGI/API that way the camera connects faster.
+Each alarm you wish to use must have "Notify Surveillance Center" enabled under each alarms settings in the control panel of the camera itself. The CGI/API and also ONVIF are disabled by default on the cameras and also are needed to be enabled and a user for ONVIF created that is the same as what you have given the binding. If your camera does not have PTZ then you can leave ONVIF disabled and just enable the CGI/API that way the camera connects faster.
 
 If you need a channel or control updated in case you have made a change with the cameras app, you can call a refresh on it by using a cron rule.
 
@@ -313,7 +321,7 @@ end
 
 If the user/pass is wrong the camera can lockout and refuse to answer the binding requiring a reset of the camera, so be sure the details are correct.
 
-Some FOSCAM cameras need to have a detection area listed in the URL when you enable the motion alarm. As each model has a different resolution and two different URLs, this makes it difficult to make this automatic so an override feature was added to create your own enable the alarm url. This setting is called "MOTION_URL_OVERIDE" and the steps to using it are:
+Some FOSCAM cameras need to have a detection area listed in the URL when you enable the motion alarm. As each model has a different resolution and two different URLs, this makes it difficult to make this automatic so an override feature was added to create your own enable the alarm url. This setting is called "MOTION_URL_OVERRIDE" and the steps to using it are:
 
 1. Enable the motion alarm in the web interface of your camera and setup any areas you wish movement to be ignored in ie. Tree branches moving in the wind.
 2. Use any web browser to fetch this URL https://x.x.x.x/cgi-bin/CGIProxy.fcgi?cmd=getMotionDetectConfig1&usr=xxxxx&pwd=xxxxx
@@ -418,7 +426,7 @@ If you wish to contribute then please create an issue ticket first to discuss ho
 
 If this binding becomes popular, I can look at extending the frame work to support:
 
-RTSP Video streams.
+RTSP Video streams and using FFMPEG for conversions.
 
 Auto find and setup cameras on your network.
 
