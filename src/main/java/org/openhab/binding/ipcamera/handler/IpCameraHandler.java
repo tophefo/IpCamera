@@ -147,7 +147,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
     private String snapshotUri = null;
     private String videoUri = null;
-    // private Object startOfStreamMsg = null;
+    ChannelFuture serverFuture = null;
     int serverPort = 0;
 
     private String rtspUri = "ONVIF failed to report a RTSP stream link.";
@@ -278,22 +278,14 @@ public class IpCameraHandler extends BaseThingHandler {
                     case 1: // Still open
                     case 0: // Marked as closing but channel still needs to be closed.
                         Channel chan = listOfChannels.get(index);
-                        // chan.close();
-                        // Handlers may get shutdown by Openhab if total delay >5 secs.
-
-                        ChannelFuture chFuture = chan.close();
-                        try {
-                            chFuture.await(300, TimeUnit.MILLISECONDS);
-                        } catch (InterruptedException e) {
-                            logger.debug("InterruptedException occured when trying to close all channels:{}", e);
-                        }
-
+                        chan.close();
+                        // Handlers may get shutdown by Openhab if total delay >5 secs so we can not wait.
                     case -1: // closed already
-                        listOfRequests.remove(index);
-                        listOfChStatus.remove(index);
-                        listOfChannels.remove(index);
-                        listOfReplies.remove(index);
-                        index--;
+                        // listOfRequests.remove(index);
+                        // listOfChStatus.remove(index);
+                        // listOfChannels.remove(index);
+                        // listOfReplies.remove(index);
+                        // index--;
                         break;
                 }
             }
@@ -381,11 +373,11 @@ public class IpCameraHandler extends BaseThingHandler {
                 ip = "0.0.0.0";
             }
 
-            // EventLoopGroup serversLoopGroup = new NioEventLoopGroup();
+            EventLoopGroup serversLoopGroup = new NioEventLoopGroup();
             try {
                 serverBootstrap = new ServerBootstrap();
-                serverBootstrap.group(mainEventLoopGroup);
-                // serverBootstrap.group(serversLoopGroup);
+                // serverBootstrap.group(mainEventLoopGroup);
+                serverBootstrap.group(serversLoopGroup);
                 serverBootstrap.channel(NioServerSocketChannel.class);
                 // IP "0.0.0.0" will bind the server to all network connections//
                 serverBootstrap.localAddress(new InetSocketAddress(ip, serverPort));
@@ -397,8 +389,8 @@ public class IpCameraHandler extends BaseThingHandler {
                         socketChannel.pipeline().addLast(new StreamServerHandler());
                     }
                 });
-                ChannelFuture channelFuture = serverBootstrap.bind().sync();
-                channelFuture.await(9000);
+                serverFuture = serverBootstrap.bind().sync();
+                serverFuture.await(9000);
                 logger.info("IpCamera proxy server has started on port:{}.", serverPort);
                 InetAddress.getLocalHost();
                 // InetAddress.getLocalHost() InetAddress.getHostName()
@@ -445,6 +437,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         ctx.channel().writeAndFlush(msg);
                     } else {
                         logger.warn("Channel was closed before stream was stopped");
+                        setupStreaming(false, ctx);
                     }
                 }
             }
@@ -527,7 +520,7 @@ public class IpCameraHandler extends BaseThingHandler {
             mainBootstrap.group(mainEventLoopGroup);
             mainBootstrap.channel(NioSocketChannel.class);
             mainBootstrap.option(ChannelOption.SO_KEEPALIVE, true);
-            mainBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000);
+            mainBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 4500);
             mainBootstrap.option(ChannelOption.SO_SNDBUF, 1024 * 8);
             mainBootstrap.option(ChannelOption.SO_RCVBUF, 1024 * 1024);
             mainBootstrap.option(ChannelOption.TCP_NODELAY, true);
@@ -537,7 +530,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 public void initChannel(SocketChannel socketChannel) throws Exception {
                     // RtspResponseDecoder //RtspRequestEncoder // try in the pipeline soon//
                     // HIK stream needs > 9sec idle to stop stream closing
-                    socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(11, 0, 0));
+                    socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(18, 0, 0));
                     socketChannel.pipeline().addLast("HttpClientCodec", new HttpClientCodec());
                     socketChannel.pipeline().addLast("authHandler",
                             new MyNettyAuthHandler(username, password, thing.getHandler()));
@@ -692,7 +685,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     httpRequestURL);
         }
 
-        logger.debug("request to camera is :{}", request);
+        logger.trace("request to camera is :{}", request);
 
         ch.writeAndFlush(request);
         // Cleanup
@@ -1338,7 +1331,6 @@ public class IpCameraHandler extends BaseThingHandler {
                     } else if (content.contains("<enabled>false</enabled>")) {
                         updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
                     }
-
                 } ////////////////// External Alarm Input ///////////////
                 else if (content.contains("<IOPortStatus version=\"2.0\" xmlns=\"http://www.")) {
                     if (content.contains("<ioState>active</ioState>")) {
@@ -1366,7 +1358,6 @@ public class IpCameraHandler extends BaseThingHandler {
                         updateState(CHANNEL_ENABLE_FIELD_DETECTION_ALARM, OnOffType.valueOf("OFF"));
                     }
                 }
-
             } finally {
                 ReferenceCountUtil.release(msg);
                 content = null;
@@ -1384,14 +1375,12 @@ public class IpCameraHandler extends BaseThingHandler {
                 if (!content.isEmpty()) {
                     logger.trace("HTTP Result back from camera is \t:{}:", content);
                 }
-
                 // determine if the motion detection is turned on or off.
                 if (content.contains("table.MotionDetect[0].Enable=true")) {
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
                 } else if (content.contains("table.MotionDetect[" + nvrChannel + "].Enable=false")) {
                     updateState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
                 }
-
                 // Handle motion alarm
                 if (content.contains("Code=VideoMotion;action=Start;index=0")) {
                     motionDetected(CHANNEL_MOTION_ALARM);
@@ -1400,7 +1389,6 @@ public class IpCameraHandler extends BaseThingHandler {
                     firstMotionAlarm = false;
                     motionAlarmUpdateSnapshot = false;
                 }
-
                 // Handle item taken alarm
                 if (content.contains("Code=TakenAwayDetection;action=Start;index=0")) {
                     motionDetected(CHANNEL_ITEM_TAKEN);
@@ -1409,7 +1397,6 @@ public class IpCameraHandler extends BaseThingHandler {
                     firstMotionAlarm = false;
                     motionAlarmUpdateSnapshot = false;
                 }
-
                 // Handle item left alarm
                 if (content.contains("Code=LeftDetection;action=Start;index=0")) {
                     motionDetected(CHANNEL_ITEM_LEFT);
@@ -1418,7 +1405,6 @@ public class IpCameraHandler extends BaseThingHandler {
                     firstMotionAlarm = false;
                     motionAlarmUpdateSnapshot = false;
                 }
-
                 // Handle CrossLineDetection alarm
                 if (content.contains("Code=CrossLineDetection;action=Start;index=0")) {
                     motionDetected(CHANNEL_LINE_CROSSING_ALARM);
@@ -1427,14 +1413,12 @@ public class IpCameraHandler extends BaseThingHandler {
                     firstMotionAlarm = false;
                     motionAlarmUpdateSnapshot = false;
                 }
-
                 // determine if the audio alarm is turned on or off.
                 if (content.contains("table.AudioDetect[0].MutationDetect=true")) {
                     updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
                 } else if (content.contains("table.AudioDetect[0].MutationDetect=false")) {
                     updateState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
                 }
-
                 // Handle AudioMutation alarm
                 if (content.contains("Code=AudioMutation;action=Start;index=0")) {
                     audioDetected();
@@ -1443,13 +1427,11 @@ public class IpCameraHandler extends BaseThingHandler {
                     firstAudioAlarm = false;
                     audioAlarmUpdateSnapshot = false;
                 }
-
                 // Handle AudioMutationThreshold alarm
                 if (content.contains("table.AudioDetect[0].MutationThreold=")) {
                     String value = returnValueFromString(content, "table.AudioDetect[0].MutationThreold=");
                     updateState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf(value));
                 }
-
                 // Handle FaceDetection alarm
                 if (content.contains("Code=FaceDetection;action=Start;index=0")) {
                     motionDetected(CHANNEL_FACE_DETECTED);
@@ -1458,7 +1440,6 @@ public class IpCameraHandler extends BaseThingHandler {
                     firstMotionAlarm = false;
                     motionAlarmUpdateSnapshot = false;
                 }
-
                 // Handle ParkingDetection alarm
                 if (content.contains("Code=ParkingDetection;action=Start;index=0")) {
                     motionDetected(CHANNEL_PARKING_ALARM);
@@ -1467,7 +1448,6 @@ public class IpCameraHandler extends BaseThingHandler {
                     firstMotionAlarm = false;
                     motionAlarmUpdateSnapshot = false;
                 }
-
                 // Handle CrossRegionDetection alarm
                 if (content.contains("Code=CrossRegionDetection;action=Start;index=0")) {
                     motionDetected(CHANNEL_FIELD_DETECTION_ALARM);
@@ -1476,27 +1456,23 @@ public class IpCameraHandler extends BaseThingHandler {
                     firstMotionAlarm = false;
                     motionAlarmUpdateSnapshot = false;
                 }
-
                 // Handle External Input alarm
                 if (content.contains("Code=AlarmLocal;action=Start;index=0")) {
                     updateState(CHANNEL_EXTERNAL_ALARM_INPUT, OnOffType.valueOf("ON"));
                 } else if (content.contains("Code=AlarmLocal;action=Stop;index=0")) {
                     updateState(CHANNEL_EXTERNAL_ALARM_INPUT, OnOffType.valueOf("OFF"));
                 }
-
                 // Handle External Input alarm2
                 if (content.contains("Code=AlarmLocal;action=Start;index=1")) {
                     updateState(CHANNEL_EXTERNAL_ALARM_INPUT2, OnOffType.valueOf("ON"));
                 } else if (content.contains("Code=AlarmLocal;action=Stop;index=1")) {
                     updateState(CHANNEL_EXTERNAL_ALARM_INPUT2, OnOffType.valueOf("OFF"));
                 }
-
             } finally {
                 ReferenceCountUtil.release(msg);
                 content = null;
             }
         }
-
     }
 
     public IpCameraHandler(Thing thing) {
@@ -1592,7 +1568,6 @@ public class IpCameraHandler extends BaseThingHandler {
         } catch (Throwable t) {
             logger.error("A Throwable occured when trying to fetch the cameras PTZ position. {}", t);
         }
-
         logger.warn(
                 "Camera did not give a good reply when asked what its position was, going to fake the position so PTZ still works.");
         pv = new PTZVector();
@@ -1603,9 +1578,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
-
         if (command.toString() == "REFRESH") {
-
             switch (channelUID.getId()) {
                 case CHANNEL_THRESHOLD_AUDIO_ALARM:
                     switch (thing.getThingTypeUID().getId()) {
@@ -1679,11 +1652,8 @@ public class IpCameraHandler extends BaseThingHandler {
             }
             return; // Return as we have handled the refresh command above and don't need to continue further.
         } // end of "REFRESH"
-
         switch (channelUID.getId()) {
-
             case CHANNEL_TEXT_OVERLAY:
-
                 String text = encodeSpecialChars(command.toString());
                 if ("".contentEquals(text)) {
                     sendHttpGET(
@@ -1701,15 +1671,12 @@ public class IpCameraHandler extends BaseThingHandler {
                     updateState(CHANNEL_API_ACCESS, StringType.valueOf(""));
                 }
                 break;
-
             case CHANNEL_UPDATE_IMAGE_NOW:
                 if (snapshotUri != null) {
                     sendHttpGET(getCorrectUrlFormat(snapshotUri));
                 }
                 break;
-
             case CHANNEL_ENABLE_LED:
-
                 switch (thing.getThingTypeUID().getId()) {
                     case "FOSCAM":
                         // Disable the auto mode first
@@ -1738,7 +1705,6 @@ public class IpCameraHandler extends BaseThingHandler {
                         break;
                 }
                 break;
-
             case CHANNEL_AUTO_LED:
                 switch (thing.getThingTypeUID().getId()) {
                     case "FOSCAM":
@@ -1760,9 +1726,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         break;
                 }
                 break;
-
             case CHANNEL_THRESHOLD_AUDIO_ALARM:
-
                 switch (thing.getThingTypeUID().getId()) {
                     case "AMCREST":
                     case "DAHUA":
@@ -1775,7 +1739,6 @@ public class IpCameraHandler extends BaseThingHandler {
                                     + threshold);
                         }
                         break;
-
                     case "FOSCAM":
                         int value = Math.round(Float.valueOf(command.toString()));
                         if (value == 0) {
@@ -1791,9 +1754,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=2&usr="
                                     + username + "&pwd=" + password);
                         }
-
                         break;
-
                     case "INSTAR":
                         value = Math.round(Float.valueOf(command.toString()));
                         if (value == 0) {
@@ -1803,14 +1764,10 @@ public class IpCameraHandler extends BaseThingHandler {
                             sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1&-aa_value="
                                     + command.toString());
                         }
-
                         break;
                 }
-
                 break;
-
             case CHANNEL_ENABLE_AUDIO_ALARM:
-
                 switch (thing.getThingTypeUID().getId()) {
                     case "FOSCAM":
                         if ("ON".equals(command.toString())) {
@@ -1853,7 +1810,6 @@ public class IpCameraHandler extends BaseThingHandler {
                         break;
                 }
                 break;
-
             case CHANNEL_ENABLE_LINE_CROSSING_ALARM:
                 switch (thing.getThingTypeUID().getId()) {
                     case "AMCREST":
@@ -1864,9 +1820,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
                         }
                         break;
-
                     case "HIKVISION":
-
                         if ("ON".equals(command.toString())) {
                             hikChangeSetting("/ISAPI/Smart/LineDetection/" + nvrChannel + "01",
                                     "<enabled>false</enabled>", "<enabled>true</enabled>");
@@ -1874,13 +1828,10 @@ public class IpCameraHandler extends BaseThingHandler {
                             hikChangeSetting("/ISAPI/Smart/LineDetection/" + nvrChannel + "01",
                                     "<enabled>true</enabled>", "<enabled>false</enabled>");
                         }
-
                         break;
                 }
-
                 break;
             case CHANNEL_ENABLE_MOTION_ALARM:
-
                 switch (thing.getThingTypeUID().getId()) {
                     case "FOSCAM":
                         if ("ON".equals(command.toString())) {
@@ -2114,7 +2065,6 @@ public class IpCameraHandler extends BaseThingHandler {
                     } else {
                         onvifCamera = new OnvifDevice(ipAddress + ":" + config.get(CONFIG_ONVIF_PORT).toString());
                     }
-
                     logger.debug("Fetching the number of Media Profiles this camera supports.");
                     profiles = onvifCamera.getDevices().getProfiles();
                     if (profiles == null) {
@@ -2126,23 +2076,30 @@ public class IpCameraHandler extends BaseThingHandler {
                                 "The selected Media Profile in the binding is higher than the max supported profiles. Changing to use Media Profile 0.");
                         selectedMediaProfile = 0;
                     }
-
                     logger.debug("Fetching a Token for the selected Media Profile.");
                     profileToken = profiles.get(selectedMediaProfile).getToken();
                     if (profileToken == null) {
                         logger.error("Camera replied with NULL when trying to get a media profile token.");
                     }
-
                     if (snapshotUri == null) {
                         logger.debug("Auto fetching the snapshot URL for the selected Media Profile.");
                         snapshotUri = onvifCamera.getMedia().getSnapshotUri(profileToken);
                     }
 
-                    if (logger.isDebugEnabled()) {
+                    VideoEncoderConfiguration result = profiles.get(selectedMediaProfile)
+                            .getVideoEncoderConfiguration();
+                    if (!"JPEG".equalsIgnoreCase(result.getEncoding().toString())) {
+                        logger.warn(
+                                "Cameras selected 'ONVIF media profile' is using encoding of {} and will not work with the streaming server features.",
+                                result.getEncoding());
+                    } else {
+                        logger.info("The 'ONVIF media profile' that is selected is using mjpeg.");
+                    }
 
+                    if (logger.isDebugEnabled()) {
                         logger.debug("About to fetch some information about the Media Profiles from the camera");
                         for (int x = 0; x < profiles.size(); x++) {
-                            VideoEncoderConfiguration result = profiles.get(x).getVideoEncoderConfiguration();
+                            result = profiles.get(x).getVideoEncoderConfiguration();
                             logger.debug("*********** Media Profile {} details reported by camera at IP:{} ***********",
                                     x, ipAddress);
                             if (selectedMediaProfile == x) {
@@ -2322,12 +2279,11 @@ public class IpCameraHandler extends BaseThingHandler {
                     }
                     break;
             }
-
-            if (movePTZ) { // Delay movements so when rules changes all 3, only 1 movement is made.
+            // Delay movements so when a rule changes all 3, a single movement is made.
+            if (movePTZ) {
                 movePTZ = false;
                 scheduledMovePTZ.schedule(runnableMovePTZ, 50, TimeUnit.MILLISECONDS);
             }
-
             if (listOfRequests.size() > 12) {
                 logger.info(
                         "There are {} channels being tracked, cleaning out old channels now to try and reduce this to 12 or below.",
@@ -2408,13 +2364,12 @@ public class IpCameraHandler extends BaseThingHandler {
                     break;
             }
         }
-
         updateImageEvents = config.get(CONFIG_IMAGE_UPDATE_EVENTS).toString();
         cameraConnectionJob = cameraConnection.schedule(pollingCameraConnection, 1, TimeUnit.SECONDS);
     }
 
     private void restart() {
-        logger.debug("Camera binding has been asked to restart.");
+        logger.info("Camera binding restart().");
         if (fetchCameraOutputJob != null) {
             fetchCameraOutputJob.cancel(true);
             fetchCameraOutputJob = null;
@@ -2439,8 +2394,8 @@ public class IpCameraHandler extends BaseThingHandler {
 
     @Override
     public void dispose() {
-        logger.debug("Dispose() called.");
-        onvifCamera = null; // needed in case user edits passwords.
+        logger.info("Dispose() called.");
+        onvifCamera = null; // needed in case user edits password.
         restart();
     }
 }
