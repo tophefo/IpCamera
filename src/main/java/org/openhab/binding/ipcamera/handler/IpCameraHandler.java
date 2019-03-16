@@ -24,6 +24,7 @@ import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -80,7 +81,6 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.base64.Base64;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
-import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpContent;
@@ -88,7 +88,6 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpServerCodec;
@@ -139,7 +138,7 @@ public class IpCameraHandler extends BaseThingHandler {
     private LinkedList<String> listOfReplies = new LinkedList<String>();
     public ReentrantLock lock = new ReentrantLock();
     // Not connected to the above lists which need to stay in sync
-    public LinkedList<ChannelHandlerContext> listOfStreams = new LinkedList<ChannelHandlerContext>();
+    public ArrayList<ChannelHandlerContext> listOfStreams = new ArrayList<ChannelHandlerContext>(5);
 
     // basicAuth MUST remain private as it holds the password
     private String basicAuth = null;
@@ -149,6 +148,7 @@ public class IpCameraHandler extends BaseThingHandler {
     private String videoUri = null;
     ChannelFuture serverFuture = null;
     int serverPort = 0;
+    Object firstStreamedMsg = null;
 
     private String rtspUri = "ONVIF failed to report a RTSP stream link.";
     public String ipAddress = "empty";
@@ -377,6 +377,7 @@ public class IpCameraHandler extends BaseThingHandler {
             try {
                 serverBootstrap = new ServerBootstrap();
                 // serverBootstrap.group(mainEventLoopGroup);
+                // serverBootstrap.group(mainEventLoopGroup, serversLoopGroup);
                 serverBootstrap.group(serversLoopGroup);
                 serverBootstrap.channel(NioServerSocketChannel.class);
                 // IP "0.0.0.0" will bind the server to all network connections//
@@ -384,7 +385,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel socketChannel) throws Exception {
-                        socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(0, 10, 0));
+                        socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(0, 120, 0));
                         socketChannel.pipeline().addLast("HttpServerCodec", new HttpServerCodec());
                         socketChannel.pipeline().addLast(new StreamServerHandler());
                     }
@@ -409,7 +410,10 @@ public class IpCameraHandler extends BaseThingHandler {
                     + ")";
             if (config.get(CONFIG_IP_WHITELIST).toString().contains(requestIP)) {
                 logger.debug("A request was made from {} that was in the whitelist.", requestIP);
-                listOfStreams.addLast(ctx);
+                listOfStreams.add(ctx);
+                if (firstStreamedMsg != null && listOfStreams.size() > 1) {
+                    ctx.channel().writeAndFlush(firstStreamedMsg);
+                }
             } else {
                 logger.warn("A request was made from {} that was not in the whitelist.", requestIP);
             }
@@ -429,17 +433,9 @@ public class IpCameraHandler extends BaseThingHandler {
 
     public void stream(Object msg) {
         try {
-            if (!listOfStreams.isEmpty()) {
-                for (int count = 0; count < listOfStreams.size(); count++) {
-                    ChannelHandlerContext ctx = listOfStreams.get(count);
-                    if (ctx.channel().isOpen()) {
-                        ReferenceCountUtil.retain(msg, 1);
-                        ctx.channel().writeAndFlush(msg);
-                    } else {
-                        logger.warn("Channel was closed before stream was stopped");
-                        setupStreaming(false, ctx);
-                    }
-                }
+            for (ChannelHandlerContext ctx : listOfStreams) {
+                ReferenceCountUtil.retain(msg, 1);
+                ctx.channel().writeAndFlush(msg);
             }
         } finally {
             ReferenceCountUtil.release(msg);
@@ -493,7 +489,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 } else if (e.state() == IdleState.WRITER_IDLE) {
                     logger.debug("!!!! writer idle triggered");
                     ctx.close();
-                    setupStreaming(false, ctx);
+                    // setupStreaming(false, ctx);
                 }
             }
         }
@@ -717,17 +713,19 @@ public class IpCameraHandler extends BaseThingHandler {
                 logger.trace(msg.toString());
                 if (msg instanceof HttpResponse) {
                     HttpResponse response = (HttpResponse) msg;
-                    if (!response.headers().isEmpty()) {
-                        for (CharSequence name : response.headers().names()) {
-                            for (CharSequence value : response.headers().getAll(name)) {
-                                if (name.toString().equalsIgnoreCase("Content-Type")) {
-                                    contentType = value.toString();
-                                } else if (name.toString().equalsIgnoreCase("Content-Length")) {
-                                    bytesToRecieve = Integer.parseInt(value.toString());
-                                } else if (name.toString().equalsIgnoreCase("Connection")) {
-                                    if (value.toString().contains("keep-alive")) {
-                                        closeConnection = false;
-                                        if (response.status().code() != 401) {
+                    if (response.status().code() != 401) {
+                        if (!response.headers().isEmpty()) {
+                            for (String name : response.headers().names()) {
+                                switch (name.toLowerCase()) { // Possible localization issues doing this
+                                    case "content-type":
+                                        contentType = response.headers().getAsString(name);
+                                        break;
+                                    case "content-length":
+                                        bytesToRecieve = Integer.parseInt(response.headers().getAsString(name));
+                                        break;
+                                    case "connection":
+                                        if (response.headers().getAsString(name).contains("keep-alive")) {
+                                            closeConnection = false;
                                             lock.lock();
                                             try {
                                                 byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
@@ -738,159 +736,146 @@ public class IpCameraHandler extends BaseThingHandler {
                                                 lock.unlock();
                                             }
                                         }
-                                    } else {
-                                        closeConnection = true;
-                                    }
-                                } else if (name.toString().equalsIgnoreCase("Transfer-Encoding")) {
-                                    if (value.toString().contains("chunked")) {
-                                        isChunked = true;
-                                    }
+                                        break;
+                                    case "transfer-encoding":
+                                        if (response.headers().getAsString(name).contains("chunked")) {
+                                            isChunked = true;
+                                        }
+                                        break;
                                 }
                             }
-                        }
-                        if (contentType.contains("multipart")) {
-                            closeConnection = false; // HIKVISION and Dahua need this for alarm/alertStream
-
-                            // new code starts here, may break other brands//
-                            // logger.debug("Message header contains this ContentType header :{}", contentType);
-                            // ByteBuf delimiter;
-                            /*
-                             * switch (thing.getThingTypeUID().getId()) {
-                             * case "HIKVISION":
-                             * // multipart/x-mixed-replace;boundary=boundarySample
-                             * delimiter = Unpooled.copiedBuffer("boundarySample".getBytes()); // HIK
-                             * break;
-                             * case "AMCREST":
-                             * case "DAHUA":
-                             * delimiter = Unpooled.copiedBuffer("myboundary".getBytes()); // Dahua
-                             * break;
-                             * default:
-                             * delimiter = Unpooled.copiedBuffer("boundarySample".getBytes());
-                             * }
-                             * // stream(msg);
-                             * // ctx.pipeline().addAfter("HttpClientCodec", "DelimiterBasedFrameDecoder",
-                             * new DelimiterBasedFrameDecoder(500000, delimiter));
-                             * ctx.pipeline().remove("HttpClientCodec");
-                             */
-                            // end new experimental code//
-
-                        } else if (closeConnection && (response.status().code() != 401)) {
-                            lock.lock();
-                            try {
-                                byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
-                                if (indexInLists >= 0) {
-                                    listOfChStatus.set(indexInLists, (byte) 0);
-                                    // logger.debug("Channel marked as closing, channel:{} \tURL:{}", indexInLists,
-                                    // requestUrl);
-                                } else {
-                                    logger.debug("!!!! Could not find the ch for a Connection: close URL:{}",
-                                            requestUrl);
+                            if (contentType.contains("multipart")) {
+                                closeConnection = false; // HIKVISION and Dahua need this for alarm/alertStream
+                                if (requestUrl.equalsIgnoreCase(videoUri)) {
+                                    if (msg instanceof HttpMessage) {
+                                        // logger.debug("First stream packet back from camera is HttpMessage:{}", msg);
+                                        ReferenceCountUtil.retain(msg, 2);
+                                        // very start of stream only
+                                        firstStreamedMsg = msg;
+                                        stream(msg);
+                                    }
                                 }
-                            } finally {
-                                lock.unlock();
+
+                                // new code starts here, may break other brands//
+                                // logger.debug("Message header contains this ContentType header :{}", contentType);
+                                // ByteBuf delimiter;
+                                /*
+                                 * switch (thing.getThingTypeUID().getId()) {
+                                 * case "HIKVISION":
+                                 * // multipart/x-mixed-replace;boundary=boundarySample
+                                 * delimiter = Unpooled.copiedBuffer("boundarySample".getBytes()); // HIK
+                                 * break;
+                                 * case "AMCREST":
+                                 * case "DAHUA":
+                                 * delimiter = Unpooled.copiedBuffer("myboundary".getBytes()); // Dahua
+                                 * break;
+                                 * default:
+                                 * delimiter = Unpooled.copiedBuffer("boundarySample".getBytes());
+                                 * }
+                                 * // stream(msg);
+                                 * // ctx.pipeline().addAfter("HttpClientCodec", "DelimiterBasedFrameDecoder",
+                                 * new DelimiterBasedFrameDecoder(500000, delimiter));
+                                 * ctx.pipeline().remove("HttpClientCodec");
+                                 */
+                                // end new experimental code//
+
+                            } else if (closeConnection) {
+                                lock.lock();
+                                try {
+                                    byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
+                                    if (indexInLists >= 0) {
+                                        listOfChStatus.set(indexInLists, (byte) 0);
+                                    } else {
+                                        logger.debug("!!!! Could not find the ch for a Connection: close URL:{}",
+                                                requestUrl);
+                                    }
+                                } finally {
+                                    lock.unlock();
+                                }
                             }
                         }
                     }
                 }
 
                 if (msg instanceof HttpContent) {
-                    content = (HttpContent) msg;
-                    // Found a TP Link camera uses Content-Type: image/jpg instead of image/jpeg
-                    if (contentType.contains("image/jp")) {
-                        if (bytesToRecieve == 0) {
-                            bytesToRecieve = 768000; // 0.768 Mbyte when no Content-Length is sent
-                            logger.debug("Camera has no Content-Length header, we have to guess how much RAM.");
-                        }
-                        for (int i = 0; i < content.content().capacity(); i++) {
-                            if (lastSnapshot == null) {
-                                lastSnapshot = new byte[bytesToRecieve];
+                    if (requestUrl.equalsIgnoreCase(videoUri)) {
+                        // multiple packets come back as this.
+                        ReferenceCountUtil.retain(msg, 1);
+                        // logger.debug("!! Stream Packet back from camera is :{}", msg);
+                        stream(msg);
+                    } else {
+                        content = (HttpContent) msg;
+                        // Found a TP Link camera uses Content-Type: image/jpg instead of image/jpeg
+                        if (contentType.contains("image/jp")) {
+                            if (bytesToRecieve == 0) {
+                                bytesToRecieve = 768000; // 0.768 Mbyte when no Content-Length is sent
+                                logger.debug("Camera has no Content-Length header, we have to guess how much RAM.");
                             }
-                            lastSnapshot[bytesAlreadyRecieved++] = content.content().getByte(i);
-                        }
-                        if (bytesAlreadyRecieved > bytesToRecieve) {
-                            logger.error("We got too much data from the camera, please report this.");
-                        }
+                            for (int i = 0; i < content.content().capacity(); i++) {
+                                if (lastSnapshot == null) {
+                                    lastSnapshot = new byte[bytesToRecieve];
+                                }
+                                lastSnapshot[bytesAlreadyRecieved++] = content.content().getByte(i);
+                            }
+                            if (bytesAlreadyRecieved > bytesToRecieve) {
+                                logger.error("We got too much data from the camera, please report this.");
+                            }
 
-                        if (content instanceof LastHttpContent) {
-                            if (contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
-                                updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
-                                lastSnapshot = null;
-                                if (closeConnection) {
-                                    logger.debug("Snapshot recieved: Binding will now close the channel.");
-                                    ctx.close();
-                                } else {
-                                    logger.debug("Snapshot recieved: Binding will now keep-alive the channel.");
+                            if (content instanceof LastHttpContent) {
+                                if (contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
+                                    updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
+                                    lastSnapshot = null;
+                                    if (closeConnection) {
+                                        logger.debug("Snapshot recieved: Binding will now close the channel.");
+                                        ctx.close();
+                                    } else {
+                                        logger.debug("Snapshot recieved: Binding will now keep-alive the channel.");
+                                    }
                                 }
                             }
-                        }
-                    } else { // incomingMessage that is not an IMAGE
-                        if (incomingMessage == null) {
-                            incomingMessage = content.content().toString(CharsetUtil.UTF_8);
-                        } else {
-                            incomingMessage += content.content().toString(CharsetUtil.UTF_8);
-                        }
-                        bytesAlreadyRecieved = incomingMessage.length();
-                        if (content instanceof LastHttpContent) {
-                            // If it is not an image send it on to the next handler//
-                            if (bytesAlreadyRecieved != 0) {
+                        } else { // incomingMessage that is not an IMAGE
+                            if (incomingMessage == null) {
+                                incomingMessage = content.content().toString(CharsetUtil.UTF_8);
+                            } else {
+                                incomingMessage += content.content().toString(CharsetUtil.UTF_8);
+                            }
+                            bytesAlreadyRecieved = incomingMessage.length();
+                            if (content instanceof LastHttpContent) {
+                                // If it is not an image send it on to the next handler//
+                                if (bytesAlreadyRecieved != 0) {
+                                    reply = incomingMessage;
+                                    incomingMessage = null;
+                                    bytesToRecieve = 0;
+                                    bytesAlreadyRecieved = 0;
+                                    super.channelRead(ctx, reply);
+                                }
+                            }
+
+                            // HIKVISION alertStream never has a LastHttpContent as it always stays open//
+                            if (contentType.contains("multipart")) {
+                                if (!contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
+                                    reply = incomingMessage;
+                                    incomingMessage = null;
+                                    bytesToRecieve = 0;
+                                    bytesAlreadyRecieved = 0;
+                                    super.channelRead(ctx, reply);
+                                }
+                            }
+                            // Foscam needs this as will other cameras with chunks//
+                            if (isChunked && bytesAlreadyRecieved != 0) {
                                 reply = incomingMessage;
                                 incomingMessage = null;
                                 bytesToRecieve = 0;
                                 bytesAlreadyRecieved = 0;
                                 super.channelRead(ctx, reply);
                             }
-                        }
-
-                        // HIKVISION alertStream never has a LastHttpContent as it always stays open//
-                        if (contentType.contains("multipart")) {
-                            if (requestUrl.equalsIgnoreCase(videoUri)) {
-                                // stream(((HttpContent) msg).retain());
-                                ReferenceCountUtil.retain(msg, 1);
-                                // startOfStreamMsg = msg;
-                                stream(msg);
-                            }
-
-                            else if (!contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
-                                reply = incomingMessage;
-                                incomingMessage = null;
-                                bytesToRecieve = 0;
-                                bytesAlreadyRecieved = 0;
-                                super.channelRead(ctx, reply);
-                            }
-                        }
-                        // Foscam needs this as will other cameras with chunks//
-                        if (isChunked && bytesAlreadyRecieved != 0) {
-                            reply = incomingMessage;
-                            incomingMessage = null;
-                            bytesToRecieve = 0;
-                            bytesAlreadyRecieved = 0;
-                            super.channelRead(ctx, reply);
                         }
                     }
-                } else {
+                } else { // msg is not HttpContent
                     // logger.debug("Packet back from camera is not matching HttpContent");
-                    if (contentType.contains("multipart")) {
-                        // logger.debug("Packet back from camera is multipart");
-                        if (msg instanceof HttpMessage) {
-                            logger.debug("! Packet back from camera is HttpMessage:{}", msg);
-                            ReferenceCountUtil.retain(msg, 1);
-                            stream(msg);
-                        } else if (msg instanceof HttpResponse) {
-                            logger.debug("! Packet back from camera is HttpResponse");
-                        } else if (msg instanceof HttpContent) {
-                            logger.debug("! Packet back from camera is HttpContent");
-                        } else if (msg instanceof HttpObject) {
-                            logger.debug("! Packet back from camera is HttpObject");
-                        } else if (msg instanceof DefaultHttpContent) {
-                            logger.debug("! Packet back from camera is DefaultHttpContent");
-                            // stream(msg);
-                        } else {
-                            logger.debug("! Packet back from camera is not matching.");
-                        }
-                    }
 
                     // Foscam and Amcrest cameras need this
-                    else if (!contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
+                    if (!contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
                         reply = incomingMessage;
                         logger.debug("Packet back from camera is {}", incomingMessage);
                         incomingMessage = null;
@@ -2090,10 +2075,11 @@ public class IpCameraHandler extends BaseThingHandler {
                             .getVideoEncoderConfiguration();
                     if (!"JPEG".equalsIgnoreCase(result.getEncoding().toString())) {
                         logger.warn(
-                                "Cameras selected 'ONVIF media profile' is using encoding of {} and will not work with the streaming server features.",
+                                "Cameras selected 'ONVIF media profile' is using encoding of {} and needs to be MJPEG to work with the new streaming features.",
                                 result.getEncoding());
                     } else {
-                        logger.info("The 'ONVIF media profile' that is selected is using mjpeg.");
+                        logger.info(
+                                "The 'ONVIF media profile' that is selected is using mjpeg and will allow you to use the new streaming features.");
                     }
 
                     if (logger.isDebugEnabled()) {
@@ -2361,6 +2347,9 @@ public class IpCameraHandler extends BaseThingHandler {
                 case "AMCREST":
                 case "DAHUA":
                     videoUri = "/cgi-bin/mjpg/video.cgi?channel=" + nvrChannel + "&subtype=" + selectedMediaProfile;
+                    break;
+                case "FOSCAM":
+                    videoUri = "/cgi-bin/CGIStream.cgi?cmd=GetMJStream&usr=" + username + "&pwd=" + password;
                     break;
             }
         }

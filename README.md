@@ -290,6 +290,33 @@ end
 For the above notifications to work you will need to setup multiple users with the same email address's at the Openhab cloud. 
 
 
+## How to get working video streams
+
+The streaming features will most likely get added in this order as each step requires the code that was added in the prior steps to work.
+
+1. Cameras with MJPEG and HTTP API's ability can stream right now with the latest builds. The main cameras that can do this are Amcrest, Dahua, Hikvision and Foscam HD.
+2. Cameras with MJPEG but only have RTSP urls to fetch the stream will need RTSP support added. Alternatively you can use this method:
+<https://community.openhab.org/t/how-to-display-rtsp-streams-from-ip-cameras-in-openhab-and-habpanel-linux-only/69021>
+
+3. Cameras without any MJPEG support will need a FFMPEG feature to be added which will use your Openhab's CPU to do the conversion. The quality of the picture you desire will determine how big a CPU you will need in your Openhab server. You can use 3rd party software running on separate servers to do the conversion.
+
+To use the new steaming features, you need to:
+1. Set a valid ``SERVER_PORT`` as the default value of -1 will turn the new features off.
+2. Add any IPs to the ``IP_WHITELIST`` surrounding them in brackets. See below example.
+3. For cameras that do not auto detect the url, you need to enter a working url for ``STREAM_URL_OVERRIDE`` This can be skipped for Amcrest, Dahua, Hikvision and Foscam HD.
+4. You need to enter your cameras setup and ensure one of the streams is set to use MJPEG format and not mp4 encoding. You can leave the mainstream as mp4/h.264/h.265 and only turn MJPEG on for one of the substreams.
+5. ``ONVIF_MEDIA_PROFILE`` Then needs to match the stream number you have setup in the last step. 0 is the mainstream, and 1 onwards are the substreams. A warning will help guide you with this in the openhab.log
+
+
+Example thing file for a Dahua camera that turns off snapshots and enables streaming instead.... 
+
+```
+Thing ipcamera:DAHUA:001 [IPADDRESS="192.168.1.2", PASSWORD="password", USERNAME="foo", POLL_CAMERA_MS=2000, SERVER_PORT=54321, IP_WHITELIST="(192.168.1.120)(localhost)(192.168.1.33)(192.168.1.74)", IMAGE_UPDATE_EVENTS=0]
+
+```
+
+
+
 ## Special notes for different brands
 
 **Amcrest**
@@ -319,9 +346,18 @@ end
 
 **Foscam**
 
-If the user/pass is wrong the camera can lockout and refuse to answer the binding requiring a reset of the camera, so be sure the details are correct.
++ If the user/pass is wrong the camera can lockout and refuse to answer the binding requiring a reset of the camera, so be sure the details are correct.
 
-Some FOSCAM cameras need to have a detection area listed in the URL when you enable the motion alarm. As each model has a different resolution and two different URLs, this makes it difficult to make this automatic so an override feature was added to create your own enable the alarm url. This setting is called "MOTION_URL_OVERRIDE" and the steps to using it are:
++ To use MJPEG streaming you need to enable one of the streams to use this format. This can be done by entering this into any browser:
+
+```
+http://ip:88/cgi-bin/CGIProxy.fcgi?cmd=setSubStreamFormat&format=1&usr=admin&pwd=password
+```
+
+
++ Some FOSCAM cameras need to have a detection area listed in the URL when you enable the motion alarm. As each model has a different resolution and two different URLs, this makes it difficult to make this automatic so an override feature was added to create your own enable the alarm url. This setting is called ``MOTION_URL_OVERRIDE`` and the steps to using it are:
+
+
 
 1. Enable the motion alarm in the web interface of your camera and setup any areas you wish movement to be ignored in ie. Tree branches moving in the wind.
 2. Use any web browser to fetch this URL https://x.x.x.x/cgi-bin/CGIProxy.fcgi?cmd=getMotionDetectConfig1&usr=xxxxx&pwd=xxxxx

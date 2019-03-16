@@ -679,7 +679,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>ONVIF Media Profile stream number.</label>
 <description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
 </description>
-<default>0</default>
+<default>1</default>
 </parameter>
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
