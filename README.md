@@ -306,12 +306,22 @@ To use the new steaming features, you need to:
 3. For cameras that do not auto detect the url, you need to enter a working url for ``STREAM_URL_OVERRIDE`` This can be skipped for Amcrest, Dahua, Hikvision and Foscam HD.
 4. You need to enter your cameras setup and ensure one of the streams is set to use MJPEG format and not mp4 encoding. You can leave the mainstream as mp4/h.264/h.265 and only turn MJPEG on for one of the substreams.
 5. ``ONVIF_MEDIA_PROFILE`` Then needs to match the stream number you have setup in the last step. 0 is the mainstream, and 1 onwards are the substreams. A warning will help guide you with this in the openhab.log
+6. To increase security the proxy server will not listen on any external IP and a side effect is it will not work for 'localhost' either. You need to use the actual internal IP or hostname. ie 192.168.1.3
 
 
 Example thing file for a Dahua camera that turns off snapshots and enables streaming instead.... 
 
 ```
 Thing ipcamera:DAHUA:001 [IPADDRESS="192.168.1.2", PASSWORD="password", USERNAME="foo", POLL_CAMERA_MS=2000, SERVER_PORT=54321, IP_WHITELIST="(192.168.1.120)(localhost)(192.168.1.33)(192.168.1.74)", IMAGE_UPDATE_EVENTS=0]
+
+```
+
+Sitemap examples:
+
+```
+Text label="Video Stream" icon="camera"{Video url="http://192.168.1.120:54321/ipcamera.mjpeg" encoding="mjpeg"}
+
+Text label="Webview Stream" icon="camera"{Webview url="http://192.168.1.120:54321/ipcamera.mjpeg" height=15}
 
 ```
 
