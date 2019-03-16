@@ -292,27 +292,29 @@ For the above notifications to work you will need to setup multiple users with t
 
 ## How to get working video streams
 
+DISCLAIMER:
+The streaming features work by allowing restricted access to the video stream with no user/password, do not enable it if you do not understand how to keep your internal network secure. It is disabled by default.
+
 The streaming features will most likely get added in this order as each step requires the code that was added in the prior steps to work.
 
 1. Cameras with MJPEG and HTTP API's ability can stream right now with the latest builds. The main cameras that can do this are Amcrest, Dahua, Hikvision and Foscam HD.
-2. Cameras with MJPEG but only have RTSP urls to fetch the stream will need RTSP support added. Alternatively you can use this method:
+2. Cameras with MJPEG ability but only have RTSP to fetch the streams with will need RTSP support added. Alternatively you can use this method which will work even if the stream is h.264:
 <https://community.openhab.org/t/how-to-display-rtsp-streams-from-ip-cameras-in-openhab-and-habpanel-linux-only/69021>
 
 3. Cameras without any MJPEG support will need a FFMPEG feature to be added which will use your Openhab's CPU to do the conversion. The quality of the picture you desire will determine how big a CPU you will need in your Openhab server. You can use 3rd party software running on separate servers to do the conversion.
 
 To use the new steaming features, you need to:
 1. Set a valid ``SERVER_PORT`` as the default value of -1 will turn the new features off.
-2. Add any IPs to the ``IP_WHITELIST`` surrounding them in brackets. See below example.
+2. Add any IPs that need access to the ``IP_WHITELIST`` surrounding each one in brackets (see below example). Internal IPs will trigger a warning in the logs if they are not in the whitelist, however external IPs or localhost will not trigger a warning in the logs as they are completely ignored and the binding will refuse to connect to them. 
 3. For cameras that do not auto detect the url, you need to enter a working url for ``STREAM_URL_OVERRIDE`` This can be skipped for Amcrest, Dahua, Hikvision and Foscam HD.
 4. You need to enter your cameras setup and ensure one of the streams is set to use MJPEG format and not mp4 encoding. You can leave the mainstream as mp4/h.264/h.265 and only turn MJPEG on for one of the substreams.
-5. ``ONVIF_MEDIA_PROFILE`` Then needs to match the stream number you have setup in the last step. 0 is the mainstream, and 1 onwards are the substreams. A warning will help guide you with this in the openhab.log
-6. To increase security the proxy server will not listen on any external IP and a side effect is it will not work for 'localhost' either. You need to use the actual internal IP or hostname. ie 192.168.1.3
+5. For some brands the ``ONVIF_MEDIA_PROFILE`` needs to match the stream number you have setup in the last step. 0 is the main-stream, and 1 onwards are the sub-streams. A warning will help guide you with this in the openhab.log if ONVIF is setup.
 
 
 Example thing file for a Dahua camera that turns off snapshots and enables streaming instead.... 
 
 ```
-Thing ipcamera:DAHUA:001 [IPADDRESS="192.168.1.2", PASSWORD="password", USERNAME="foo", POLL_CAMERA_MS=2000, SERVER_PORT=54321, IP_WHITELIST="(192.168.1.120)(localhost)(192.168.1.33)(192.168.1.74)", IMAGE_UPDATE_EVENTS=0]
+Thing ipcamera:DAHUA:001 [IPADDRESS="192.168.1.2", PASSWORD="password", USERNAME="foo", POLL_CAMERA_MS=2000, SERVER_PORT=54321, IP_WHITELIST="(192.168.1.120)(192.168.1.33)(192.168.1.74)", IMAGE_UPDATE_EVENTS=0]
 
 ```
 

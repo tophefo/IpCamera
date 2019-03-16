@@ -15,7 +15,7 @@
         <config-description>
         
 <parameter-group name="Image Settings">
-<label>Image Settings</label>
+<label>Snapshot/Image Settings</label>
 <description>Settings for the snapshot features.</description>
 <advanced>false</advanced>
 </parameter-group>
@@ -62,27 +62,27 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="true" groupName="Settings">
 <context>url</context>
-<label>Snapshot http address for your camera.</label>
-<description>Full http address to where a snapshot can be seen from your camera if entered into any browser.
+<label>SNAPSHOT_URL_OVERRIDE</label>
+<description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
 </description>        
 </parameter>
 
 <parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
-<label>Http address for your cameras MJPEG stream.</label>
+<label>STREAM_URL_OVERRIDE</label>
 <description>Full http address to where a MJPEG stream can be watched if entered into any browser. 
 </description>        
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
-<label>The port used to send files back to Openhab/Habpanel.</label>
-<description>This port must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+<label>SERVER_PORT</label>
+<description>The port that will serve the video streams back to Openhab without authentication. It must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
 </description>
 <default>-1</default>
 </parameter>
 
 <parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
-<label>Whitelist of IP's that can access stream.</label>
+<label>IP_WHITELIST</label>
 <description>Enter any IP's or hostnames that you wish to allow to access the video stream.
 </description>
 <default>(127.0.0.1)</default>        
@@ -126,7 +126,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <config-description>
         
 <parameter-group name="Image Settings">
-<label>Image Settings</label>
+<label>Snapshot/Image Settings</label>
 <description>Settings for the snapshot features.</description>
 <advanced>false</advanced>
 </parameter-group>
@@ -159,20 +159,20 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
-<label>Http address for your cameras MJPEG stream.</label>
+<label>STREAM_URL_OVERRIDE</label>
 <description>Full http address to where a MJPEG stream can be watched if entered into any browser. 
 </description>        
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
-<label>The port used to send files back to Openhab/Habpanel.</label>
-<description>This port must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+<label>SERVER_PORT</label>
+<description>The port that will serve the video streams back to Openhab without authentication. It must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
 </description>
 <default>-1</default>
 </parameter>
 
 <parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
-<label>Whitelist of IP's that can access stream.</label>
+<label>IP_WHITELIST</label>
 <description>Enter any IP's or hostnames that you wish to allow to access the video stream.
 </description>
 <default>(127.0.0.1)</default>        
@@ -180,8 +180,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
 <context>url</context>
-<label>Over-ride the auto detected snapshot http address for your camera.</label>
-<description>Recommend you leave this empty to use the auto detected snapshot method. Only enter a http address if you wish to over-ride with a different address.
+<label>SNAPSHOT_URL_OVERRIDE</label>
+<description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
 </description>        
 </parameter>
 
@@ -200,8 +200,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
-<label>ONVIF Port</label>
-<description>The port your camera uses for ONVIF connections.
+<label>ONVIF_PORT</label>
+<description>The port your camera uses for ONVIF connections. This is mainly needed for PTZ movement.
 </description>        
 <default>80</default>
 </parameter>
@@ -220,8 +220,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Streaming Setup">
-<label>ONVIF Media Profile stream number.</label>
-<description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
+<label>ONVIF_MEDIA_PROFILE</label>
+<description>Cameras can supply more than one stream at different resolutions and formats. 0 selects the main-stream and 1 or above are the sub-streams. Sometimes you need to turn on sub-streams in the cameras setup before they can be used.
 </description>
 <default>0</default>
 </parameter>
@@ -259,7 +259,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <config-description>
         
 <parameter-group name="Image Settings">
-<label>Image Settings</label>
+<label>Snapshot/Image Settings</label>
 <description>Settings for the snapshot features.</description>
 <advanced>false</advanced>
 </parameter-group>
@@ -278,20 +278,20 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
-<label>Http address for your cameras MJPEG stream.</label>
+<label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
 </description>        
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
-<label>The port used to send files back to Openhab/Habpanel.</label>
-<description>This port must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+<label>SERVER_PORT</label>
+<description>The port that will serve the video streams back to Openhab without authentication. It must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
 </description>
 <default>-1</default>
 </parameter>
 
 <parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
-<label>Whitelist of IP's that can access stream.</label>
+<label>IP_WHITELIST</label>
 <description>Enter any IP's or hostnames that you wish to allow to access the video stream.
 </description>
 <default>(127.0.0.1)</default>        
@@ -339,14 +339,14 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
 <context>url</context>
-<label>Over-ride the auto detected snapshot http address for your camera.</label>
+<label>SNAPSHOT_URL_OVERRIDE</label>
 <description>Leave this empty to auto detect the snapshot url. Enter a http address if you wish to over-ride with a different address which also makes the camera connect quicker.
 </description>   
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
-<label>ONVIF Port</label>
-<description>The port your camera uses for ONVIF connections.
+<label>ONVIF_PORT</label>
+<description>The port your camera uses for ONVIF connections. This is mainly needed for PTZ movement.
 </description>        
 <default>80</default>
 </parameter>
@@ -365,8 +365,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Streaming Setup">
-<label>ONVIF Media Profile stream number.</label>
-<description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
+<label>ONVIF_MEDIA_PROFILE</label>
+<description>Cameras can supply more than one stream at different resolutions and formats. 0 selects the main-stream and 1 or above are the sub-streams. Sometimes you need to turn on sub-streams in the cameras setup before they can be used.
 </description>
 <default>1</default>
 </parameter>
@@ -418,7 +418,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <config-description>
         
 <parameter-group name="Image Settings">
-<label>Image Settings</label>
+<label>Snapshot/Image Settings</label>
 <description>Settings for the snapshot features.</description>
 <advanced>false</advanced>
 </parameter-group>
@@ -437,20 +437,20 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
-<label>Http address for your cameras MJPEG stream.</label>
+<label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
 </description>        
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
-<label>The port used to send files back to Openhab/Habpanel.</label>
-<description>This port must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+<label>SERVER_PORT</label>
+<description>The port that will serve the video streams back to Openhab without authentication. It must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
 </description>
 <default>-1</default>
 </parameter>
 
 <parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
-<label>Whitelist of IP's that can access stream.</label>
+<label>IP_WHITELIST</label>
 <description>Enter any IP's or hostnames that you wish to allow to access the video stream.
 </description>
 <default>(127.0.0.1)</default>        
@@ -498,14 +498,14 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
 <context>url</context>
-<label>Over-ride the auto detected snapshot http address for your camera.</label>
-<description>Recommend you leave this empty to use the auto detected snapshot method. Only enter a http address if you wish to over-ride with a different address.
+<label>SNAPSHOT_URL_OVERRIDE</label>
+<description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
 </description>        
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
-<label>ONVIF Port</label>
-<description>The port your camera uses for ONVIF connections.
+<label>ONVIF_PORT</label>
+<description>The port your camera uses for ONVIF connections. This is mainly needed for PTZ movement.
 </description>        
 <default>80</default>
 </parameter>
@@ -524,8 +524,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Streaming Setup">
-<label>ONVIF Media Profile stream number.</label>
-<description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
+<label>ONVIF_MEDIA_PROFILE</label>
+<description>Cameras can supply more than one stream at different resolutions and formats. 0 selects the main-stream and 1 or above are the sub-streams. Sometimes you need to turn on sub-streams in the cameras setup before they can be used.
 </description>
 <default>1</default>
 </parameter>
@@ -563,7 +563,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <config-description>
         
 <parameter-group name="Image Settings">
-<label>Image Settings</label>
+<label>Snapshot/Image Settings</label>
 <description>Settings for the snapshot features.</description>
 <advanced>false</advanced>
 </parameter-group>
@@ -582,20 +582,20 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
-<label>Http address for your cameras MJPEG stream.</label>
+<label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
 </description>        
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
-<label>The port used to send files back to Openhab/Habpanel.</label>
-<description>This port must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+<label>SERVER_PORT</label>
+<description>The port that will serve the video streams back to Openhab without authentication. It must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
 </description>
 <default>-1</default>
 </parameter>
 
 <parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
-<label>Whitelist of IP's that can access stream.</label>
+<label>IP_WHITELIST</label>
 <description>Enter any IP's or hostnames that you wish to allow to access the video stream.
 </description>
 <default>(127.0.0.1)</default>        
@@ -636,8 +636,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
 <context>url</context>
-<label>Over-ride the auto detected snapshot http address for your camera.</label>
-<description>Recommend you leave this empty to use the auto detected snapshot method. Only enter a http address if you wish to over-ride with a different address.
+<label>SNAPSHOT_URL_OVERRIDE</label>
+<description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
 </description>        
 </parameter>
 
@@ -656,8 +656,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
-<label>ONVIF Port</label>
-<description>The port your camera uses for ONVIF connections.
+<label>ONVIF_PORT</label>
+<description>The port your camera uses for ONVIF connections. This is mainly needed for PTZ movement.
 </description>        
 <default>888</default>
 </parameter>
@@ -676,8 +676,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Streaming Setup">
-<label>ONVIF Media Profile stream number.</label>
-<description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
+<label>ONVIF_MEDIA_PROFILE</label>
+<description>Cameras can supply more than one stream at different resolutions and formats. 0 selects the main-stream and 1 or above are the sub-streams. Sometimes you need to turn on sub-streams in the cameras setup before they can be used.
 </description>
 <default>1</default>
 </parameter>
@@ -722,7 +722,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <config-description>
         
 <parameter-group name="Image Settings">
-<label>Image Settings</label>
+<label>Snapshot/Image Settings</label>
 <description>Settings for the snapshot features.</description>
 <advanced>false</advanced>
 </parameter-group>
@@ -741,20 +741,20 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
-<label>Http address for your cameras MJPEG stream.</label>
+<label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
 </description>        
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
-<label>The port used to send files back to Openhab/Habpanel.</label>
-<description>This port must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+<label>SERVER_PORT</label>
+<description>The port that will serve the video streams back to Openhab without authentication. It must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
 </description>
 <default>-1</default>
 </parameter>
 
 <parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
-<label>Whitelist of IP's that can access stream.</label>
+<label>IP_WHITELIST</label>
 <description>Enter any IP's or hostnames that you wish to allow to access the video stream.
 </description>
 <default>(127.0.0.1)</default>        
@@ -802,14 +802,14 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
 <context>url</context>
-<label>Over-ride the auto detected snapshot http address for your camera.</label>
-<description>Leave this empty to use the auto detected snapshot method, or enter a http address if you wish to over-ride with a different address to connect faster.
+<label>SNAPSHOT_URL_OVERRIDE</label>
+<description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
 </description>  
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
-<label>ONVIF Port</label>
-<description>The port your camera uses for ONVIF connections.
+<label>ONVIF_PORT</label>
+<description>The port your camera uses for ONVIF connections. This is mainly needed for PTZ movement.
 </description>        
 <default>80</default>
 </parameter>
@@ -828,8 +828,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Streaming Setup">
-<label>ONVIF Media Profile stream number.</label>
-<description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
+<label>ONVIF_MEDIA_PROFILE</label>
+<description>Cameras can supply more than one stream at different resolutions and formats. 0 selects the main-stream and 1 or above are the sub-streams. Sometimes you need to turn on sub-streams in the cameras setup before they can be used.
 </description>
 <default>1</default>
 </parameter>
@@ -860,7 +860,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <config-description>
         
 <parameter-group name="Image Settings">
-<label>Image Settings</label>
+<label>Snapshot/Image Settings</label>
 <description>Settings for the snapshot features.</description>
 <advanced>false</advanced>
 </parameter-group>
@@ -879,20 +879,20 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
-<label>Http address for your cameras MJPEG stream.</label>
+<label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
 </description>        
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
-<label>The port used to send files back to Openhab/Habpanel.</label>
-<description>This port must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+<label>SERVER_PORT</label>
+<description>The port that will serve the video streams back to Openhab without authentication. It must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
 </description>
 <default>-1</default>
 </parameter>
 
 <parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
-<label>Whitelist of IP's that can access stream.</label>
+<label>IP_WHITELIST</label>
 <description>Enter any IP's or hostnames that you wish to allow to access the video stream.
 </description>
 <default>(127.0.0.1)</default>        
@@ -928,14 +928,14 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
 <context>url</context>
-<label>Over-ride the auto detected snapshot http address for your camera.</label>
-<description>Recommend you leave this empty to use the auto detected snapshot method. Only enter a http address if you wish to over-ride with a different address.
+<label>SNAPSHOT_URL_OVERRIDE</label>
+<description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
 </description>        
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
-<label>ONVIF Port</label>
-<description>The port your camera uses for ONVIF connections.
+<label>ONVIF_PORT</label>
+<description>The port your camera uses for ONVIF connections. This is mainly needed for PTZ movement.
 </description>        
 <default>80</default>
 </parameter>
@@ -954,8 +954,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Streaming Setup">
-<label>ONVIF Media Profile stream number.</label>
-<description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
+<label>ONVIF_MEDIA_PROFILE</label>
+<description>Cameras can supply more than one stream at different resolutions and formats. 0 selects the main-stream and 1 or above are the sub-streams. Sometimes you need to turn on sub-streams in the cameras setup before they can be used.
 </description>
 <default>0</default>
 </parameter>
@@ -988,7 +988,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <config-description>
         
 <parameter-group name="Image Settings">
-<label>Image Settings</label>
+<label>Snapshot/Image Settings</label>
 <description>Settings for the snapshot features.</description>
 <advanced>false</advanced>
 </parameter-group>
@@ -1007,20 +1007,20 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
-<label>Http address for your cameras MJPEG stream.</label>
+<label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
 </description>        
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
-<label>The port used to send files back to Openhab/Habpanel.</label>
-<description>This port must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+<label>SERVER_PORT</label>
+<description>The port that will serve the video streams back to Openhab without authentication. It must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
 </description>
 <default>-1</default>
 </parameter>
 
 <parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
-<label>Whitelist of IP's that can access stream.</label>
+<label>IP_WHITELIST</label>
 <description>Enter any IP's or hostnames that you wish to allow to access the video stream.
 </description>
 <default>(127.0.0.1)</default>        
@@ -1055,14 +1055,14 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
 <context>url</context>
-<label>Over-ride the auto detected snapshot http address for your camera.</label>
-<description>Recommend you leave this empty to use the auto detected snapshot method. Only enter a http address if you wish to over-ride with a different address.
+<label>SNAPSHOT_URL_OVERRIDE</label>
+<description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
 </description>        
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
-<label>ONVIF Port</label>
-<description>The port your camera uses for ONVIF connections.
+<label>ONVIF_PORT</label>
+<description>The port your camera uses for ONVIF connections. This is mainly needed for PTZ movement.
 </description>        
 <default>8080</default>
 </parameter>
@@ -1081,8 +1081,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Streaming Setup">
-<label>ONVIF Media Profile stream number.</label>
-<description>Cameras can supply more than one stream at different resolutions and formats. This selects the main or one of the substreams. Sometimes you need to turn on substreams before they can be seen.
+<label>ONVIF_MEDIA_PROFILE</label>
+<description>Cameras can supply more than one stream at different resolutions and formats. 0 selects the main-stream and 1 or above are the sub-streams. Sometimes you need to turn on sub-streams in the cameras setup before they can be used.
 </description>
 <default>0</default>
 </parameter>
