@@ -376,8 +376,6 @@ public class IpCameraHandler extends BaseThingHandler {
             EventLoopGroup serversLoopGroup = new NioEventLoopGroup();
             try {
                 serverBootstrap = new ServerBootstrap();
-                // serverBootstrap.group(mainEventLoopGroup);
-                // serverBootstrap.group(mainEventLoopGroup, serversLoopGroup);
                 serverBootstrap.group(serversLoopGroup);
                 serverBootstrap.channel(NioServerSocketChannel.class);
                 // IP "0.0.0.0" will bind the server to all network connections//
@@ -385,7 +383,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel socketChannel) throws Exception {
-                        socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(0, 120, 0));
+                        socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(0, 10, 0));
                         socketChannel.pipeline().addLast("HttpServerCodec", new HttpServerCodec());
                         socketChannel.pipeline().addLast(new StreamServerHandler());
                     }
@@ -393,10 +391,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 serverFuture = serverBootstrap.bind().sync();
                 serverFuture.await(9000);
                 logger.info("IpCamera proxy server has started on port:{}.", serverPort);
-                InetAddress.getLocalHost();
-                // InetAddress.getLocalHost() InetAddress.getHostName()
                 updateState(CHANNEL_STREAM_URL, new StringType("http://" + ip + ":" + serverPort + "/ipcamera.mjpeg"));
-
             } catch (Exception e) {
                 logger.error("Exception occured starting the new streaming server:{}", e);
             }
@@ -453,15 +448,11 @@ public class IpCameraHandler extends BaseThingHandler {
             try {
                 if (msg instanceof HttpRequest) {
                     HttpRequest httpRequest = (HttpRequest) msg;
-                    logger.debug("Proxy request is {}", httpRequest);
-                    /*
-                     * //hikvision example//
-                     * HTTP/1.1 200 OK
-                     * MIME-Version: 1.0
-                     * Connection: close
-                     * Content-Type: multipart/mixed; boundary=boundary
-                     */
-                    setupStreaming(true, ctx);
+                    logger.trace("Proxy request is {}:{}", httpRequest.method(), httpRequest.uri());
+                    if ("GET".equalsIgnoreCase(httpRequest.method().toString())
+                            && "/ipcamera.mjpeg".equalsIgnoreCase(httpRequest.uri())) {
+                        setupStreaming(true, ctx);
+                    }
                 }
             } finally {
                 ReferenceCountUtil.release(msg);
