@@ -1,12 +1,12 @@
 # <bindingName> Binding
 
-This binding allows you to use IP cameras in Openhab 2 so long as the camera has the ability to fetch a snapshot (JPG file) via a http link. It does not yet support RTSP streams (see the issue thread at this github project for more info) but the Netty library was chosen as it can be used to provide this support in the future. If the brand does not have a full API then the camera will only fetch a picture and will not have any support for alarms or any of the other cool features that the binding has implemented for certain brands. Each brand that does have an API will have different features, as each API is different and hence the support in this binding will also differ. Choose your camera wisely by looking at what the APIs allow you to do. 
+This binding allows you to use IP cameras in Openhab 2 so long as they have the ability to fetch either a snapshot (JPG file) or MJPEG video stream via a http link. It does not yet support RTSP streams (see the issue thread at this github project for more info) but the Netty library was chosen as it can be used to provide this support in the near future. If the brand does not have a full API then the camera will only fetch a picture and will not have any support for alarms or any of the other cool features that the binding has implemented for certain brands. Each brand that does have an API will have different features, as each API is different and hence the support in this binding will also differ. Choose your camera wisely by looking at what the APIs allow you to do or ask in the forum what camera can perform the task you are after. 
 
 In Alphabetical order the brands that have an API are:
 
 **AMCREST**
 
-https://s3.amazonaws.com/amcrest-files/Amcrest+HTTP+API+3.2017.pdf
+<https://s3.amazonaws.com/amcrest-files/Amcrest+HTTP+API+3.2017.pdf>
 
 **DAHUA**
 
@@ -15,24 +15,24 @@ See the Amcrest API link above.
 **Doorbird**
 Not implemented but should be possible to add.
 
-https://www.doorbird.com/api
+<https://www.doorbird.com/api>
 
 **FOSCAM**
 
-https://www.foscam.es/descarga/Foscam-IPCamera-CGI-User-Guide-AllPlatforms-2015.11.06.pdf
+<https://www.foscam.es/descarga/Foscam-IPCamera-CGI-User-Guide-AllPlatforms-2015.11.06.pdf>
 
 **Grandstream**
 Not implemented but should be possible to add.
 
-https://www.grandstream.com/sites/default/files/Resources/grandstream_http_api_1.0.0.54.pdf
+<https://www.grandstream.com/sites/default/files/Resources/grandstream_http_api_1.0.0.54.pdf>
 
 **HIKVISION**
 
-oversea-download.hikvision.com/uploadfile/Leaflet/ISAPI/HIKVISION%20ISAPI_2.0-IPMD%20Service.pdf
+<oversea-download.hikvision.com/uploadfile/Leaflet/ISAPI/HIKVISION%20ISAPI_2.0-IPMD%20Service.pdf>
 
 **INSTAR**
 
-https://wikiold.instar.de/index.php/List_of_CGI_commands_(HD)
+<https://wikiold.instar.de/index.php/List_of_CGI_commands_(HD)>
 
 
 
@@ -40,7 +40,7 @@ https://wikiold.instar.de/index.php/List_of_CGI_commands_(HD)
 
 If doing manual text configuration and/or when needing to setup HABPANEL/sitemap you are going to need to know what your camera is as a "thing type". These are listed in CAPS below and are only a single word. Example: The thing type for a generic onvif camera is "ONVIF".
 
-HTTPONLY: For any camera that is not ONVIF compatible, and has the ability to fetch a snapshot with a url.
+HTTPONLY: For any camera that is not ONVIF compatible, yet still has the ability to fetch a snapshot or MJPEG stream with a url.
 
 ONVIF: Use for all ONVIF Cameras from any brand that do not have an API. You gain PTZ and auto finding of the snapshot url over httponly things. If your camera does not have PTZ you may prefer to set it up as httponly due to a faster connection time as onvif is skipped.
 
@@ -293,7 +293,7 @@ For the above notifications to work you will need to setup multiple users with t
 ## How to get working video streams
 
 DISCLAIMER:
-The streaming features work by allowing restricted access to the video stream with no user/password, do not enable it if you do not understand how to keep your internal network secure. It is disabled by default.
+Unlike the snapshots, the streaming features work by allowing restricted access to the video stream with no user/password, do not enable it if you do not understand how to keep your internal network secure. It is disabled by default.
 
 The streaming features will most likely get added in this order as each step requires the code that was added in the prior steps to work.
 

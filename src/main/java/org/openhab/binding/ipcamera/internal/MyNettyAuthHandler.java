@@ -208,7 +208,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                                         httpUrl);
                             } else {
                                 myHandler.listOfChStatus.set(indexInLists, (byte) 2);
-                                logger.debug("401: Mark to re-use,  the  channel:{} \t{}:{}", indexInLists, httpMethod,
+                                logger.debug("401: Mark to re-use,  the channel:{} \t{}:{}", indexInLists, httpMethod,
                                         httpUrl);
                             }
 

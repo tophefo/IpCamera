@@ -5,8 +5,8 @@
  * information.
  *
  * This program and the accompanying materials are made available under the
- * terms of the Eclipse Public License 2.0 which is available at
- * http://www.eclipse.org/legal/epl-2.0
+ * terms of the EclipConnectionse Public License 2.0 which is available at
+ * http://www.eclipConnectionse.org/legal/epl-2.0
  *
  * SPDX-License-Identifier: EPL-2.0
  */
@@ -128,6 +128,7 @@ public class IpCameraHandler extends BaseThingHandler {
     private Bootstrap mainBootstrap;
     private ServerBootstrap serverBootstrap;
     private EventLoopGroup mainEventLoopGroup = new NioEventLoopGroup();
+    private EventLoopGroup serversLoopGroup = new NioEventLoopGroup();
     private FullHttpRequest putRequestWithBody;
     private String nvrChannel;
 
@@ -351,49 +352,57 @@ public class IpCameraHandler extends BaseThingHandler {
         sendHttpRequest("GET", httpRequestURL, null);
     }
 
-    public void startStreamServer() {
-        if (serverBootstrap == null) {
+    public void startStreamServer(boolean start) {
 
-            InetAddress inet;
-            String ip = null;
-            try {
-                inet = InetAddress.getLocalHost();
-                InetAddress[] ips = InetAddress.getAllByName(inet.getCanonicalHostName());
-                if (ips != null) {
-                    for (int i = 0; i < ips.length; i++) {
-                        if (ips[i].isSiteLocalAddress()) {
-                            ip = ips[i].getHostAddress();
+        if (!start) {
+            serversLoopGroup.shutdownGracefully(8, 8, TimeUnit.SECONDS);
+            serverBootstrap = null;
+        } else {
+
+            if (serverBootstrap == null) {
+
+                InetAddress inet;
+                String ip = "0.0.0.0";
+
+                try {
+                    inet = InetAddress.getLocalHost();
+                    InetAddress[] ipConnections = InetAddress.getAllByName(inet.getCanonicalHostName());
+                    if (ipConnections != null) {
+                        for (int i = 0; i < ipConnections.length; i++) {
+                            if (ipConnections[i].isSiteLocalAddress()) {
+                                ip = ipConnections[i].getHostAddress();
+                            }
                         }
                     }
+                    ipConnections = null;
+                } catch (UnknownHostException e2) {
+                    logger.error("Stream Server has an error finding an IP:{}", e2);
                 }
-            } catch (UnknownHostException e2) {
-                e2.printStackTrace();
-            }
-            if (ip == null) {
-                ip = "0.0.0.0";
-            }
+                inet = null;
 
-            EventLoopGroup serversLoopGroup = new NioEventLoopGroup();
-            try {
-                serverBootstrap = new ServerBootstrap();
-                serverBootstrap.group(serversLoopGroup);
-                serverBootstrap.channel(NioServerSocketChannel.class);
-                // IP "0.0.0.0" will bind the server to all network connections//
-                serverBootstrap.localAddress(new InetSocketAddress(ip, serverPort));
-                serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
-                    @Override
-                    protected void initChannel(SocketChannel socketChannel) throws Exception {
-                        socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(0, 10, 0));
-                        socketChannel.pipeline().addLast("HttpServerCodec", new HttpServerCodec());
-                        socketChannel.pipeline().addLast(new StreamServerHandler());
-                    }
-                });
-                serverFuture = serverBootstrap.bind().sync();
-                serverFuture.await(9000);
-                logger.info("IpCamera proxy server has started on port:{}.", serverPort);
-                updateState(CHANNEL_STREAM_URL, new StringType("http://" + ip + ":" + serverPort + "/ipcamera.mjpeg"));
-            } catch (Exception e) {
-                logger.error("Exception occured starting the new streaming server:{}", e);
+                try {
+                    serversLoopGroup = new NioEventLoopGroup();
+                    serverBootstrap = new ServerBootstrap();
+                    serverBootstrap.group(serversLoopGroup);
+                    serverBootstrap.channel(NioServerSocketChannel.class);
+                    // IP "0.0.0.0" will bind the server to all network connections//
+                    serverBootstrap.localAddress(new InetSocketAddress(ip, serverPort));
+                    serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
+                        @Override
+                        protected void initChannel(SocketChannel socketChannel) throws Exception {
+                            socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(0, 10, 0));
+                            socketChannel.pipeline().addLast("HttpServerCodec", new HttpServerCodec());
+                            socketChannel.pipeline().addLast(new StreamServerHandler());
+                        }
+                    });
+                    serverFuture = serverBootstrap.bind().sync();
+                    serverFuture.await(4000);
+                    logger.info("IpCamera stream server has started on port:{}.", serverPort);
+                    updateState(CHANNEL_STREAM_URL,
+                            new StringType("http://" + ip + ":" + serverPort + "/ipcamera.mjpeg"));
+                } catch (Exception e) {
+                    logger.error("Exception occured starting the new streaming server:{}", e);
+                }
             }
         }
     }
@@ -418,6 +427,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 listOfStreams.remove(index);
             }
             if (listOfStreams.isEmpty()) {
+                logger.debug("All streams have stopped, so closing the source stream now.");
                 closeChannel(videoUri);
             }
         }
@@ -448,7 +458,8 @@ public class IpCameraHandler extends BaseThingHandler {
             try {
                 if (msg instanceof HttpRequest) {
                     HttpRequest httpRequest = (HttpRequest) msg;
-                    logger.trace("Proxy request is {}:{}", httpRequest.method(), httpRequest.uri());
+                    logger.debug("Stream request {}{} came from referer:{}", httpRequest.method(), httpRequest.uri(),
+                            httpRequest.headers().get("referer"));
                     if ("GET".equalsIgnoreCase(httpRequest.method().toString())
                             && "/ipcamera.mjpeg".equalsIgnoreCase(httpRequest.uri())) {
                         setupStreaming(true, ctx);
@@ -465,7 +476,9 @@ public class IpCameraHandler extends BaseThingHandler {
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-            logger.info("Exception caught from proxy server:{}", cause);
+            if (!cause.toString().contains("Connection reset by peer")) {
+                logger.warn("Exception caught from stream server:{}", cause);
+            }
             ctx.close();
         }
 
@@ -473,21 +486,16 @@ public class IpCameraHandler extends BaseThingHandler {
         public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
             if (evt instanceof IdleStateEvent) {
                 IdleStateEvent e = (IdleStateEvent) evt;
-                // If camera does not use the channel for X amount of time it will close.
-                if (e.state() == IdleState.READER_IDLE) {
-                    logger.debug("!!!! reader idle triggered");
+                if (e.state() == IdleState.WRITER_IDLE) {
+                    logger.debug("Stream server is going to close an idle channel.");
                     ctx.close();
-                } else if (e.state() == IdleState.WRITER_IDLE) {
-                    logger.debug("!!!! writer idle triggered");
-                    ctx.close();
-                    // setupStreaming(false, ctx);
                 }
             }
         }
 
         @Override
         public void handlerRemoved(ChannelHandlerContext ctx) {
-            logger.debug("Closing StreamServerHandler.");
+            logger.debug("Closing a StreamServerHandler.");
             setupStreaming(false, ctx);
         }
     }
@@ -507,7 +515,7 @@ public class IpCameraHandler extends BaseThingHandler {
             mainBootstrap.group(mainEventLoopGroup);
             mainBootstrap.channel(NioSocketChannel.class);
             mainBootstrap.option(ChannelOption.SO_KEEPALIVE, true);
-            mainBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 4500);
+            mainBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 17000);
             mainBootstrap.option(ChannelOption.SO_SNDBUF, 1024 * 8);
             mainBootstrap.option(ChannelOption.SO_RCVBUF, 1024 * 1024);
             mainBootstrap.option(ChannelOption.TCP_NODELAY, true);
@@ -2020,7 +2028,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         updateState(CHANNEL_IMAGE_URL, new StringType(snapshotUri));
 
                         if (!"-1".contentEquals(config.get(CONFIG_SERVER_PORT).toString()) && videoUri != null) {
-                            startStreamServer();
+                            startStreamServer(true);
                         } else {
                             logger.warn(
                                     "The Streaming Setup for this camera is not valid, check the SERVER_PORT and STREAM_URL_OVERRIDE settings are correct.");
@@ -2070,7 +2078,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                 result.getEncoding());
                     } else {
                         logger.info(
-                                "The 'ONVIF media profile' that is selected is using mjpeg and will allow you to use the new streaming features.");
+                                "The 'ONVIF media profile' that is selected is using mjpeg and will allow you to use the new streaming features if reachable with HTTP.");
                     }
 
                     if (logger.isDebugEnabled()) {
@@ -2174,7 +2182,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     logger.info("IP Camera at {}:{} is now online.", ipAddress, config.get(CONFIG_PORT).toString());
 
                     if (!"-1".contentEquals(config.get(CONFIG_SERVER_PORT).toString()) && videoUri != null) {
-                        startStreamServer();
+                        startStreamServer(true);
                     } else {
                         logger.warn(
                                 "The Streaming Setup for this camera is not valid, check the SERVER_PORT and STREAM_URL_OVERRIDE settings are correct.");
@@ -2350,6 +2358,9 @@ public class IpCameraHandler extends BaseThingHandler {
 
     private void restart() {
         logger.info("Camera binding restart().");
+
+        startStreamServer(false);
+
         if (fetchCameraOutputJob != null) {
             fetchCameraOutputJob.cancel(true);
             fetchCameraOutputJob = null;
