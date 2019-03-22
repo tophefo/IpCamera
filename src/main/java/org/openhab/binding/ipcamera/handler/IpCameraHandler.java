@@ -27,7 +27,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -75,6 +74,8 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -98,6 +99,7 @@ import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.CharsetUtil;
 import io.netty.util.ReferenceCountUtil;
+import io.netty.util.concurrent.GlobalEventExecutor;
 
 /**
  * The {@link IpCameraHandler} is responsible for handling commands, which are
@@ -132,14 +134,16 @@ public class IpCameraHandler extends BaseThingHandler {
     private FullHttpRequest putRequestWithBody;
     private String nvrChannel;
 
-    public LinkedList<String> listOfRequests = new LinkedList<String>();
-    public LinkedList<Channel> listOfChannels = new LinkedList<Channel>();
+    public ArrayList<String> listOfRequests = new ArrayList<String>(18);
+    public ArrayList<Channel> listOfChannels = new ArrayList<Channel>(18);
     // Status can be -2=storing a reply, -1=closed, 0=closing (do not re-use channel), 1=open, 2=open and ok to reuse
-    public LinkedList<Byte> listOfChStatus = new LinkedList<Byte>();
-    private LinkedList<String> listOfReplies = new LinkedList<String>();
+    public ArrayList<Byte> listOfChStatus = new ArrayList<Byte>(18);
+    private ArrayList<String> listOfReplies = new ArrayList<String>(18);
     public ReentrantLock lock = new ReentrantLock();
     // Not connected to the above lists which need to stay in sync
-    public ArrayList<ChannelHandlerContext> listOfStreams = new ArrayList<ChannelHandlerContext>(5);
+    // public ArrayList<ChannelHandlerContext> listOfStreams = new ArrayList<ChannelHandlerContext>(5);
+    // ChannelGroup is thread safe
+    final ChannelGroup serversChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
     // basicAuth MUST remain private as it holds the password
     private String basicAuth = null;
@@ -414,33 +418,30 @@ public class IpCameraHandler extends BaseThingHandler {
                     + ")";
             if (config.get(CONFIG_IP_WHITELIST).toString().contains(requestIP)) {
                 logger.debug("A request was made from {} that was in the whitelist.", requestIP);
-                listOfStreams.add(ctx);
-                if (firstStreamedMsg != null && listOfStreams.size() > 1) {
+                serversChannelGroup.add(ctx.channel());
+                if (firstStreamedMsg != null && serversChannelGroup.size() > 1) {
                     ctx.channel().writeAndFlush(firstStreamedMsg);
                 }
             } else {
                 logger.warn("A request was made from {} that was not in the whitelist.", requestIP);
             }
         } else {
-            int index = listOfStreams.indexOf(ctx);
-            if (index > -1) {
-                listOfStreams.remove(index);
-            }
-            if (listOfStreams.isEmpty()) {
+            serversChannelGroup.remove(ctx.channel());
+            if (serversChannelGroup.isEmpty()) {
                 logger.debug("All streams have stopped, so closing the source stream now.");
                 closeChannel(videoUri);
             }
         }
-        if (start && listOfStreams.size() == 1) {
+        if (start && serversChannelGroup.size() == 1) {
             sendHttpGET(videoUri);
         }
     }
 
     public void stream(Object msg) {
         try {
-            for (ChannelHandlerContext ctx : listOfStreams) {
+            for (Channel ch : serversChannelGroup) {
                 ReferenceCountUtil.retain(msg, 1);
-                ctx.channel().writeAndFlush(msg);
+                ch.writeAndFlush(msg);
             }
         } finally {
             ReferenceCountUtil.release(msg);
@@ -515,7 +516,7 @@ public class IpCameraHandler extends BaseThingHandler {
             mainBootstrap.group(mainEventLoopGroup);
             mainBootstrap.channel(NioSocketChannel.class);
             mainBootstrap.option(ChannelOption.SO_KEEPALIVE, true);
-            mainBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 17000);
+            mainBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 4500);
             mainBootstrap.option(ChannelOption.SO_SNDBUF, 1024 * 8);
             mainBootstrap.option(ChannelOption.SO_RCVBUF, 1024 * 1024);
             mainBootstrap.option(ChannelOption.TCP_NODELAY, true);
@@ -669,10 +670,10 @@ public class IpCameraHandler extends BaseThingHandler {
         } else {
             lock.lock();
             try {
-                listOfRequests.addLast(httpRequestURL);
-                listOfChannels.addLast(ch);
-                listOfChStatus.addLast((byte) 1);
-                listOfReplies.addLast(null);
+                listOfRequests.add(httpRequestURL);
+                listOfChannels.add(ch);
+                listOfChStatus.add((byte) 1);
+                listOfReplies.add(null);
             } finally {
                 lock.unlock();
             }
@@ -894,8 +895,8 @@ public class IpCameraHandler extends BaseThingHandler {
 
         @Override
         public void handlerAdded(ChannelHandlerContext ctx) {
-            logger.debug("CommonCameraHandler created.... {} channels tracked (some of these may be closed).",
-                    listOfRequests.size());
+            // logger.debug("CommonCameraHandler created.... {} channels tracked (some of these may be closed).",
+            // listOfRequests.size());
         }
 
         @Override
@@ -1641,10 +1642,10 @@ public class IpCameraHandler extends BaseThingHandler {
                 String text = encodeSpecialChars(command.toString());
                 if ("".contentEquals(text)) {
                     sendHttpGET(
-                            "/cgi-bin/configManager.cgi?action=setConfig&VideoWidget[0].CustomTitle[0].EncodeBlend=false");
+                            "/cgi-bin/configManager.cgi?action=setConfig&VideoWidget[0].CustomTitle[1].EncodeBlend=false");
                 } else {
                     sendHttpGET(
-                            "/cgi-bin/configManager.cgi?action=setConfig&VideoWidget[0].CustomTitle[0].EncodeBlend=true&VideoWidget[0].CustomTitle[0].Text="
+                            "/cgi-bin/configManager.cgi?action=setConfig&VideoWidget[0].CustomTitle[1].EncodeBlend=true&VideoWidget[0].CustomTitle[1].Text="
                                     + text);
                 }
                 break;
@@ -2078,7 +2079,8 @@ public class IpCameraHandler extends BaseThingHandler {
                                 result.getEncoding());
                     } else {
                         logger.info(
-                                "The 'ONVIF media profile' that is selected is using mjpeg and will allow you to use the new streaming features if reachable with HTTP.");
+                                "The 'ONVIF media profile {}' is using mjpeg and will allow you to use the new streaming features if reachable with HTTP.",
+                                selectedMediaProfile);
                     }
 
                     if (logger.isDebugEnabled()) {
@@ -2357,7 +2359,7 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     private void restart() {
-        logger.info("Camera binding restart().");
+        logger.debug("Camera binding restart().");
 
         startStreamServer(false);
 
@@ -2385,7 +2387,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
     @Override
     public void dispose() {
-        logger.info("Dispose() called.");
+        logger.debug("Dispose() called.");
         onvifCamera = null; // needed in case user edits password.
         restart();
     }
