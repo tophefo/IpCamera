@@ -82,6 +82,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.base64.Base64;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
+import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpContent;
@@ -94,6 +95,9 @@ import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
+import io.netty.handler.codec.rtsp.RtspHeaderNames;
+import io.netty.handler.codec.rtsp.RtspMethods;
+import io.netty.handler.codec.rtsp.RtspVersions;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
@@ -211,6 +215,37 @@ public class IpCameraHandler extends BaseThingHandler {
         } else {
             logger.error("Camera is asking for Basic Auth when you have not provided a username and/or password !");
         }
+    }
+
+    private void getRTSPoptions(String rtspURL) {
+        HttpRequest request = new DefaultHttpRequest(RtspVersions.RTSP_1_0, RtspMethods.OPTIONS, rtspURL);
+        request.headers().add(RtspHeaderNames.TRANSPORT,
+                "MP2T/DVBC/UDP;unicast;client=01234567;source=172.10.20.30;" + "destination=1.1.1.1;client_port=6922");
+        request.headers().add(RtspHeaderNames.CSEQ, "1");
+
+        // p.addLast(new RtspDecoder(), new RtspEncoder());
+        // p.addLast(new RtspServerHandler());
+    }
+
+    private void getRTSPdescribe(String rtspURL) {
+        HttpRequest request = new DefaultHttpRequest(RtspVersions.RTSP_1_0, RtspMethods.DESCRIBE, rtspURL);
+        request.headers().add(RtspHeaderNames.TRANSPORT,
+                "MP2T/DVBC/UDP;unicast;client=01234567;source=172.10.20.30;" + "destination=1.1.1.1;client_port=6922");
+        request.headers().add(RtspHeaderNames.CSEQ, "2");
+    }
+
+    private void getRTSPsetup(String rtspURL) {
+        HttpRequest request = new DefaultHttpRequest(RtspVersions.RTSP_1_0, RtspMethods.SETUP, rtspURL);
+        request.headers().add(RtspHeaderNames.TRANSPORT,
+                "MP2T/DVBC/UDP;unicast;client=01234567;source=172.10.20.30;" + "destination=1.1.1.1;client_port=6922");
+        request.headers().add(RtspHeaderNames.CSEQ, "3");
+    }
+
+    private void getRTSPplay(String rtspURL) {
+        HttpRequest request = new DefaultHttpRequest(RtspVersions.RTSP_1_0, RtspMethods.PLAY, rtspURL);
+        request.headers().add(RtspHeaderNames.TRANSPORT,
+                "MP2T/DVBC/UDP;unicast;client=01234567;source=172.10.20.30;" + "destination=1.1.1.1;client_port=6922");
+        request.headers().add(RtspHeaderNames.CSEQ, "4");
     }
 
     private String getCorrectUrlFormat(String url) {
@@ -881,6 +916,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         incomingMessage = null;
                         bytesToRecieve = 0;
                         bytesAlreadyRecieved = 0;
+                        // Following line causes NPE every few days, need to debug...
                         super.channelRead(ctx, reply);
                     }
                 }
@@ -937,9 +973,6 @@ public class IpCameraHandler extends BaseThingHandler {
             }
             logger.warn("!!!! Camera has closed the channel \tURL:{} Cause reported is: {}", requestUrl, cause);
             ctx.close();
-            // restart();
-            // cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 0, 10,
-            // TimeUnit.SECONDS);
         }
 
         @Override
@@ -2074,7 +2107,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     VideoEncoderConfiguration result = profiles.get(selectedMediaProfile)
                             .getVideoEncoderConfiguration();
                     if (!"JPEG".equalsIgnoreCase(result.getEncoding().toString())) {
-                        logger.warn(
+                        logger.info(
                                 "Cameras selected 'ONVIF media profile' is using encoding of {} and needs to be MJPEG to work with the new streaming features.",
                                 result.getEncoding());
                     } else {
@@ -2298,7 +2331,6 @@ public class IpCameraHandler extends BaseThingHandler {
         logger.debug("initialize() called.");
         config = thing.getConfiguration();
         ipAddress = config.get(CONFIG_IPADDRESS).toString();
-        logger.debug("Getting configuration to initialize a new IP Camera at IP {}", ipAddress);
         port = Integer.parseInt(config.get(CONFIG_PORT).toString());
         username = (config.get(CONFIG_USERNAME) == null) ? null : config.get(CONFIG_USERNAME).toString();
         password = (config.get(CONFIG_PASSWORD) == null) ? null : config.get(CONFIG_PASSWORD).toString();
@@ -2308,6 +2340,8 @@ public class IpCameraHandler extends BaseThingHandler {
             username = encodeSpecialChars(username);
             password = encodeSpecialChars(password);
         }
+
+        updateImageEvents = config.get(CONFIG_IMAGE_UPDATE_EVENTS).toString();
 
         snapshotUri = (config.get(CONFIG_SNAPSHOT_URL_OVERRIDE) == null) ? null
                 : config.get(CONFIG_SNAPSHOT_URL_OVERRIDE).toString();
@@ -2321,13 +2355,17 @@ public class IpCameraHandler extends BaseThingHandler {
                 : Integer.parseInt(config.get(CONFIG_ONVIF_PROFILE_NUMBER).toString());
 
         serverPort = Integer.parseInt(config.get(CONFIG_SERVER_PORT).toString());
+        if (serverPort > -1 && serverPort < 1025) {
+            logger.warn(
+                    "The streaming server's port is <= 1024 and may cause permission errors under Linux, try using a higher port.");
+        }
 
         // Known cameras will connect quicker if we skip ONVIF questions.
         if (snapshotUri == null) {
             switch (thing.getThingTypeUID().getId()) {
                 case "AMCREST":
                 case "DAHUA":
-                    snapshotUri = "http://" + ipAddress + "/cgi-bin/snapshot.cgi?channel=1";
+                    snapshotUri = "http://" + ipAddress + "/cgi-bin/snapshot.cgi?channel=" + nvrChannel;
                     break;
                 case "HIKVISION":
                     snapshotUri = "http://" + ipAddress + "/ISAPI/Streaming/channels/" + nvrChannel + "01/picture";
@@ -2354,7 +2392,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     break;
             }
         }
-        updateImageEvents = config.get(CONFIG_IMAGE_UPDATE_EVENTS).toString();
+
         cameraConnectionJob = cameraConnection.schedule(pollingCameraConnection, 1, TimeUnit.SECONDS);
     }
 
