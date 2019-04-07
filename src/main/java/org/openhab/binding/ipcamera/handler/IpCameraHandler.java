@@ -95,6 +95,8 @@ import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
+import io.netty.handler.codec.rtsp.RtspDecoder;
+import io.netty.handler.codec.rtsp.RtspEncoder;
 import io.netty.handler.codec.rtsp.RtspHeaderNames;
 import io.netty.handler.codec.rtsp.RtspMethods;
 import io.netty.handler.codec.rtsp.RtspVersions;
@@ -116,7 +118,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
     public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<ThingTypeUID>(
             Arrays.asList(THING_TYPE_ONVIF, THING_TYPE_HTTPONLY, THING_TYPE_AMCREST, THING_TYPE_DAHUA,
-                    THING_TYPE_INSTAR, THING_TYPE_AXIS, THING_TYPE_FOSCAM, THING_TYPE_HIKVISION));
+                    THING_TYPE_INSTAR, THING_TYPE_AXIS, THING_TYPE_FOSCAM, THING_TYPE_DOORBIRD, THING_TYPE_HIKVISION));
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final ScheduledExecutorService cameraConnection = Executors.newSingleThreadScheduledExecutor();
@@ -132,6 +134,7 @@ public class IpCameraHandler extends BaseThingHandler {
     private ScheduledFuture<?> fetchCameraOutputJob = null;
     private int selectedMediaProfile = 0;
     private Bootstrap mainBootstrap;
+    private Bootstrap rtspBootstrap;
     private ServerBootstrap serverBootstrap;
     private EventLoopGroup mainEventLoopGroup = new NioEventLoopGroup();
     private EventLoopGroup serversLoopGroup = new NioEventLoopGroup();
@@ -217,35 +220,56 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     }
 
-    private void getRTSPoptions(String rtspURL) {
+    private HttpRequest getRTSPoptions(String rtspURL) {
         HttpRequest request = new DefaultHttpRequest(RtspVersions.RTSP_1_0, RtspMethods.OPTIONS, rtspURL);
-        request.headers().add(RtspHeaderNames.TRANSPORT,
-                "MP2T/DVBC/UDP;unicast;client=01234567;source=172.10.20.30;" + "destination=1.1.1.1;client_port=6922");
         request.headers().add(RtspHeaderNames.CSEQ, "1");
-
-        // p.addLast(new RtspDecoder(), new RtspEncoder());
-        // p.addLast(new RtspServerHandler());
+        return request;
     }
 
-    private void getRTSPdescribe(String rtspURL) {
+    private HttpRequest getRTSPdescribe(String rtspURL) {
         HttpRequest request = new DefaultHttpRequest(RtspVersions.RTSP_1_0, RtspMethods.DESCRIBE, rtspURL);
-        request.headers().add(RtspHeaderNames.TRANSPORT,
-                "MP2T/DVBC/UDP;unicast;client=01234567;source=172.10.20.30;" + "destination=1.1.1.1;client_port=6922");
         request.headers().add(RtspHeaderNames.CSEQ, "2");
+        return request;
     }
 
-    private void getRTSPsetup(String rtspURL) {
+    /*
+     * v=0
+     * o=- 2252115724 2252115724 IN IP4 0.0.0.0
+     * s=Media Server
+     * c=IN IP4 0.0.0.0
+     * t=0 0
+     * a=control:*
+     * a=packetization-supported:DH
+     * a=rtppayload-supported:DH
+     * a=range:npt=now-
+     * m=video 0 RTP/AVP 26
+     * a=control:trackID=0
+     * a=framerate:10.000000
+     * a=rtpmap:26 JPEG/90000
+     * a=recvonly
+     * m=audio 0 RTP/AVP 97
+     * a=control:trackID=1
+     * a=rtpmap:97 MPEG4-GENERIC/16000
+     * a=fmtp:97 streamtype=5;profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1408
+     * a=recvonly
+     * m=application 0 RTP/AVP 107
+     * a=control:trackID=4
+     * a=rtpmap:107 vnd.onvif.metadata/90000
+     * a=recvonly
+     */
+
+    private HttpRequest getRTSPsetup(String rtspURL) {
         HttpRequest request = new DefaultHttpRequest(RtspVersions.RTSP_1_0, RtspMethods.SETUP, rtspURL);
-        request.headers().add(RtspHeaderNames.TRANSPORT,
-                "MP2T/DVBC/UDP;unicast;client=01234567;source=172.10.20.30;" + "destination=1.1.1.1;client_port=6922");
         request.headers().add(RtspHeaderNames.CSEQ, "3");
+        request.headers().add(RtspHeaderNames.TRANSPORT, "RTP/AVP;unicast;client_port=5000-5001");
+        return request;
     }
 
-    private void getRTSPplay(String rtspURL) {
+    private HttpRequest getRTSPplay(String rtspURL) {
         HttpRequest request = new DefaultHttpRequest(RtspVersions.RTSP_1_0, RtspMethods.PLAY, rtspURL);
-        request.headers().add(RtspHeaderNames.TRANSPORT,
-                "MP2T/DVBC/UDP;unicast;client=01234567;source=172.10.20.30;" + "destination=1.1.1.1;client_port=6922");
         request.headers().add(RtspHeaderNames.CSEQ, "4");
+        request.headers().add(RtspHeaderNames.SESSION, "12345678"); // need session number to match that of setup
+        return request;
     }
 
     private String getCorrectUrlFormat(String url) {
@@ -536,6 +560,66 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     }
 
+    public void setupRTSP() {
+
+        if (rtspBootstrap == null) {
+            rtspBootstrap = new Bootstrap();
+            rtspBootstrap.group(mainEventLoopGroup);
+            rtspBootstrap.channel(NioSocketChannel.class);
+            rtspBootstrap.option(ChannelOption.SO_KEEPALIVE, true);
+            rtspBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 4500);
+            rtspBootstrap.option(ChannelOption.SO_SNDBUF, 1024 * 8);
+            rtspBootstrap.option(ChannelOption.SO_RCVBUF, 1024 * 1024);
+            rtspBootstrap.option(ChannelOption.TCP_NODELAY, true);
+            rtspBootstrap.handler(new ChannelInitializer<SocketChannel>() {
+
+                @Override
+                public void initChannel(SocketChannel socketChannel) throws Exception {
+                    // socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(18, 0, 0));
+                    socketChannel.pipeline().addLast("RtspDecoder", new RtspDecoder());
+                    socketChannel.pipeline().addLast("RtspEncoder", new RtspEncoder());
+                    socketChannel.pipeline().addLast("myRTSPHandler", new myRTSPHandler());
+                }
+            });
+        }
+
+        ChannelFuture chFuture = rtspBootstrap.connect(new InetSocketAddress(ipAddress, 554));
+        chFuture.awaitUninterruptibly(); // ChannelOption.CONNECT_TIMEOUT_MILLIS means this will not hang here
+        if (!chFuture.isSuccess()) {
+            logger.debug("!!!! RTSP could not open channel.");
+        }
+        Channel ch = chFuture.channel();
+
+        // ch.writeAndFlush(getRTSPoptions(rtspUri));
+        // ch.writeAndFlush(
+        // getRTSPoptions("rtsp://192.168.1.50:554/cam/realmonitor?channel=1&subtype=1&unicast=true&proto=Onvif"));
+
+        // RTSP/1.0 200 OK
+        // CSeq: 1
+        // Server: Rtsp Server/3.0
+        // Public: OPTIONS, DESCRIBE, ANNOUNCE, SETUP, PLAY, RECORD, PAUSE, TEARDOWN, SET_PARAMETER, GET_PARAMETER
+
+        ch.writeAndFlush(getRTSPdescribe(
+                "rtsp://192.168.1.50:554/cam/realmonitor?channel=1&subtype=1&unicast=true&proto=Onvif"));
+
+        // RTSP/1.0 200 OK
+        // CSeq: 2
+        // x-Accept-Dynamic-Rate: 1
+        // Content-Base: rtsp://192.168.1.50:554/cam/realmonitor?channel=1&subtype=1&unicast=true&proto=Onvif/
+        // Cache-Control: must-revalidate
+        // Content-Length: 582
+        // Content-Type: application/sdp
+
+        ch.writeAndFlush(
+                getRTSPsetup("rtsp://192.168.1.50:554/cam/realmonitor?channel=1&subtype=1&unicast=true&proto=Onvif"));
+
+        // ch.writeAndFlush(
+        // getRTSPplay("rtsp://192.168.1.50:554/cam/realmonitor?channel=1&subtype=1&unicast=true&proto=Onvif"));
+
+        // Cleanup
+        chFuture = null;
+    }
+
     // Always use this as sendHttpGET(GET/POST/PUT/DELETE, "/foo/bar",null,false)//
     // The authHandler will use this method with a digest string as needed.
     public boolean sendHttpRequest(String httpMethod, String httpRequestURL, String digestString) {
@@ -571,6 +655,12 @@ public class IpCameraHandler extends BaseThingHandler {
                         case "AMCREST":
                             socketChannel.pipeline().addLast("amcrestHandler", new AmcrestHandler());
                             break;
+                        case "DAHUA":
+                            socketChannel.pipeline().addLast(new DahuaHandler());
+                            break;
+                        case "DOORBIRD":
+                            socketChannel.pipeline().addLast(new DoorBirdHandler());
+                            break;
                         case "FOSCAM":
                             socketChannel.pipeline().addLast(new FoscamHandler());
                             break;
@@ -579,9 +669,6 @@ public class IpCameraHandler extends BaseThingHandler {
                             break;
                         case "INSTAR":
                             socketChannel.pipeline().addLast(new InstarHandler());
-                            break;
-                        case "DAHUA":
-                            socketChannel.pipeline().addLast(new DahuaHandler());
                             break;
                         default:
                             socketChannel.pipeline().addLast(new HikvisionHandler());
@@ -1006,6 +1093,44 @@ public class IpCameraHandler extends BaseThingHandler {
                     // ctx.writeAndFlush("fakePing\r\n");
                 }
             }
+        }
+    }
+
+    private class myRTSPHandler extends ChannelDuplexHandler {
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+
+            logger.info(msg.toString());
+
+            if (msg instanceof HttpContent) {
+                HttpContent content = (HttpContent) msg;
+                String detail = content.content().toString(CharsetUtil.UTF_8);
+                logger.info("detail is {}", detail);
+            }
+
+        }
+
+        @Override
+        public void channelReadComplete(ChannelHandlerContext ctx) {
+        }
+
+        @Override
+        public void handlerAdded(ChannelHandlerContext ctx) {
+            logger.debug("!! RTSP handler just created now");
+        }
+
+        @Override
+        public void handlerRemoved(ChannelHandlerContext ctx) {
+            logger.debug("!! RTSP handler removed just now");
+        }
+
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+        }
+
+        @Override
+        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+
         }
     }
 
@@ -1491,6 +1616,41 @@ public class IpCameraHandler extends BaseThingHandler {
                 content = null;
             }
         }
+
+    }
+
+    private class DoorBirdHandler extends ChannelDuplexHandler {
+
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            String content = null;
+            try {
+                content = msg.toString();
+                if (!content.isEmpty()) {
+                    logger.trace("HTTP Result back from camera is \t:{}:", content);
+                } else {
+                    return;
+                }
+                if (content.contains("doorbell:H")) {
+                    updateState(CHANNEL_DOORBELL, OnOffType.valueOf("ON"));
+                }
+                if (content.contains("doorbell:L")) {
+                    updateState(CHANNEL_DOORBELL, OnOffType.valueOf("OFF"));
+                }
+                if (content.contains("motionsensor:L")) {
+                    updateState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                    firstMotionAlarm = false;
+                    motionAlarmUpdateSnapshot = false;
+                }
+                if (content.contains("motionsensor:H")) {
+                    motionDetected(CHANNEL_MOTION_ALARM);
+                }
+
+            } finally {
+                ReferenceCountUtil.release(msg);
+                content = null;
+            }
+        }
     }
 
     public IpCameraHandler(Thing thing) {
@@ -1937,6 +2097,10 @@ public class IpCameraHandler extends BaseThingHandler {
                             sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AlarmOut[0].Mode=0");
                         }
                         break;
+                    case "DOORBIRD":
+                        if ("ON".equals(command.toString())) {
+                            sendHttpGET("/bha-api/open-door.cgi");
+                        }
                 }
                 break;
             case CHANNEL_ACTIVATE_ALARM_OUTPUT2:
@@ -1946,6 +2110,19 @@ public class IpCameraHandler extends BaseThingHandler {
                             sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AlarmOut[1].Mode=1");
                         } else {
                             sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AlarmOut[1].Mode=0");
+                        }
+                        break;
+                    case "DOORBIRD":
+                        if ("ON".equals(command.toString())) {
+                            sendHttpGET("/bha-api/open-door.cgi?r=2");
+                        }
+                }
+                break;
+            case CHANNEL_EXTERNAL_LIGHT:
+                switch (thing.getThingTypeUID().getId()) {
+                    case "DOORBIRD":
+                        if ("ON".equals(command.toString())) {
+                            sendHttpGET("/bha-api/light-on.cgi");
                         }
                         break;
                 }
@@ -2298,6 +2475,13 @@ public class IpCameraHandler extends BaseThingHandler {
                         sendHttpGET("/cgi-bin/eventManager.cgi?action=attach&codes=[All]");
                     }
                     break;
+                case "DOORBIRD":
+                    // Check for alarms, channel for NVRs appears not to work at filtering.
+                    if (streamIsStopped("/bha-api/monitor.cgi?ring=doorbell,motionsensor")) {
+                        logger.debug("The alarm checking stream was not running, going to re-start it now.");
+                        sendHttpGET("/bha-api/monitor.cgi?ring=doorbell,motionsensor");
+                    }
+                    break;
             }
             // Delay movements so when a rule changes all 3, a single movement is made.
             if (movePTZ) {
@@ -2367,6 +2551,9 @@ public class IpCameraHandler extends BaseThingHandler {
                 case "DAHUA":
                     snapshotUri = "http://" + ipAddress + "/cgi-bin/snapshot.cgi?channel=" + nvrChannel;
                     break;
+                case "DOORBIRD":
+                    snapshotUri = "http://" + ipAddress + "/bha-api/image.cgi";
+                    break;
                 case "HIKVISION":
                     snapshotUri = "http://" + ipAddress + "/ISAPI/Streaming/channels/" + nvrChannel + "01/picture";
                     break;
@@ -2386,6 +2573,9 @@ public class IpCameraHandler extends BaseThingHandler {
                 case "AMCREST":
                 case "DAHUA":
                     videoUri = "/cgi-bin/mjpg/video.cgi?channel=" + nvrChannel + "&subtype=" + selectedMediaProfile;
+                    break;
+                case "DOORBIRD":
+                    videoUri = "/bha-api/video.cgi";
                     break;
                 case "FOSCAM":
                     videoUri = "/cgi-bin/CGIStream.cgi?cmd=GetMJStream&usr=" + username + "&pwd=" + password;

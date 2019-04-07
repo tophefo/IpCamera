@@ -540,6 +540,135 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </config-description>
 </thing-type>
 
+  <thing-type id="DOORBIRD">
+        <label>"DOORBIRD" IP camera with ONVIF and API support.</label>
+        <description>Use for all current Doorbird Cameras, as they support an API as well as ONVIF.</description>
+        <channels>
+            <channel id="updateImageNow" typeId="updateImageNow"/>          
+            <channel id="image" typeId="image"/>            
+            <channel id="motionAlarm" typeId="motionAlarm"/>
+            <channel id="activateAlarmOutput" typeId="activateAlarmOutput"/>
+            <channel id="activateAlarmOutput2" typeId="activateAlarmOutput2"/>
+            <channel id="doorBell" typeId="doorBell"/>
+            <channel id="externalLight" typeId="externalLight"/>          
+            <channel id="streamUrl" typeId="streamUrl"/>
+            <channel id="rtspUrl" typeId="rtspUrl"/>
+            <channel id="imageUrl" typeId="imageUrl"/>     
+        </channels>     
+        <config-description>
+        
+<parameter-group name="Image Settings">
+<label>Snapshot/Image Settings</label>
+<description>Settings for the snapshot features.</description>
+<advanced>false</advanced>
+</parameter-group>
+    
+<parameter-group name="Settings">
+<label>Main Settings</label>
+<description>Settings required to connect to the camera.</description>
+<advanced>false</advanced>
+</parameter-group>
+
+<parameter-group name="Streaming Setup">
+<label>Stream Settings</label>
+<description>Settings that setup or effect the video stream.</description>
+<advanced>false</advanced>
+</parameter-group>
+
+<parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>STREAM_URL_OVERRIDE</label>
+<description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
+</description>        
+</parameter>
+
+<parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
+<label>SERVER_PORT</label>
+<description>The port that will serve the video streams back to Openhab without authentication. It must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+</description>
+<default>-1</default>
+</parameter>
+
+<parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
+<label>IP_WHITELIST</label>
+<description>Enter any IP's or hostnames that you wish to allow to access the video stream.
+</description>
+<default>(127.0.0.1)</default>        
+</parameter>
+        
+<parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
+<label>Update the Image when:</label>
+<description><![CDATA[
+The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
+]]>
+</description>
+<default>1</default>
+<options>
+<option value="0">Never Update Image (0)</option>
+<option value="1">Always Update Image (1)</option>
+<option value="2">Start Motion Alarm (2)</option>
+<option value="4">During Motion Alarm (4)</option>
+</options>
+</parameter>
+
+<parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
+<context>network-address</context>
+<label>IP Address</label>
+<description>Use this format 192.168.1.2 and do not include the port number.
+</description>        
+</parameter>
+
+<parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">
+<label>The port of the camera that accepts HTTP/S.</label>
+<description>This port will be used for http/https as the binding will not change between the two.
+</description>
+<default>80</default>
+</parameter>
+
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
+<context>url</context>
+<label>SNAPSHOT_URL_OVERRIDE</label>
+<description>Leave this empty to auto detect the snapshot url. Enter a http address if you wish to over-ride with a different address which also makes the camera connect quicker.
+</description>   
+</parameter>
+
+<parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
+<label>ONVIF_PORT</label>
+<description>The port your camera uses for ONVIF connections. This is mainly needed for PTZ movement.
+</description>        
+<default>80</default>
+</parameter>
+
+<parameter name="USERNAME" type="text" required="false" groupName="Settings">
+<label>User name for camera.</label>
+<description>Enter the User name used to connect to your camera. Leave blank if your camera does not use login details.
+</description>
+</parameter>
+            
+<parameter name="PASSWORD" type="text" required="false" groupName="Settings">
+<context>password</context>
+<label>Password for camera.</label>
+<description>Enter Password for your camera. Leave blank if your camera does not use login details.
+</description>
+</parameter>
+
+<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Streaming Setup">
+<label>ONVIF_MEDIA_PROFILE</label>
+<description>Cameras can supply more than one stream at different resolutions and formats. 0 selects the main-stream and 1 or above are the sub-streams. Sometimes you need to turn on sub-streams in the cameras setup before they can be used.
+</description>
+<default>0</default>
+</parameter>
+
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="15000" groupName="Image Settings">
+<label>Time in milliseconds between checking camera states and fetching an Image.</label>
+<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
+</description>
+<default>2000</default>
+</parameter>
+
+</config-description>
+</thing-type>
+
   <thing-type id="FOSCAM">
         <label>"FOSCAM" IP camera with ONVIF and API support.</label>
         <description>Use for all current HD FOSCAM Cameras as they support an API as well as ONVIF.</description>
@@ -1275,7 +1404,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <description>By moving this control you should be able to change how sensitive the audio alarm is to soft or loud noises.</description>
         <category>SoundVolume</category>
         </channel-type>
-        
+ 
         <channel-type id="activateAlarmOutput">
         <item-type>Switch</item-type>
         <label>Trigger the cameras alarm output</label>
@@ -1296,11 +1425,25 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <description>Turn the LED on and off and if supported allow Dimming.</description>
         <category>Light</category>
         </channel-type>
-        
+ 
         <channel-type id="autoLED">
         <item-type>Switch</item-type>
         <label>Auto control the Infrared LED</label>
         <description>Turn automatic mode for the LED on and off.</description>
+        </channel-type>
+        
+        <channel-type id="externalLight">
+        <item-type>Switch</item-type>
+        <label>Enable/Disable external lights</label>
+        <description>Turn the lights on and off.</description>
+        <category>Light</category>
+        </channel-type>
+        
+        <channel-type id="doorBell">
+        <item-type>Switch</item-type>
+        <label>Doorbell</label>
+        <description>The button has been pushed.</description>
+        <state readOnly="true" />
         </channel-type>
                 
         <channel-type id="textOverlay">

@@ -36,6 +36,7 @@ public class IpCameraBindingConstants {
     public static final ThingTypeUID THING_TYPE_HIKVISION = new ThingTypeUID(BINDING_ID, "HIKVISION");
     public static final ThingTypeUID THING_TYPE_INSTAR = new ThingTypeUID(BINDING_ID, "INSTAR");
     public static final ThingTypeUID THING_TYPE_DAHUA = new ThingTypeUID(BINDING_ID, "DAHUA");
+    public static final ThingTypeUID THING_TYPE_DOORBIRD = new ThingTypeUID(BINDING_ID, "DOORBIRD");
 
     // List of all Thing Config items
     public static final String CONFIG_IPADDRESS = "IPADDRESS";
@@ -85,4 +86,6 @@ public class IpCameraBindingConstants {
     public static final String CHANNEL_PARKING_ALARM = "parkingAlarm";
     public static final String CHANNEL_TEXT_OVERLAY = "textOverlay";
     public static final String CHANNEL_API_ACCESS = "apiAccess";
+    public static final String CHANNEL_EXTERNAL_LIGHT = "externalLight";
+    public static final String CHANNEL_DOORBELL = "doorBell";
 }
