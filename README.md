@@ -1,8 +1,8 @@
 # <bindingName> Binding
 
-This binding allows you to use IP cameras in Openhab 2 so long as they have the ability to fetch either a snapshot (JPG file) or MJPEG video stream via a http link. It does not yet support RTSP streams (see the issue thread at this github project for more info) but the Netty library was chosen as it can be used to provide this support in the near future. If the brand does not have a full API then the camera will only fetch a picture and will not have any support for alarms or any of the other cool features that the binding has implemented for certain brands. Each brand that does have an API will have different features, as each API is different and hence the support in this binding will also differ. Choose your camera wisely by looking at what the APIs allow you to do or ask in the forum what camera can perform the task you are after. 
+This binding allows you to use an IP cameras in Openhab 2. If the brand of camera does not have a full API then the camera will only fetch a picture/stream and will not have any support for alarms, or any of the other cool features that the binding has implemented. Each brand that does have an API will have different features, as each API is different and hence the support in this binding will also differ. Choose your camera wisely by looking at what the APIs allow you to do or ask in the forum what cameras can perform the task you are after. 
 
-In Alphabetical order the brands that have an API are:
+In Alphabetical order the brands that are known to have an API are:
 
 **AMCREST**
 
@@ -13,7 +13,6 @@ In Alphabetical order the brands that have an API are:
 See the Amcrest API link above.
 
 **Doorbird**
-Not implemented but should be possible to add.
 
 <https://www.doorbird.com/api>
 
@@ -22,13 +21,14 @@ Not implemented but should be possible to add.
 <https://www.foscam.es/descarga/Foscam-IPCamera-CGI-User-Guide-AllPlatforms-2015.11.06.pdf>
 
 **Grandstream**
-Not implemented but should be possible to add.
+
+Not implemented, but should be possible to add.
 
 <https://www.grandstream.com/sites/default/files/Resources/grandstream_http_api_1.0.0.54.pdf>
 
 **HIKVISION**
 
-<oversea-download.hikvision.com/uploadfile/Leaflet/ISAPI/HIKVISION%20ISAPI_2.0-IPMD%20Service.pdf>
+<https://www.hikvision.com>
 
 **INSTAR**
 
@@ -38,7 +38,7 @@ Not implemented but should be possible to add.
 
 ## Supported Things
 
-If doing manual text configuration and/or when needing to setup HABPANEL/sitemap you are going to need to know what your camera is as a "thing type". These are listed in CAPS below and are only a single word. Example: The thing type for a generic onvif camera is "ONVIF".
+If using the manual text configuration and/or when needing to setup HABPANEL/sitemaps, you are going to need to know what your camera is as a "thing type". These are listed in CAPS below and are only a single word. Example: The thing type for a generic onvif camera is "ONVIF".
 
 HTTPONLY: For any camera that is not ONVIF compatible, yet still has the ability to fetch a snapshot or MJPEG stream with a url.
 
@@ -46,9 +46,9 @@ ONVIF: Use for all ONVIF Cameras from any brand that do not have an API. You gai
 
 AMCREST: Use for all Amcrest Cameras that do not work as a dahua thing as this uses an older polling method for alarm detection which is not as efficient as the newer method used in dahua. Amcrest are made by Dahua and hence their cameras can be setup as a Dahua thing.
 
-AXIS: Use for all current Axis Cameras as they support ONVIF.
-
 DAHUA: Use for all current Dahua and Amcrest cameras as they support an API as well as ONVIF.
+
+DOORBIRD: Use for all current DOORBIRD cameras as they support an API as well as ONVIF.
 
 FOSCAM: Use for all current FOSCAM HD Cameras as they support an API as well as ONVIF.
 
@@ -59,7 +59,7 @@ INSTAR: Use for all current INSTAR Cameras as they support an API as well as ONV
 
 ## Discovery
 
-Auto discovery is not supported currently and I would love a PR if someone has experience finding cameras on a network. ONVIF documents a way to use UDP multicast to find cameras. Currently you need to manually add the IP camera either via PaperUI or textual configuration which is covered below in more detail. Once the camera is added you then supply the IP address and port settings for the camera. Optionally a username and password can also be filled in if the camera is secured with these, which I highly recommend. Clicking on the pencil icon in PaperUI is how you reach these parameters and how you make all the settings unless you have chosen to use manual text configuration. You can not mix manual and PaperUI methods, but it is handy to see and read the descriptions of all the controls in PaperUI.
+Auto discovery is not supported currently and I would love a PR if someone has experience finding cameras on a network. ONVIF documents a way to use UDP multicast to find cameras, however a lot of cameras have this feature disabled by default in their firmwares hence why this is not high on the list to do. Currently you need to manually add the IP camera either via PaperUI or textual configuration which is covered below in more detail. Once the camera is added you then supply the IP address and port settings for the camera. Optionally a username and password can also be filled in if the camera is secured with these, which I highly recommend. Clicking on the pencil icon in PaperUI is how you reach these parameters and how you make all the settings unless you have chosen to use manual text configuration. You can not mix manual and PaperUI methods, but it is handy to see and read the descriptions of all the controls in PaperUI.
 
 ## Binding Configuration
 
@@ -87,17 +87,25 @@ ONVIF_MEDIA_PROFILE
 
 POLL_CAMERA_MS
 
-SNAPSHOT_URL_OVERRIDE
-
 IMAGE_UPDATE_EVENTS
 
 NVR_CHANNEL
+
+SNAPSHOT_URL_OVERRIDE
 
 MOTION_URL_OVERRIDE
 
 AUDIO_URL_OVERRIDE
 
 STREAM_URL_OVERRIDE
+
+FFMPEG_INPUT
+
+FFMPEG_LOCATION
+
+FFMPEG_OUTPUT
+
+FFMPEG_HLS_ARG
 
 IP_WHITELIST
 
@@ -295,18 +303,20 @@ For the above notifications to work you will need to setup multiple users with t
 DISCLAIMER:
 Unlike the snapshots, the streaming features work by allowing restricted access to the video stream with no user/password, do not enable it if you do not understand how to keep your internal network secure. It is disabled by default.
 
-The streaming features will most likely get added in this order as each step requires the code that was added in the prior steps to work.
+Cameras with h264 format streams can create HLS streams which can be used to stream to Chromecasts and also display in browsers that support this format using the webview or Habpanel items.
 
-1. Cameras with MJPEG and HTTP API's ability can stream right now with the latest builds. The main cameras that can do this are Amcrest, Dahua, Hikvision and Foscam HD.
-2. Cameras with MJPEG ability but only have RTSP to fetch the streams with will need RTSP support added. Alternatively you can use this method which will work even if the stream is h.264:
+Cameras that also have MJPEG format abilities and also an API can stream to Openhab with the MJPEG format. The main cameras that can do this are Amcrest, Dahua, Hikvision and Foscam HD. If your camera can not do MJPEG you can use this method to turn a h.264 stream into MJPEG steam.
+
 <https://community.openhab.org/t/how-to-display-rtsp-streams-from-ip-cameras-in-openhab-and-habpanel-linux-only/69021>
 
-3. Cameras without any MJPEG support will need a FFMPEG feature to be added which will use your Openhab's CPU to do the conversion. The quality of the picture you desire will determine how big a CPU you will need in your Openhab server. You can use 3rd party software running on separate servers to do the conversion.
+Alternatively you can use 3rd party software running on a server to do the conversion as this takes a lot of CPU power to handle the conversion.
+
+
 
 To use the new steaming features, you need to:
 1. Set a valid ``SERVER_PORT`` as the default value of -1 will turn the new features off.
 2. Add any IPs that need access to the ``IP_WHITELIST`` surrounding each one in brackets (see below example). Internal IPs will trigger a warning in the logs if they are not in the whitelist, however external IPs or localhost will not trigger a warning in the logs as they are completely ignored and the binding will refuse to connect to them. 
-3. For cameras that do not auto detect the url, you need to enter a working url for ``STREAM_URL_OVERRIDE`` This can be skipped for Amcrest, Dahua, Hikvision and Foscam HD.
+3. For cameras that do not auto detect the url for mjpeg streams, you need to enter a working url for ``STREAM_URL_OVERRIDE`` This can be skipped for Amcrest, Dahua, Hikvision and Foscam HD.
 4. You need to enter your cameras setup and ensure one of the streams is set to use MJPEG format and not mp4 encoding. You can leave the mainstream as mp4/h.264/h.265 and only turn MJPEG on for one of the substreams.
 5. For some brands the ``ONVIF_MEDIA_PROFILE`` needs to match the stream number you have setup in the last step. 0 is the main-stream, and 1 onwards are the sub-streams. A warning will help guide you with this in the openhab.log if ONVIF is setup.
 
@@ -474,7 +484,7 @@ If you wish to contribute then please create an issue ticket first to discuss ho
 
 If this binding becomes popular, I can look at extending the frame work to support:
 
-RTSP Video streams and using FFMPEG for conversions.
+RTSP Video streams (some work is already done and ffmpeg gives some support too).
 
 Auto find and setup cameras on your network.
 

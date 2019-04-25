@@ -54,6 +54,10 @@ public class IpCameraBindingConstants {
     public static final String CONFIG_AUDIO_URL_OVERRIDE = "AUDIO_URL_OVERRIDE";
     public static final String CONFIG_STREAM_URL_OVERRIDE = "STREAM_URL_OVERRIDE";
     public static final String CONFIG_IP_WHITELIST = "IP_WHITELIST";
+    public static final String CONFIG_FFMPEG_LOCATION = "FFMPEG_LOCATION";
+    public static final String CONFIG_FFMPEG_INPUT = "FFMPEG_INPUT";
+    public static final String CONFIG_FFMPEG_OUTPUT = "FFMPEG_OUTPUT";
+    public static final String CONFIG_FFMPEG_HLS_ARG = "FFMPEG_HLS_ARG";
 
     // List of all Channel ids
     public static final String CHANNEL_UPDATE_IMAGE_NOW = "updateImageNow";
@@ -61,6 +65,7 @@ public class IpCameraBindingConstants {
     public static final String CHANNEL_RTSP_URL = "rtspUrl";
     public static final String CHANNEL_IMAGE_URL = "imageUrl";
     public static final String CHANNEL_STREAM_URL = "streamUrl";
+    public static final String CHANNEL_HLS_URL = "hlsUrl";
     public static final String CHANNEL_PAN = "pan";
     public static final String CHANNEL_TILT = "tilt";
     public static final String CHANNEL_ZOOM = "zoom";

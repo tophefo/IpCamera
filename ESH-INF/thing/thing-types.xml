@@ -7,10 +7,11 @@
         <label>"HTTPONLY" Generic IP camera with only HTTP/S support.</label>
         <description>Use when your camera is not ONVIF compatible.</description>
         <channels>
-        <channel id="updateImageNow" typeId="updateImageNow"/>
-        <channel id="streamUrl" typeId="streamUrl"/>
         <channel id="image" typeId="image"/>
-        <channel id="imageUrl" typeId="imageUrl"/>        
+        <channel id="updateImageNow" typeId="updateImageNow"/>
+        <channel id="imageUrl" typeId="imageUrl"/>
+        <channel id="streamUrl" typeId="streamUrl"/>
+        <channel id="hlsUrl" typeId="hlsUrl"/>              
         </channels>     
         <config-description>
         
@@ -60,10 +61,10 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>80</default>
 </parameter>
 
-<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="true" groupName="Settings">
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="true" groupName="Image Settings">
 <context>url</context>
 <label>SNAPSHOT_URL_OVERRIDE</label>
-<description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
+<description>Enter a http url to where a snapshot can be seen if entered into any browser.
 </description>        
 </parameter>
 
@@ -72,6 +73,34 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>STREAM_URL_OVERRIDE</label>
 <description>Full http address to where a MJPEG stream can be watched if entered into any browser. 
 </description>        
+</parameter>
+
+<parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>FFMPEG_INPUT</label>
+<description>Enter any HTTP or RTSP URL that ffmpeg can use as an input. 
+</description>        
+</parameter>
+
+<parameter name="FFMPEG_LOCATION" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_LOCATION</label>
+<description>The full path including the filename for where you have installed ffmpeg. Default should work for Linux, but For windows use this format, c:\ffmpeg\bin\ffmpeg.exe
+</description>
+<default>/usr/bin/ffmpeg</default>
+</parameter>
+
+<parameter name="FFMPEG_OUTPUT" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_OUTPUT</label>
+<description>The full path where ffmpeg has the ability to write files to ending with a slash. For windows use this format, c:\openhabconf\html\ipcamera\
+</description>
+<default>/etc/openhab2/html/tmpfs/</default>
+</parameter>
+
+<parameter name="FFMPEG_HLS_ARG" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_ARG</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used.
+</description>
+<default>-acodec copy -vcodec copy -hls_wrap 10 -hls_flags delete_segments</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -121,7 +150,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="zoom" typeId="zoom"/>
             <channel id="streamUrl" typeId="streamUrl"/>   
             <channel id="rtspUrl" typeId="rtspUrl"/>
-            <channel id="imageUrl" typeId="imageUrl"/>         
+            <channel id="imageUrl" typeId="imageUrl"/>
+            <channel id="hlsUrl" typeId="hlsUrl"/>         
         </channels>     
         <config-description>
         
@@ -164,6 +194,34 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>        
 </parameter>
 
+<parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>FFMPEG_INPUT</label>
+<description>Leave this blank to use the auto detected RTSP address, or enter a URL for any type of stream that ffmpeg can use as an input. 
+</description>        
+</parameter>
+
+<parameter name="FFMPEG_LOCATION" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_LOCATION</label>
+<description>The full path including the filename for where you have installed ffmpeg. For windows use this format, c:\ffmpeg\bin\ffmpeg.exe
+</description>
+<default>/usr/bin/ffmpeg</default>
+</parameter>
+
+<parameter name="FFMPEG_OUTPUT" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_OUTPUT</label>
+<description>The full path where ffmpeg has the ability to write files to ending with a slash. For windows use this format, c:\openhabconf\html\ipcamera\
+</description>
+<default>/etc/openhab2/html/tmpfs/</default>
+</parameter>
+
+<parameter name="FFMPEG_HLS_ARG" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_ARG</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used.
+</description>
+<default>-acodec copy -vcodec copy -hls_wrap 10 -hls_flags delete_segments</default>
+</parameter>
+
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
 <label>SERVER_PORT</label>
 <description>The port that will serve the video streams back to Openhab without authentication. It must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
@@ -178,7 +236,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>(127.0.0.1)</default>        
 </parameter>
 
-<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Image Settings">
 <context>url</context>
 <label>SNAPSHOT_URL_OVERRIDE</label>
 <description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
@@ -254,7 +312,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="zoom" typeId="zoom"/>
             <channel id="streamUrl" typeId="streamUrl"/>
             <channel id="rtspUrl" typeId="rtspUrl"/>
-            <channel id="imageUrl" typeId="imageUrl"/>     
+            <channel id="imageUrl" typeId="imageUrl"/>
+            <channel id="hlsUrl" typeId="hlsUrl"/>     
         </channels>     
         <config-description>
         
@@ -281,6 +340,34 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
 </description>        
+</parameter>
+
+<parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>FFMPEG_INPUT</label>
+<description>Leave this blank to use the auto detected RTSP address, or enter a URL for any type of stream that ffmpeg can use as an input. 
+</description>        
+</parameter>
+
+<parameter name="FFMPEG_LOCATION" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_LOCATION</label>
+<description>The full path including the filename for where you have installed ffmpeg. For windows use this format, c:\ffmpeg\bin\ffmpeg.exe
+</description>
+<default>/usr/bin/ffmpeg</default>
+</parameter>
+
+<parameter name="FFMPEG_OUTPUT" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_OUTPUT</label>
+<description>The full path where ffmpeg has the ability to write files to ending with a slash. For windows use this format, c:\openhabconf\html\ipcamera\
+</description>
+<default>/etc/openhab2/html/tmpfs/</default>
+</parameter>
+
+<parameter name="FFMPEG_HLS_ARG" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_ARG</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used.
+</description>
+<default>-acodec copy -vcodec copy -hls_wrap 10 -hls_flags delete_segments</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -337,7 +424,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>1</default>
 </parameter>
 
-<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Image Settings">
 <context>url</context>
 <label>SNAPSHOT_URL_OVERRIDE</label>
 <description>Leave this empty to auto detect the snapshot url. Enter a http address if you wish to over-ride with a different address which also makes the camera connect quicker.
@@ -368,7 +455,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>ONVIF_MEDIA_PROFILE</label>
 <description>Cameras can supply more than one stream at different resolutions and formats. 0 selects the main-stream and 1 or above are the sub-streams. Sometimes you need to turn on sub-streams in the cameras setup before they can be used.
 </description>
-<default>1</default>
+<default>0</default>
 </parameter>
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="15000" groupName="Image Settings">
@@ -413,7 +500,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="zoom" typeId="zoom"/>
             <channel id="streamUrl" typeId="streamUrl"/>
             <channel id="rtspUrl" typeId="rtspUrl"/>
-            <channel id="imageUrl" typeId="imageUrl"/>     
+            <channel id="imageUrl" typeId="imageUrl"/>
+            <channel id="hlsUrl" typeId="hlsUrl"/>     
         </channels>     
         <config-description>
         
@@ -440,6 +528,34 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
 </description>        
+</parameter>
+
+<parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>FFMPEG_INPUT</label>
+<description>Leave this blank to use the auto detected RTSP address, or enter a URL for any type of stream that ffmpeg can use as an input. 
+</description>        
+</parameter>
+
+<parameter name="FFMPEG_LOCATION" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_LOCATION</label>
+<description>The full path including the filename for where you have installed ffmpeg. For windows use this format, c:\ffmpeg\bin\ffmpeg.exe
+</description>
+<default>/usr/bin/ffmpeg</default>
+</parameter>
+
+<parameter name="FFMPEG_OUTPUT" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_OUTPUT</label>
+<description>The full path where ffmpeg has the ability to write files to ending with a slash. For windows use this format, c:\openhabconf\html\ipcamera\
+</description>
+<default>/etc/openhab2/html/tmpfs/</default>
+</parameter>
+
+<parameter name="FFMPEG_HLS_ARG" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_ARG</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used.
+</description>
+<default>-acodec copy -vcodec copy -hls_wrap 10 -hls_flags delete_segments</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -496,7 +612,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>80</default>
 </parameter>
 
-<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Image Settings">
 <context>url</context>
 <label>SNAPSHOT_URL_OVERRIDE</label>
 <description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
@@ -527,7 +643,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>ONVIF_MEDIA_PROFILE</label>
 <description>Cameras can supply more than one stream at different resolutions and formats. 0 selects the main-stream and 1 or above are the sub-streams. Sometimes you need to turn on sub-streams in the cameras setup before they can be used.
 </description>
-<default>1</default>
+<default>0</default>
 </parameter>
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
@@ -553,7 +669,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="externalLight" typeId="externalLight"/>          
             <channel id="streamUrl" typeId="streamUrl"/>
             <channel id="rtspUrl" typeId="rtspUrl"/>
-            <channel id="imageUrl" typeId="imageUrl"/>     
+            <channel id="imageUrl" typeId="imageUrl"/>
+            <channel id="hlsUrl" typeId="hlsUrl"/>     
         </channels>     
         <config-description>
         
@@ -580,6 +697,34 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
 </description>        
+</parameter>
+
+<parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>FFMPEG_INPUT</label>
+<description>Leave this blank to use the auto detected RTSP address, or enter a URL for any type of stream that ffmpeg can use as an input. 
+</description>        
+</parameter>
+
+<parameter name="FFMPEG_LOCATION" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_LOCATION</label>
+<description>The full path including the filename for where you have installed ffmpeg. For windows use this format, c:\ffmpeg\bin\ffmpeg.exe
+</description>
+<default>/usr/bin/ffmpeg</default>
+</parameter>
+
+<parameter name="FFMPEG_OUTPUT" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_OUTPUT</label>
+<description>The full path where ffmpeg has the ability to write files to ending with a slash. For windows use this format, c:\openhabconf\html\ipcamera\
+</description>
+<default>/etc/openhab2/html/tmpfs/</default>
+</parameter>
+
+<parameter name="FFMPEG_HLS_ARG" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_ARG</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used.
+</description>
+<default>-acodec copy -vcodec copy -hls_wrap 10 -hls_flags delete_segments</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -625,7 +770,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>80</default>
 </parameter>
 
-<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Image Settings">
 <context>url</context>
 <label>SNAPSHOT_URL_OVERRIDE</label>
 <description>Leave this empty to auto detect the snapshot url. Enter a http address if you wish to over-ride with a different address which also makes the camera connect quicker.
@@ -687,7 +832,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="zoom" typeId="zoom"/>
             <channel id="streamUrl" typeId="streamUrl"/>
             <channel id="rtspUrl" typeId="rtspUrl"/>
-            <channel id="imageUrl" typeId="imageUrl"/>          
+            <channel id="imageUrl" typeId="imageUrl"/>
+            <channel id="hlsUrl" typeId="hlsUrl"/>          
         </channels>     
         <config-description>
         
@@ -714,6 +860,34 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
 </description>        
+</parameter>
+
+<parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>FFMPEG_INPUT</label>
+<description>Leave this blank to use the auto detected RTSP address, or enter a URL for any type of stream that ffmpeg can use as an input. 
+</description>        
+</parameter>
+
+<parameter name="FFMPEG_LOCATION" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_LOCATION</label>
+<description>The full path including the filename for where you have installed ffmpeg. For windows use this format, c:\ffmpeg\bin\ffmpeg.exe
+</description>
+<default>/usr/bin/ffmpeg</default>
+</parameter>
+
+<parameter name="FFMPEG_OUTPUT" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_OUTPUT</label>
+<description>The full path where ffmpeg has the ability to write files to ending with a slash. For windows use this format, c:\openhabconf\html\ipcamera\
+</description>
+<default>/etc/openhab2/html/tmpfs/</default>
+</parameter>
+
+<parameter name="FFMPEG_HLS_ARG" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_ARG</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used.
+</description>
+<default>-acodec copy -vcodec copy -hls_wrap 10 -hls_flags delete_segments</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -763,7 +937,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>88</default>
 </parameter>
 
-<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Image Settings">
 <context>url</context>
 <label>SNAPSHOT_URL_OVERRIDE</label>
 <description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
@@ -808,7 +982,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>ONVIF_MEDIA_PROFILE</label>
 <description>Cameras can supply more than one stream at different resolutions and formats. 0 selects the main-stream and 1 or above are the sub-streams. Sometimes you need to turn on sub-streams in the cameras setup before they can be used.
 </description>
-<default>1</default>
+<default>0</default>
 </parameter>
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
@@ -846,7 +1020,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="zoom" typeId="zoom"/>
             <channel id="streamUrl" typeId="streamUrl"/>
             <channel id="rtspUrl" typeId="rtspUrl"/>        
-            <channel id="imageUrl" typeId="imageUrl"/>     
+            <channel id="imageUrl" typeId="imageUrl"/>
+            <channel id="hlsUrl" typeId="hlsUrl"/>     
         </channels>     
         <config-description>
         
@@ -873,6 +1048,34 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
 </description>        
+</parameter>
+
+<parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>FFMPEG_INPUT</label>
+<description>Leave this blank to use the auto detected RTSP address, or enter a URL for any type of stream that ffmpeg can use as an input. 
+</description>        
+</parameter>
+
+<parameter name="FFMPEG_LOCATION" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_LOCATION</label>
+<description>The full path including the filename for where you have installed ffmpeg. For windows use this format, c:\ffmpeg\bin\ffmpeg.exe
+</description>
+<default>/usr/bin/ffmpeg</default>
+</parameter>
+
+<parameter name="FFMPEG_OUTPUT" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_OUTPUT</label>
+<description>The full path where ffmpeg has the ability to write files to ending with a slash. For windows use this format, c:\openhabconf\html\ipcamera\
+</description>
+<default>/etc/openhab2/html/tmpfs/</default>
+</parameter>
+
+<parameter name="FFMPEG_HLS_ARG" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_ARG</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used.
+</description>
+<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_wrap 10</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -929,137 +1132,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>1</default>
 </parameter>
 
-<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Image Settings">
 <context>url</context>
 <label>SNAPSHOT_URL_OVERRIDE</label>
 <description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
 </description>  
-</parameter>
-
-<parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
-<label>ONVIF_PORT</label>
-<description>The port your camera uses for ONVIF connections. This is mainly needed for PTZ movement.
-</description>        
-<default>80</default>
-</parameter>
-
-<parameter name="USERNAME" type="text" required="false" groupName="Settings">
-<label>User name for camera.</label>
-<description>Enter the User name used to connect to your camera. Leave blank if your camera does not use login details.
-</description>
-</parameter>
-            
-<parameter name="PASSWORD" type="text" required="false" groupName="Settings">
-<context>password</context>
-<label>Password for camera.</label>
-<description>Enter Password for your camera. Leave blank if your camera does not use login details.
-</description>
-</parameter>
-
-<parameter name="ONVIF_MEDIA_PROFILE" type="integer" required="true" min="0" max="5" groupName="Streaming Setup">
-<label>ONVIF_MEDIA_PROFILE</label>
-<description>Cameras can supply more than one stream at different resolutions and formats. 0 selects the main-stream and 1 or above are the sub-streams. Sometimes you need to turn on sub-streams in the cameras setup before they can be used.
-</description>
-<default>1</default>
-</parameter>
-
-<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
-<label>Time in milliseconds between checking camera states and fetching an Image.</label>
-<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
-</description>
-<default>2000</default>
-</parameter>
-
-</config-description>
-</thing-type>
-
-  <thing-type id="AXIS">
-        <label>"AXIS" IP camera with ONVIF and API support.</label>
-        <description>Use for all current Axis Cameras as they support an API as well as ONVIF.</description>
-        <channels>
-        <channel id="updateImageNow" typeId="updateImageNow"/>
-            <channel id="image" typeId="image"/>            
-            <channel id="pan" typeId="pan"/>
-            <channel id="tilt" typeId="tilt"/>
-            <channel id="zoom" typeId="zoom"/> 
-            <channel id="streamUrl" typeId="streamUrl"/>
-            <channel id="rtspUrl" typeId="rtspUrl"/>
-            <channel id="imageUrl" typeId="imageUrl"/>           
-        </channels>     
-        <config-description>
-        
-<parameter-group name="Image Settings">
-<label>Snapshot/Image Settings</label>
-<description>Settings for the snapshot features.</description>
-<advanced>false</advanced>
-</parameter-group>
-    
-<parameter-group name="Settings">
-<label>Main Settings</label>
-<description>Settings required to connect to the camera.</description>
-<advanced>false</advanced>
-</parameter-group>
-
-<parameter-group name="Streaming Setup">
-<label>Stream Settings</label>
-<description>Settings that setup or effect the video stream.</description>
-<advanced>false</advanced>
-</parameter-group>
-
-<parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
-<context>url</context>
-<label>STREAM_URL_OVERRIDE</label>
-<description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
-</description>        
-</parameter>
-
-<parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
-<label>SERVER_PORT</label>
-<description>The port that will serve the video streams back to Openhab without authentication. It must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
-</description>
-<default>-1</default>
-</parameter>
-
-<parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
-<label>IP_WHITELIST</label>
-<description>Enter any IP's or hostnames that you wish to allow to access the video stream.
-</description>
-<default>(127.0.0.1)</default>        
-</parameter>
-        
-<parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
-<label>Update the Image when:</label>
-<description>
-<![CDATA[
-The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
-]]>
-</description>
-<default>1</default>
-<options>
-<option value="0">Never Update Image (0)</option>
-<option value="1">Always Update Image (1)</option>
-</options>
-</parameter>
-
-<parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
-<context>network-address</context>
-<label>IP Address</label>
-<description>Use this format 192.168.1.2 and do not include the port number.
-</description>        
-</parameter>
-
-<parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">
-<label>The port of the camera that accepts HTTP/S.</label>
-<description>This port will be used for http/https as the binding will not change between the two.
-</description>
-<default>80</default>
-</parameter>
-
-<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
-<context>url</context>
-<label>SNAPSHOT_URL_OVERRIDE</label>
-<description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
-</description>        
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
@@ -1095,8 +1172,9 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>2000</default>
 </parameter>
+
 </config-description>
-</thing-type>
+</thing-type> 
 
   <thing-type id="INSTAR">
         <label>"INSTAR" HD IP camera with ONVIF and API support.</label>
@@ -1112,7 +1190,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="zoom" typeId="zoom"/>
             <channel id="streamUrl" typeId="streamUrl"/>
             <channel id="rtspUrl" typeId="rtspUrl"/>
-            <channel id="imageUrl" typeId="imageUrl"/>     
+            <channel id="imageUrl" typeId="imageUrl"/>
+            <channel id="hlsUrl" typeId="hlsUrl"/>     
         </channels>     
         <config-description>
         
@@ -1139,6 +1218,34 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
 </description>        
+</parameter>
+
+<parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>FFMPEG_INPUT</label>
+<description>Leave this blank to use the auto detected RTSP address, or enter any URL that ffmpeg can use as an input. 
+</description>        
+</parameter>
+
+<parameter name="FFMPEG_LOCATION" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_LOCATION</label>
+<description>The full path including the filename for where you have installed ffmpeg. For windows use this format, c:\ffmpeg\bin\ffmpeg.exe
+</description>
+<default>/usr/bin/ffmpeg</default>
+</parameter>
+
+<parameter name="FFMPEG_OUTPUT" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_OUTPUT</label>
+<description>The full path where ffmpeg has the ability to write files to ending with a slash. For windows use this format, c:\openhabconf\html\ipcamera\
+</description>
+<default>/etc/openhab2/html/tmpfs/</default>
+</parameter>
+
+<parameter name="FFMPEG_HLS_ARG" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_ARG</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used.
+</description>
+<default>-acodec copy -vcodec copy -hls_wrap 10 -hls_flags delete_segments</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -1182,7 +1289,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>80</default>
 </parameter>
 
-<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Settings">
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Image Settings">
 <context>url</context>
 <label>SNAPSHOT_URL_OVERRIDE</label>
 <description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
@@ -1256,8 +1363,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         
         <channel-type id="streamUrl">
         <item-type>String</item-type>
-        <label>Stream URL</label>
+        <label>MJPEG URL</label>
         <description>A link you can use in Openhab/Habpanel to fetch a MJPEG video feed from the camera.</description>
+        <category>Camera</category>
+        <state readOnly="true" />
+        </channel-type>
+        
+        <channel-type id="hlsUrl">
+        <item-type>String</item-type>
+        <label>HLS URL</label>
+        <description>A link you can use in Openhab to cast video feeds.</description>
         <category>Camera</category>
         <state readOnly="true" />
         </channel-type>
