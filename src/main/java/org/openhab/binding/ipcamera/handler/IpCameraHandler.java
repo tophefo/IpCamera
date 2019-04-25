@@ -489,12 +489,11 @@ public class IpCameraHandler extends BaseThingHandler {
     private void setupMjpegStreaming(boolean start, ChannelHandlerContext ctx) {
         if (start) {
             mjpegChannelGroup.add(ctx.channel());
-            if (firstStreamedMsg != null) { // && mjpegChannelGroup.size() > 1) {
-                // TODO: may be able to cast if msg is hacked to have content type "image/jpeg"
-                ctx.channel().writeAndFlush(firstStreamedMsg);
-            }
             if (mjpegChannelGroup.size() == 1) {
                 sendHttpGET(mjpegUri);
+            } else if (firstStreamedMsg != null) {
+                // TODO: may be able to cast if msg is hacked to have content type "image/jpeg"
+                ctx.channel().writeAndFlush(firstStreamedMsg);
             }
         } else {
             mjpegChannelGroup.remove(ctx.channel());
@@ -867,7 +866,7 @@ public class IpCameraHandler extends BaseThingHandler {
             }
         }
 
-        logger.debug("Sending camera {} http://{}:{}{}", httpMethod, ipAddress, port, httpRequestURL);
+        logger.debug("Sending camera {}: http://{}:{}{}", httpMethod, ipAddress, port, httpRequestURL);
         lock.lock();
 
         byte indexInLists = -1;
