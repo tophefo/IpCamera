@@ -31,7 +31,6 @@ public class IpCameraBindingConstants {
     public static final ThingTypeUID THING_TYPE_HTTPONLY = new ThingTypeUID(BINDING_ID, "HTTPONLY");
     public static final ThingTypeUID THING_TYPE_ONVIF = new ThingTypeUID(BINDING_ID, "ONVIF");
     public static final ThingTypeUID THING_TYPE_AMCREST = new ThingTypeUID(BINDING_ID, "AMCREST");
-    public static final ThingTypeUID THING_TYPE_AXIS = new ThingTypeUID(BINDING_ID, "AXIS");
     public static final ThingTypeUID THING_TYPE_FOSCAM = new ThingTypeUID(BINDING_ID, "FOSCAM");
     public static final ThingTypeUID THING_TYPE_HIKVISION = new ThingTypeUID(BINDING_ID, "HIKVISION");
     public static final ThingTypeUID THING_TYPE_INSTAR = new ThingTypeUID(BINDING_ID, "INSTAR");
@@ -57,7 +56,7 @@ public class IpCameraBindingConstants {
     public static final String CONFIG_FFMPEG_LOCATION = "FFMPEG_LOCATION";
     public static final String CONFIG_FFMPEG_INPUT = "FFMPEG_INPUT";
     public static final String CONFIG_FFMPEG_OUTPUT = "FFMPEG_OUTPUT";
-    public static final String CONFIG_FFMPEG_HLS_ARG = "FFMPEG_HLS_ARG";
+    public static final String CONFIG_FFMPEG_HLS_ARGUMENTS = "FFMPEG_HLS_ARGUMENTS";
 
     // List of all Channel ids
     public static final String CHANNEL_UPDATE_IMAGE_NOW = "updateImageNow";

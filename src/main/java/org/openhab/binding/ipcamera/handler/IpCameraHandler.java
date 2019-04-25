@@ -127,7 +127,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
     public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<ThingTypeUID>(
             Arrays.asList(THING_TYPE_ONVIF, THING_TYPE_HTTPONLY, THING_TYPE_AMCREST, THING_TYPE_DAHUA,
-                    THING_TYPE_INSTAR, THING_TYPE_AXIS, THING_TYPE_FOSCAM, THING_TYPE_DOORBIRD, THING_TYPE_HIKVISION));
+                    THING_TYPE_INSTAR, THING_TYPE_FOSCAM, THING_TYPE_DOORBIRD, THING_TYPE_HIKVISION));
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final ScheduledExecutorService cameraConnection = Executors.newSingleThreadScheduledExecutor();
@@ -137,7 +137,6 @@ public class IpCameraHandler extends BaseThingHandler {
     private Configuration config;
     private OnvifDevice onvifCamera;
     Ffmpeg ffmpegHLS = null;
-    Ffmpeg ffmpegMJPEG = null;
     private List<Profile> profiles;
     private String username;
     private String password;
@@ -158,12 +157,8 @@ public class IpCameraHandler extends BaseThingHandler {
     public ArrayList<Byte> listOfChStatus = new ArrayList<Byte>(18);
     private ArrayList<String> listOfReplies = new ArrayList<String>(18);
     public ReentrantLock lock = new ReentrantLock();
-    // Not connected to the above lists which need to stay in sync
-    // public ArrayList<ChannelHandlerContext> listOfStreams = new ArrayList<ChannelHandlerContext>(5);
     // ChannelGroup is thread safe
     final ChannelGroup mjpegChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
-    // final ChannelGroup ffmpegChannelTracker = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
-    // int ffmpegChannelTracker = 0;
     // basicAuth MUST remain private as it holds the password
     private String basicAuth = null;
     public boolean useDigestAuth = false;
@@ -523,7 +518,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             : config.get(CONFIG_FFMPEG_INPUT).toString();
 
                     ffmpegHLS = new Ffmpeg(config.get(CONFIG_FFMPEG_LOCATION).toString(), ffmpegInput,
-                            config.get(CONFIG_FFMPEG_HLS_ARG).toString(),
+                            config.get(CONFIG_FFMPEG_HLS_ARGUMENTS).toString(),
                             config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8",
                             config.get(CONFIG_USERNAME).toString(), config.get(CONFIG_PASSWORD).toString());
                 }
@@ -561,6 +556,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         } else if (httpRequest.uri().contains("/ipcamera.m3u8")) {
                             startFfmpeg("HLS");
                             ffmpegHLS.setKeepAlive();// start must come first
+
                             String uri = httpRequest.uri();
                             File file = new File(config.get(CONFIG_FFMPEG_OUTPUT).toString() + uri);
                             // logger.info("File is:{}", file.toString());
@@ -708,6 +704,10 @@ public class IpCameraHandler extends BaseThingHandler {
                 streamRunning = new StreamRunning();
                 logger.info("Starting ffmpeg with this command now:{}", ffmpegCommand);
                 streamRunning.start();
+                try {
+                    Thread.sleep(4000);
+                } catch (InterruptedException e) {
+                }
             }
         }
 
@@ -2746,6 +2746,7 @@ public class IpCameraHandler extends BaseThingHandler {
         if (ffmpegHLS != null) {
             ffmpegHLS.stopConverting();
             ffmpegHLS.ffmpegCommand = null;
+            ffmpegHLS = null;
         }
 
         useDigestAuth = false;

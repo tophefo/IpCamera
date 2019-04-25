@@ -96,11 +96,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>/etc/openhab2/html/tmpfs/</default>
 </parameter>
 
-<parameter name="FFMPEG_HLS_ARG" type="text" required="false" groupName="Streaming Setup">
-<label>FFMPEG_HLS_ARG</label>
+<parameter name="FFMPEG_HLS_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-acodec copy -vcodec copy -hls_wrap 10 -hls_flags delete_segments</default>
+<default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -215,11 +215,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>/etc/openhab2/html/tmpfs/</default>
 </parameter>
 
-<parameter name="FFMPEG_HLS_ARG" type="text" required="false" groupName="Streaming Setup">
-<label>FFMPEG_HLS_ARG</label>
+<parameter name="FFMPEG_HLS_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-acodec copy -vcodec copy -hls_wrap 10 -hls_flags delete_segments</default>
+<default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -363,11 +363,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>/etc/openhab2/html/tmpfs/</default>
 </parameter>
 
-<parameter name="FFMPEG_HLS_ARG" type="text" required="false" groupName="Streaming Setup">
-<label>FFMPEG_HLS_ARG</label>
+<parameter name="FFMPEG_HLS_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-acodec copy -vcodec copy -hls_wrap 10 -hls_flags delete_segments</default>
+<default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -551,11 +551,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>/etc/openhab2/html/tmpfs/</default>
 </parameter>
 
-<parameter name="FFMPEG_HLS_ARG" type="text" required="false" groupName="Streaming Setup">
-<label>FFMPEG_HLS_ARG</label>
+<parameter name="FFMPEG_HLS_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-acodec copy -vcodec copy -hls_wrap 10 -hls_flags delete_segments</default>
+<default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -720,11 +720,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>/etc/openhab2/html/tmpfs/</default>
 </parameter>
 
-<parameter name="FFMPEG_HLS_ARG" type="text" required="false" groupName="Streaming Setup">
-<label>FFMPEG_HLS_ARG</label>
+<parameter name="FFMPEG_HLS_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-acodec copy -vcodec copy -hls_wrap 10 -hls_flags delete_segments</default>
+<default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -883,11 +883,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>/etc/openhab2/html/tmpfs/</default>
 </parameter>
 
-<parameter name="FFMPEG_HLS_ARG" type="text" required="false" groupName="Streaming Setup">
-<label>FFMPEG_HLS_ARG</label>
+<parameter name="FFMPEG_HLS_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-acodec copy -vcodec copy -hls_wrap 10 -hls_flags delete_segments</default>
+<default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -1071,11 +1071,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>/etc/openhab2/html/tmpfs/</default>
 </parameter>
 
-<parameter name="FFMPEG_HLS_ARG" type="text" required="false" groupName="Streaming Setup">
-<label>FFMPEG_HLS_ARG</label>
+<parameter name="FFMPEG_HLS_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_wrap 10</default>
+<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -1241,11 +1241,11 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>/etc/openhab2/html/tmpfs/</default>
 </parameter>
 
-<parameter name="FFMPEG_HLS_ARG" type="text" required="false" groupName="Streaming Setup">
-<label>FFMPEG_HLS_ARG</label>
+<parameter name="FFMPEG_HLS_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-acodec copy -vcodec copy -hls_wrap 10 -hls_flags delete_segments</default>
+<default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
