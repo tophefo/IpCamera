@@ -96,8 +96,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>/etc/openhab2/html/tmpfs/</default>
 </parameter>
 
-<parameter name="FFMPEG_HLS_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
-<label>FFMPEG_HLS_ARGUMENTS</label>
+<parameter name="FFMPEG_HLS_OUT_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
 <default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
@@ -215,8 +215,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>/etc/openhab2/html/tmpfs/</default>
 </parameter>
 
-<parameter name="FFMPEG_HLS_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
-<label>FFMPEG_HLS_ARGUMENTS</label>
+<parameter name="FFMPEG_HLS_OUT_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
 <default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
@@ -363,8 +363,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>/etc/openhab2/html/tmpfs/</default>
 </parameter>
 
-<parameter name="FFMPEG_HLS_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
-<label>FFMPEG_HLS_ARGUMENTS</label>
+<parameter name="FFMPEG_HLS_OUT_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
 <default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
@@ -551,8 +551,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>/etc/openhab2/html/tmpfs/</default>
 </parameter>
 
-<parameter name="FFMPEG_HLS_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
-<label>FFMPEG_HLS_ARGUMENTS</label>
+<parameter name="FFMPEG_HLS_OUT_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
 <default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
@@ -720,8 +720,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>/etc/openhab2/html/tmpfs/</default>
 </parameter>
 
-<parameter name="FFMPEG_HLS_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
-<label>FFMPEG_HLS_ARGUMENTS</label>
+<parameter name="FFMPEG_HLS_OUT_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
 <default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
@@ -883,8 +883,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>/etc/openhab2/html/tmpfs/</default>
 </parameter>
 
-<parameter name="FFMPEG_HLS_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
-<label>FFMPEG_HLS_ARGUMENTS</label>
+<parameter name="FFMPEG_HLS_OUT_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
 <default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
@@ -1071,8 +1071,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>/etc/openhab2/html/tmpfs/</default>
 </parameter>
 
-<parameter name="FFMPEG_HLS_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
-<label>FFMPEG_HLS_ARGUMENTS</label>
+<parameter name="FFMPEG_HLS_OUT_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
 <default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
@@ -1241,8 +1241,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>/etc/openhab2/html/tmpfs/</default>
 </parameter>
 
-<parameter name="FFMPEG_HLS_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
-<label>FFMPEG_HLS_ARGUMENTS</label>
+<parameter name="FFMPEG_HLS_OUT_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
 <default>-acodec copy -vcodec copy -hls_flags delete_segments</default>

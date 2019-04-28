@@ -10,20 +10,11 @@
 	<artifactId>org.openhab.binding.ipcamera</artifactId>
 	<name>IpCamera Binding</name>
 	<packaging>eclipse-plugin</packaging>
-		
 <dependencies>	
 <dependency>
     <groupId>io.netty</groupId>
     <artifactId>netty-all</artifactId>
-    <version>4.1.34.Final</version>
+    <version>4.1.35.Final</version>
 </dependency>
-
-<!-- https://mvnrepository.com/artifact/com.github.kokorin.jaffree/jaffree -->
-<dependency>
-    <groupId>com.github.kokorin.jaffree</groupId>
-    <artifactId>jaffree</artifactId>
-    <version>0.8.3</version>
-</dependency>
-
 </dependencies>
 </project>

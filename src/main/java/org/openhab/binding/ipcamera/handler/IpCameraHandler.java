@@ -203,7 +203,6 @@ public class IpCameraHandler extends BaseThingHandler {
     // false clears the stored hash of the user/pass
     // true creates the hash
     public void setBasicAuth(boolean useBasic) {
-
         if (useBasic == false) {
             logger.debug("Removing BASIC auth now and making it NULL.");
             basicAuth = null;
@@ -351,12 +350,6 @@ public class IpCameraHandler extends BaseThingHandler {
                         Channel chan = listOfChannels.get(index);
                         chan.close();
                         // Handlers may get shutdown by Openhab if total delay >5 secs so we can not wait.
-                    case -1: // closed already
-                        // listOfRequests.remove(index);
-                        // listOfChStatus.remove(index);
-                        // listOfChannels.remove(index);
-                        // listOfReplies.remove(index);
-                        // index--;
                         break;
                 }
             }
@@ -501,16 +494,14 @@ public class IpCameraHandler extends BaseThingHandler {
 
     public void stream(Object msg) {
         try {
-            for (Channel ch : mjpegChannelGroup) {
-                ReferenceCountUtil.retain(msg, 1);
-                ch.writeAndFlush(msg);
-            }
+            ReferenceCountUtil.retain(msg, 1);
+            mjpegChannelGroup.writeAndFlush(msg);
         } finally {
             ReferenceCountUtil.release(msg);
         }
     }
 
-    public void startFfmpeg(String format) {
+    public void setupFfmpegFormat(String format) {
         switch (format) {
             case "HLS":
                 if (ffmpegHLS == null) {
@@ -518,7 +509,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             : config.get(CONFIG_FFMPEG_INPUT).toString();
 
                     ffmpegHLS = new Ffmpeg(config.get(CONFIG_FFMPEG_LOCATION).toString(), ffmpegInput,
-                            config.get(CONFIG_FFMPEG_HLS_ARGUMENTS).toString(),
+                            config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
                             config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8",
                             config.get(CONFIG_USERNAME).toString(), config.get(CONFIG_PASSWORD).toString());
                 }
@@ -538,6 +529,7 @@ public class IpCameraHandler extends BaseThingHandler {
             try {
                 if (msg instanceof HttpRequest) {
                     HttpRequest httpRequest = (HttpRequest) msg;
+                    logger.debug("{}", msg);
                     logger.debug("Stream Server recieved request \t{}:{}", httpRequest.method(), httpRequest.uri());
                     String requestIP = "("
                             + ((InetSocketAddress) ctx.channel().remoteAddress()).getAddress().getHostAddress() + ")";
@@ -554,8 +546,8 @@ public class IpCameraHandler extends BaseThingHandler {
                                         "MJPEG stream was told to start and there is no STREAM_URL_OVERRIDE supplied.");
                             }
                         } else if (httpRequest.uri().contains("/ipcamera.m3u8")) {
-                            startFfmpeg("HLS");
-                            ffmpegHLS.setKeepAlive();// start must come first
+                            setupFfmpegFormat("HLS");
+                            ffmpegHLS.setKeepAlive();// setup must come first
 
                             String uri = httpRequest.uri();
                             File file = new File(config.get(CONFIG_FFMPEG_OUTPUT).toString() + uri);
@@ -631,16 +623,16 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     class Ffmpeg {
-        Process process = null;
-        ProcessBuilder processBuilder;
-        String location, input, arguments, output;
-        String ffmpegCommand, password, username;
-        StreamRunning streamRunning = new StreamRunning();
+        private Process process = null;
+        private String location, input, arguments, output;
+        private String ffmpegCommand, password, username;
+        private String[] commandArray = null;
+        private StreamRunning streamRunning = new StreamRunning();
         private int keepAlive = 0;
 
         public void setKeepAlive() {
-            // reset to 30 seconds
-            keepAlive = 30 / (Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()) / 1000);
+            // reset to Keep alive ffmpeg for another 60 seconds
+            keepAlive = 60 / (Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()) / 1000);
         }
 
         public int getKeepAlive() {
@@ -659,12 +651,13 @@ public class IpCameraHandler extends BaseThingHandler {
             this.output = output;
             this.username = username;
             this.password = password;
+            buildFfmpegCommand();
         }
 
         private void buildFfmpegCommand() {
             if (input == null) {
                 logger.error(
-                        "Camera did not know its RTSP url, please use RTSP_URL_OVERRIDE to specify a working http or rtsp url.");
+                        "Camera did not know its RTSP url, please use FFMPEG_INPUT to specify a working http or rtsp url.");
                 return;
             } else {
                 if (password != null && !input.contains("@")) {
@@ -674,6 +667,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
             }
             ffmpegCommand = location + " -i " + input + " " + arguments + " " + output;
+            commandArray = ffmpegCommand.trim().split("\\s+");
         }
 
         private class StreamRunning extends Thread {
@@ -681,7 +675,6 @@ public class IpCameraHandler extends BaseThingHandler {
             @Override
             public void run() {
                 try {
-                    String[] commandArray = ffmpegCommand.trim().split("\\s+");
                     process = Runtime.getRuntime().exec(commandArray);
                     InputStream errorStream = process.getErrorStream();
                     InputStreamReader errorStreamReader = new InputStreamReader(errorStream);
@@ -697,12 +690,10 @@ public class IpCameraHandler extends BaseThingHandler {
         }
 
         public void startConverting() {
-            if (ffmpegCommand == null) {
-                buildFfmpegCommand();
-            }
             if (!streamRunning.isAlive()) {
                 streamRunning = new StreamRunning();
                 logger.info("Starting ffmpeg with this command now:{}", ffmpegCommand);
+                setKeepAlive();
                 streamRunning.start();
                 try {
                     Thread.sleep(4000);
@@ -713,7 +704,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
         public void stopConverting() {
             if (streamRunning.isAlive()) {
-                logger.info("!!!!! Stopping ffmpeg now. !!!!!");
+                logger.info("!!!!! Stopping ffmpeg now !!!!!");
                 process.destroy();
                 if (process.isAlive()) {
                     process.destroyForcibly();
@@ -2699,7 +2690,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     snapshotUri = "http://" + ipAddress + "/bha-api/image.cgi";
                     break;
                 case "HIKVISION":
-                    snapshotUri = "http://" + ipAddress + "/ISAPI/Streaming/channels/" + nvrChannel + "01/picture";
+                    snapshotUri = "http://" + ipAddress + "/Streaming/channels/" + nvrChannel + "01/picture";
                     break;
                 case "FOSCAM":
                     snapshotUri = "http://" + ipAddress + "/cgi-bin/CGIProxy.fcgi?usr=" + username + "&pwd=" + password
@@ -2711,7 +2702,7 @@ public class IpCameraHandler extends BaseThingHandler {
         if (mjpegUri == null) {
             switch (thing.getThingTypeUID().getId()) {
                 case "HIKVISION":
-                    mjpegUri = "/ISAPI/Streaming/channels/" + nvrChannel + "02" + "/httppreview";
+                    mjpegUri = "/Streaming/channels/" + nvrChannel + "02" + "/httppreview";
                     break;
                 case "AMCREST":
                 case "DAHUA":
@@ -2724,6 +2715,8 @@ public class IpCameraHandler extends BaseThingHandler {
                     mjpegUri = "/cgi-bin/CGIStream.cgi?cmd=GetMJStream&usr=" + username + "&pwd=" + password;
                     break;
             }
+        } else {
+            mjpegUri = getCorrectUrlFormat(mjpegUri);
         }
 
         cameraConnectionJob = cameraConnection.schedule(pollingCameraConnection, 1, TimeUnit.SECONDS);
@@ -2745,7 +2738,6 @@ public class IpCameraHandler extends BaseThingHandler {
         }
         if (ffmpegHLS != null) {
             ffmpegHLS.stopConverting();
-            ffmpegHLS.ffmpegCommand = null;
             ffmpegHLS = null;
         }
 

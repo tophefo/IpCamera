@@ -56,7 +56,7 @@ public class IpCameraBindingConstants {
     public static final String CONFIG_FFMPEG_LOCATION = "FFMPEG_LOCATION";
     public static final String CONFIG_FFMPEG_INPUT = "FFMPEG_INPUT";
     public static final String CONFIG_FFMPEG_OUTPUT = "FFMPEG_OUTPUT";
-    public static final String CONFIG_FFMPEG_HLS_ARGUMENTS = "FFMPEG_HLS_ARGUMENTS";
+    public static final String CONFIG_FFMPEG_HLS_OUT_ARGUMENTS = "FFMPEG_HLS_OUT_ARGUMENTS";
 
     // List of all Channel ids
     public static final String CHANNEL_UPDATE_IMAGE_NOW = "updateImageNow";
