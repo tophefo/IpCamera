@@ -509,11 +509,12 @@ public class IpCameraHandler extends BaseThingHandler {
                     String ffmpegInput = (config.get(CONFIG_FFMPEG_INPUT) == null) ? rtspUri
                             : config.get(CONFIG_FFMPEG_INPUT).toString();
 
-                    ffmpegHLS = new Ffmpeg(config.get(CONFIG_FFMPEG_LOCATION).toString(), null, ffmpegInput,
+                    ffmpegHLS = new Ffmpeg(config.get(CONFIG_FFMPEG_LOCATION).toString(), "", ffmpegInput,
                             config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
                             config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8",
                             config.get(CONFIG_USERNAME).toString(), config.get(CONFIG_PASSWORD).toString());
                 }
+                ffmpegHLS.setFormat(format);
                 ffmpegHLS.startConverting();
                 break;
             case "GIF":
@@ -526,6 +527,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.gif",
                             config.get(CONFIG_USERNAME).toString(), config.get(CONFIG_PASSWORD).toString());
                 }
+                ffmpegGIF.setFormat(format);
                 ffmpegGIF.startConverting();
                 break;
         }
@@ -542,7 +544,7 @@ public class IpCameraHandler extends BaseThingHandler {
             try {
                 if (msg instanceof HttpRequest) {
                     HttpRequest httpRequest = (HttpRequest) msg;
-                    logger.debug("{}", msg);
+                    // logger.debug("{}", msg);
                     logger.debug("Stream Server recieved request \t{}:{}", httpRequest.method(), httpRequest.uri());
                     String requestIP = "("
                             + ((InetSocketAddress) ctx.channel().remoteAddress()).getAddress().getHostAddress() + ")";
@@ -638,7 +640,7 @@ public class IpCameraHandler extends BaseThingHandler {
     class Ffmpeg {
         private Process process = null;
         private String location, inArguments, input, outArguments, output;
-        private String ffmpegCommand, password, username;
+        private String ffmpegCommand, format, password, username;
         private String[] commandArray = null;
         private StreamRunning streamRunning = new StreamRunning();
         private int keepAlive = 0;
@@ -646,6 +648,10 @@ public class IpCameraHandler extends BaseThingHandler {
         public void setKeepAlive() {
             // reset to Keep alive ffmpeg for another 60 seconds
             keepAlive = 60 / (Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()) / 1000);
+        }
+
+        public void setFormat(String format) {
+            this.format = format;
         }
 
         public int getKeepAlive() {
@@ -701,8 +707,10 @@ public class IpCameraHandler extends BaseThingHandler {
                 } catch (IOException e) {
                     logger.error(e.toString());
                 } finally {
-                    updateState(CHANNEL_UPDATE_GIF, OnOffType.valueOf("OFF"));
-                    logger.info("Animated GIF has been created and is ready for use.");
+                    if ("GIF".contentEquals(format)) {
+                        updateState(CHANNEL_UPDATE_GIF, OnOffType.valueOf("OFF"));
+                        logger.debug("Animated GIF has been created and is ready for use.");
+                    }
                 }
             }
         }
