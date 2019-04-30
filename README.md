@@ -1,6 +1,6 @@
 # <bindingName> Binding
 
-This binding allows you to use an IP cameras in Openhab 2. If the brand of camera does not have a full API then the camera will only fetch a picture/stream and will not have any support for alarms, or any of the other cool features that the binding has implemented. Each brand that does have an API will have different features, as each API is different and hence the support in this binding will also differ. Choose your camera wisely by looking at what the APIs allow you to do or ask in the forum what cameras can perform the task you are after. 
+This binding allows you to use IP cameras in Openhab 2. If the brand of camera does not have a full API then the camera will only fetch a picture/stream and will not have any support for alarms, or any of the other advanced features that the binding has implemented. Each brand that does have an API will have different features, as each brands API is different and hence the support in this binding will differ between brands. Choose your camera wisely by looking at what the APIs allow you to do or ask in the forum what cameras can perform the task you are after. 
 
 In Alphabetical order the brands that are known to have an API are:
 
@@ -65,9 +65,9 @@ Auto discovery is not supported currently and I would love a PR if someone has e
 
 The binding can be configured with PaperUI by clicking on the pencil icon of any of the cameras that you have manually added via the PaperUI inbox by pressing on the PLUS (+) icon. 
 
-It can also be manually configured with text files by doing the following. DO NOT try and change a setting using PaperUI after using textual configuration as the two will conflict as the text file locks the settings preventing them from changing. Because the binding is changing so much at the moment I would recommend you use textual configuration, as each time Openhab restarts it removes and adds the camera so you automatically gain any extra channels that I add. If using PaperUI, each time I add a new channel you need to remove and re-add the camera which then gives it a new UID number (Unique ID number), which in turn can break your sitemap and HABPanel setups. Textual configuration has its advantages and locks the camera to use a simple UID.
+It can also be manually configured with text files by doing the following. DO NOT try and change a setting using PaperUI after using textual configuration as the two will conflict as the text file locks the settings preventing them from changing. Because the binding is changing so much at the moment I would recommend you use textual configuration, as each time Openhab restarts it removes and adds the camera so you automatically gain any extra channels or config abilities that I add. If using PaperUI, each time I add a new channel you need to remove and re-add the camera which then gives it a new UID number (Unique ID number), which in turn can break your sitemap and HABPanel setups. Textual configuration has its advantages and locks the camera to use a simple UID.
 
-The parameters that can be used in textual configuration are:
+The configuration parameters that can be used in textual configuration are:
 
 ```
 
@@ -107,7 +107,10 @@ FFMPEG_OUTPUT
 
 FFMPEG_HLS_OUT_ARGUMENTS
 
+FFMPEG_GIF_OUT_ARGUMENTS
+
 IP_WHITELIST
+
 
 ```
 
@@ -116,13 +119,13 @@ Create a file called 'ipcamera.things' and save it to your things folder. Inside
 
 
 ```
-Thing ipcamera:DAHUA:001 [IPADDRESS="192.168.1.5", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000]
+Thing ipcamera:DAHUA:001 [IPADDRESS="192.168.1.5", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000, SERVER_PORT=50001, FFMPEG_OUTPUT="/tmp/camera1/"]
 
-Thing ipcamera:HIKVISION:002 [IPADDRESS="192.168.1.6", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000]
+Thing ipcamera:HIKVISION:002 [IPADDRESS="192.168.1.6", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000, SERVER_PORT=50002, FFMPEG_OUTPUT="/tmp/camera2/"]
 
-Thing ipcamera:ONVIF:003 [ IPADDRESS="192.168.1.21", PASSWORD="suitcase123456", USERNAME="admin", ONVIF_PORT=80, PORT=80, POLL_CAMERA_MS=2000]
+Thing ipcamera:ONVIF:003 [ IPADDRESS="192.168.1.21", PASSWORD="suitcase123456", USERNAME="admin", ONVIF_PORT=80, PORT=80, SERVER_PORT=50003, POLL_CAMERA_MS=2000, FFMPEG_OUTPUT="/tmp/camera3/"]
 
-Thing ipcamera:HTTPONLY:004 [ IPADDRESS="192.168.1.22", PASSWORD="suitcase123456", USERNAME="admin", SNAPSHOT_URL_OVERRIDE="http://192.168.1.22/cgi-bin/CGIProxy.fcgi?cmd=snapPicture2&usr=admin&pwd=suitcase123456", PORT=80, POLL_CAMERA_MS=2000]
+Thing ipcamera:HTTPONLY:004 [ IPADDRESS="192.168.1.22", PASSWORD="suitcase123456", USERNAME="admin", SNAPSHOT_URL_OVERRIDE="http://192.168.1.22/cgi-bin/CGIProxy.fcgi?cmd=snapPicture2&usr=admin&pwd=suitcase123456", PORT=80, SERVER_PORT=50004, POLL_CAMERA_MS=2000, FFMPEG_INPUT="rtsp://192.168.1.22:554/cam/realmonitor?channel=1&subtype=0", FFMPEG_OUTPUT="/tmp/camera4/"]
 
 ```
 
@@ -141,15 +144,15 @@ UID: Can be made up but it must be UNIQUE, hence why it is called uniqueID. If y
 
 **IMAGE_UPDATE_EVENTS**
 
-If you look in PaperUI you will notice the numbers are in brackets after each option, remember the number that represents the option you wish to use and enter this into the thing file which is described above.
+If you look in PaperUI you will notice that there are numbers in brackets after each option. These numbers represents the number for textual config that you can enter into the thing file which is described above. Cameras with supported alarms have more options compared to generic cameras.
 
 ## Channels
 
-See PaperUI for a full list of channels and the descriptions. Each camera brand will have different channels depending on how much of the support for an API has been added. The channels are kept consistent as much as possible from brand to brand to make upgrading to a different branded camera easier and help when sharing rules with other users.
+See PaperUI for a full list of channels and the descriptions. Each camera brand will have different channels depending on how much of the support for an API has been added. The channels are kept consistent as much as possible from brand to brand to make upgrading to a different branded camera easier and to help when sharing rules with other users.
 
 ## API Access Channel
 
-A special String channel has been added that allows you to send any GET request to Dahua cameras only due to the HTTP binding not supporting the DIGEST method that these cameras must use in the latest firmwares. For other brands you can use the HTTP binding. It is far better to add or request a feature gets added to the binding so that all future users benefit.
+A special String channel has been added that allows you to send any GET request to Dahua cameras only. This is due to the HTTP binding currently not supporting the DIGEST method that these cameras must use in the latest firmwares. For other brands you can use the HTTP binding should a feature not have direct support in this binding. It is far better to add or request a feature so that it gets added to the binding so that all future users benefit.
 
 The reply from the camera is not captured nor returned, so this is only a 1 way GET request.
 To use this feature you can simply use this command inside any rule at any time and with as many url Strings as you wish.
@@ -167,7 +170,7 @@ Command to use in rules:
 CamAPIAccess.sendCommand('/cgi-bin/configManager.cgi?action=setConfig&Lighting[0][0].Mode=Off')
 ```
 
-The URL must be in this format without the IP:Port info and the binding will handle the user and password for you making it far simpler to change a password on a camera.
+The URL must be in this format without the IP:Port info and the binding will handle the user and password for you making it far simpler to change a password on a camera without the need to update countless lines in your Openhab files.
 
 ## Full Example
 
@@ -183,9 +186,9 @@ NOTE: If you used paperUI to create the camera thing instead of textual config, 
 
 ```
 
-Thing ipcamera:DAHUA:001 [IPADDRESS="192.168.1.5", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000]
+Thing ipcamera:DAHUA:001 [IPADDRESS="192.168.1.5", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000, SERVER_PORT=50001, FFMPEG_OUTPUT="/tmp/camera1/"]
 
-Thing ipcamera:HIKVISION:002 [IPADDRESS="192.168.1.6", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000]
+Thing ipcamera:HIKVISION:002 [IPADDRESS="192.168.1.6", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000, SERVER_PORT=50002, FFMPEG_OUTPUT="/tmp/camera2/"]
 
 ```
 
@@ -197,6 +200,7 @@ Thing ipcamera:HIKVISION:002 [IPADDRESS="192.168.1.6", PASSWORD="suitcase123456"
 
 Image BabyCamImage { channel="ipcamera:DAHUA:001:image" }
 Switch BabyCamUpdateImage "Get new picture" { channel="ipcamera:DAHUA:001:updateImageNow" }
+Switch BabyCamCreateGif "Create animated GIF" { channel="ipcamera:DAHUA:001:updateGif" }
 Number BabyCamDirection "Camera Direction"
 Dimmer BabyCamPan "Pan [%d] left/right" { channel="ipcamera:DAHUA:001:pan" }
 Dimmer BabyCamTilt "Tilt [%d] up/down" { channel="ipcamera:DAHUA:001:tilt" }
@@ -301,39 +305,57 @@ For the above notifications to work you will need to setup multiple users with t
 ## How to get working video streams
 
 DISCLAIMER:
-Unlike the snapshots, the streaming features work by allowing restricted access to the video stream with no user/password, do not enable it if you do not understand how to keep your internal network secure. It is disabled by default.
+Unlike the snapshots, the streaming server works by allowing access to the video streams with no user/password for requests that come from an IP address in the white list. Requests from outside IP's or internal requests not on the whitelist will fail to get any answer. If you do not understand how to keep your internal network secure it would be best to keep this disabled which is the default setting.
 
-Cameras with h264 format streams can create HLS streams which can be used to stream to Chromecasts and also display in browsers that support this format using the webview or Habpanel items.
+There are now multiple ways to get a moving picture:
++ Animated GIF
++ HLS Http Live Streaming which uses h264
++ MJPEG which uses multiple jpeg files to create what is called MOTION JPEG
 
-Cameras that also have MJPEG format abilities and also an API can stream to Openhab with the MJPEG format. The main cameras that can do this are Amcrest, Dahua, Hikvision and Foscam HD. If your camera can not do MJPEG you can use this method to turn a h.264 stream into MJPEG steam.
+Cameras with h264 format streams can have this copied into HLS format which can be used to stream to Chromecasts and also display in browsers that support this format using the webview or Habpanel items. Apple devices have excellent support for HLS due to the standard being invented by Apple.
+
+Cameras that have MJPEG abilities and also an API can stream to Openhab with the MJPEG format. The main cameras that can do this are Amcrest, Dahua, Hikvision and Foscam HD. If your camera can not do MJPEG you can use this method to turn a h.264 stream into MJPEG steam.
 
 <https://community.openhab.org/t/how-to-display-rtsp-streams-from-ip-cameras-in-openhab-and-habpanel-linux-only/69021>
 
-Alternatively you can use 3rd party software running on a server to do the conversion as this takes a lot of CPU power to handle the conversion.
+Alternatively you can use 3rd party software running on a server to do the conversion as this takes a lot of CPU power to handle the conversion. You can run the opensource motion software on a raspberry Pi with this project.
+<https://github.com/ccrisan/motioneyeos/wiki>
 
 
 
 To use the new steaming features, you need to:
-1. Set a valid ``SERVER_PORT`` as the default value of -1 will turn the new features off.
+1. Set a valid ``SERVER_PORT`` as the default value of -1 will turn the features off.
 2. Add any IPs that need access to the ``IP_WHITELIST`` surrounding each one in brackets (see below example). Internal IPs will trigger a warning in the logs if they are not in the whitelist, however external IPs or localhost will not trigger a warning in the logs as they are completely ignored and the binding will refuse to connect to them. 
-3. For cameras that do not auto detect the url for mjpeg streams, you need to enter a working url for ``STREAM_URL_OVERRIDE`` This can be skipped for Amcrest, Dahua, Hikvision and Foscam HD.
-4. You need to enter your cameras setup and ensure one of the streams is set to use MJPEG format and not mp4 encoding. You can leave the mainstream as mp4/h.264/h.265 and only turn MJPEG on for one of the substreams.
-5. For some brands the ``ONVIF_MEDIA_PROFILE`` needs to match the stream number you have setup in the last step. 0 is the main-stream, and 1 onwards are the sub-streams. A warning will help guide you with this in the openhab.log if ONVIF is setup.
+3. For cameras that do not auto detect the url for mjpeg streams, you need to enter a working url for ``STREAM_URL_OVERRIDE`` This can be skipped for Amcrest, Dahua, Doorbird, Hikvision and Foscam HD.
+4. For cameras that do not auto detect the H264 stream which is done for ONVIF cameras, you will need to use the ``FFMPEG_INPUT`` and provide a http or rtsp link. This is used for the HLS and animated GIF features.
+5. You need to enter your cameras setup and ensure one of the streams is set to use MJPEG format and not mp4 encoding. You can leave the mainstream as mp4/h.264/h.265 and only turn MJPEG on for one of the substreams.
+6. For most brands the ``ONVIF_MEDIA_PROFILE`` needs to match the stream number you have setup for h264. This is usually 0 and is the main-stream, the higher numbers are the sub-streams. The DEBUG log output will help guide you with this in the openhab.log if ONVIF is setup correctly.
 
 
-Example thing file for a Dahua camera that turns off snapshots and enables streaming instead.... 
-
-```
-Thing ipcamera:DAHUA:001 [IPADDRESS="192.168.1.2", PASSWORD="password", USERNAME="foo", POLL_CAMERA_MS=2000, SERVER_PORT=54321, IP_WHITELIST="(192.168.1.120)(192.168.1.33)(192.168.1.74)", IMAGE_UPDATE_EVENTS=0]
+Example thing file for a Dahua camera that turns off snapshots (not necessary as it can do both) and enables streaming instead.... 
 
 ```
+Thing ipcamera:DAHUA:001 [IPADDRESS="192.168.1.2", PASSWORD="password", USERNAME="foo", POLL_CAMERA_MS=2000, SERVER_PORT=54321, IP_WHITELIST="(192.168.1.120)(192.168.1.33)(192.168.1.74)", IMAGE_UPDATE_EVENTS=0, FFMPEG_OUTPUT="/tmp/camera1/", FFMPEG_INPUT="rtsp://192.168.1.22:554/cam/realmonitor?channel=1&subtype=0"]
 
-Sitemap examples:
 
 ```
-Text label="Video Stream" icon="camera"{Video url="http://192.168.1.120:54321/ipcamera.mjpeg" encoding="mjpeg"}
 
-Text label="Webview Stream" icon="camera"{Webview url="http://192.168.1.120:54321/ipcamera.mjpeg" height=15}
+Sitemap examples: (Note the IP is for your Openhab server not the camera)
+
+```
+Text label="Android Stream" icon="camera"{Video url="http://192.168.1.9:54321/ipcamera.mjpeg" encoding="mjpeg"}
+Text label="iOS Stream" icon="camera"{Webview url="http://192.168.1.9:54321/ipcamera.m3u8" height=15}           
+
+```
+
+
+## How to use the animated GIF feature
+
+The cameras have a channel called updateGif and when this switch is turned 'ON' the binding will create an animated GIF called ipcamera.gif in the ffmpeg output folder. Once the file is created the switch will turn 'OFF' and this can be used in rules to then be sent via email, pushover or telegram messages. The switch can be turned on with a rule triggered by an external PIR sensor or the cameras own motion alarms, the choice and logic can be created by yourself.
+
+
+```
+Switch BabyCamCreateGif "Create animated GIF" { channel="ipcamera:DAHUA:BabyCamera:updateGif" }
 
 ```
 

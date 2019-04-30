@@ -57,9 +57,11 @@ public class IpCameraBindingConstants {
     public static final String CONFIG_FFMPEG_INPUT = "FFMPEG_INPUT";
     public static final String CONFIG_FFMPEG_OUTPUT = "FFMPEG_OUTPUT";
     public static final String CONFIG_FFMPEG_HLS_OUT_ARGUMENTS = "FFMPEG_HLS_OUT_ARGUMENTS";
+    public static final String CONFIG_FFMPEG_GIF_OUT_ARGUMENTS = "FFMPEG_GIF_OUT_ARGUMENTS";
 
     // List of all Channel ids
     public static final String CHANNEL_UPDATE_IMAGE_NOW = "updateImageNow";
+    public static final String CHANNEL_UPDATE_GIF = "updateGif";
     public static final String CHANNEL_IMAGE = "image";
     public static final String CHANNEL_RTSP_URL = "rtspUrl";
     public static final String CHANNEL_IMAGE_URL = "imageUrl";
@@ -92,4 +94,5 @@ public class IpCameraBindingConstants {
     public static final String CHANNEL_API_ACCESS = "apiAccess";
     public static final String CHANNEL_EXTERNAL_LIGHT = "externalLight";
     public static final String CHANNEL_DOORBELL = "doorBell";
+    public static final String CHANNEL_LAST_MOTION_TYPE = "lastMotionType";
 }

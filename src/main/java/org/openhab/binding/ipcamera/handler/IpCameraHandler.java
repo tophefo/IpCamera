@@ -137,6 +137,7 @@ public class IpCameraHandler extends BaseThingHandler {
     private Configuration config;
     private OnvifDevice onvifCamera;
     Ffmpeg ffmpegHLS = null;
+    Ffmpeg ffmpegGIF = null;
     private List<Profile> profiles;
     private String username;
     private String password;
@@ -508,12 +509,24 @@ public class IpCameraHandler extends BaseThingHandler {
                     String ffmpegInput = (config.get(CONFIG_FFMPEG_INPUT) == null) ? rtspUri
                             : config.get(CONFIG_FFMPEG_INPUT).toString();
 
-                    ffmpegHLS = new Ffmpeg(config.get(CONFIG_FFMPEG_LOCATION).toString(), ffmpegInput,
+                    ffmpegHLS = new Ffmpeg(config.get(CONFIG_FFMPEG_LOCATION).toString(), null, ffmpegInput,
                             config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
                             config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8",
                             config.get(CONFIG_USERNAME).toString(), config.get(CONFIG_PASSWORD).toString());
                 }
                 ffmpegHLS.startConverting();
+                break;
+            case "GIF":
+                if (ffmpegGIF == null) {
+                    String ffmpegInput = (config.get(CONFIG_FFMPEG_INPUT) == null) ? rtspUri
+                            : config.get(CONFIG_FFMPEG_INPUT).toString();
+
+                    ffmpegGIF = new Ffmpeg(config.get(CONFIG_FFMPEG_LOCATION).toString(), "-y -t 5", ffmpegInput,
+                            config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
+                            config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.gif",
+                            config.get(CONFIG_USERNAME).toString(), config.get(CONFIG_PASSWORD).toString());
+                }
+                ffmpegGIF.startConverting();
                 break;
         }
     }
@@ -624,7 +637,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
     class Ffmpeg {
         private Process process = null;
-        private String location, input, arguments, output;
+        private String location, inArguments, input, outArguments, output;
         private String ffmpegCommand, password, username;
         private String[] commandArray = null;
         private StreamRunning streamRunning = new StreamRunning();
@@ -642,12 +655,14 @@ public class IpCameraHandler extends BaseThingHandler {
             return --keepAlive;
         }
 
-        Ffmpeg(String location, String input, String arguments, String output, String username, String password) {
+        Ffmpeg(String location, String inArguments, String input, String outArguments, String output, String username,
+                String password) {
             this.location = location;
             if (input != null) {
                 this.input = input;
             }
-            this.arguments = arguments;
+            this.inArguments = inArguments;
+            this.outArguments = outArguments;
             this.output = output;
             this.username = username;
             this.password = password;
@@ -666,7 +681,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     input = input.substring(0, 7) + credentials + input.substring(7);
                 }
             }
-            ffmpegCommand = location + " -i " + input + " " + arguments + " " + output;
+            ffmpegCommand = location + " " + inArguments + " -i " + input + " " + outArguments + " " + output;
             commandArray = ffmpegCommand.trim().split("\\s+");
         }
 
@@ -685,6 +700,9 @@ public class IpCameraHandler extends BaseThingHandler {
                     }
                 } catch (IOException e) {
                     logger.error(e.toString());
+                } finally {
+                    updateState(CHANNEL_UPDATE_GIF, OnOffType.valueOf("OFF"));
+                    logger.info("Animated GIF has been created and is ready for use.");
                 }
             }
         }
@@ -692,7 +710,7 @@ public class IpCameraHandler extends BaseThingHandler {
         public void startConverting() {
             if (!streamRunning.isAlive()) {
                 streamRunning = new StreamRunning();
-                logger.info("Starting ffmpeg with this command now:{}", ffmpegCommand);
+                logger.debug("Starting ffmpeg with this command now:{}", ffmpegCommand);
                 setKeepAlive();
                 streamRunning.start();
                 try {
@@ -704,7 +722,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
         public void stopConverting() {
             if (streamRunning.isAlive()) {
-                logger.info("!!!!! Stopping ffmpeg now !!!!!");
+                logger.debug("Stopping ffmpeg now");
                 process.destroy();
                 if (process.isAlive()) {
                     process.destroyForcibly();
@@ -1800,6 +1818,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
     private void motionDetected(String thisAlarmsChannel) {
         updateState(thisAlarmsChannel.toString(), OnOffType.valueOf("ON"));
+        updateState(CHANNEL_LAST_MOTION_TYPE, new StringType(thisAlarmsChannel));
         if (updateImageEvents.contains("2")) {
             if (!firstMotionAlarm) {
                 sendHttpGET(getCorrectUrlFormat(snapshotUri));
@@ -1993,6 +2012,11 @@ public class IpCameraHandler extends BaseThingHandler {
             case CHANNEL_UPDATE_IMAGE_NOW:
                 if (snapshotUri != null) {
                     sendHttpGET(getCorrectUrlFormat(snapshotUri));
+                }
+                break;
+            case CHANNEL_UPDATE_GIF:
+                if ("ON".equals(command.toString())) {
+                    setupFfmpegFormat("GIF");
                 }
                 break;
             case CHANNEL_ENABLE_LED:
@@ -2739,6 +2763,10 @@ public class IpCameraHandler extends BaseThingHandler {
         if (ffmpegHLS != null) {
             ffmpegHLS.stopConverting();
             ffmpegHLS = null;
+        }
+        if (ffmpegGIF != null) {
+            ffmpegGIF.stopConverting();
+            ffmpegGIF = null;
         }
 
         useDigestAuth = false;

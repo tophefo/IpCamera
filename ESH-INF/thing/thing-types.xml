@@ -7,10 +7,12 @@
         <label>"HTTPONLY" Generic IP camera with only HTTP/S support.</label>
         <description>Use when your camera is not ONVIF compatible.</description>
         <channels>
-        <channel id="image" typeId="image"/>
         <channel id="updateImageNow" typeId="updateImageNow"/>
+        <channel id="updateGif" typeId="updateGif"/>
+        <channel id="image" typeId="image"/>
+        <channel id="streamUrl" typeId="streamUrl"/>   
+        <channel id="rtspUrl" typeId="rtspUrl"/>
         <channel id="imageUrl" typeId="imageUrl"/>
-        <channel id="streamUrl" typeId="streamUrl"/>
         <channel id="hlsUrl" typeId="hlsUrl"/>              
         </channels>     
         <config-description>
@@ -101,6 +103,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
 <default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
+</parameter>
+
+<parameter name="FFMPEG_GIF_OUT_ARGUMENTS" type="text" required="false" groupName="Image Settings">
+<label>FFMPEG_GIF_OUT_ARGUMENTS</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
+</description>
+<default>-filter_complex fps=1,scale=640:-2:flags=lanczos,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -222,6 +231,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
 </parameter>
 
+<parameter name="FFMPEG_GIF_OUT_ARGUMENTS" type="text" required="false" groupName="Image Settings">
+<label>FFMPEG_GIF_OUT_ARGUMENTS</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
+</description>
+<default>-filter_complex fps=1,scale=640:-2:flags=lanczos,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+</parameter>
+
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
 <label>SERVER_PORT</label>
 <description>The port that will serve the video streams back to Openhab without authentication. It must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
@@ -298,7 +314,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <label>"AMCREST" IP camera with ONVIF and API support.</label>
         <description>Use for all current Amcrest Cameras, as they support an API as well as ONVIF.</description>
         <channels>
-            <channel id="updateImageNow" typeId="updateImageNow"/>          
+            <channel id="updateImageNow" typeId="updateImageNow"/>
+            <channel id="updateGif" typeId="updateGif"/>          
             <channel id="image" typeId="image"/>            
             <channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>
             <channel id="motionAlarm" typeId="motionAlarm"/>
@@ -313,7 +330,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="streamUrl" typeId="streamUrl"/>
             <channel id="rtspUrl" typeId="rtspUrl"/>
             <channel id="imageUrl" typeId="imageUrl"/>
-            <channel id="hlsUrl" typeId="hlsUrl"/>     
+            <channel id="hlsUrl" typeId="hlsUrl"/>
+            <channel id="lastMotionType" typeId="lastMotionType"/>              
         </channels>     
         <config-description>
         
@@ -368,6 +386,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
 <default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
+</parameter>
+
+<parameter name="FFMPEG_GIF_OUT_ARGUMENTS" type="text" required="false" groupName="Image Settings">
+<label>FFMPEG_GIF_OUT_ARGUMENTS</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
+</description>
+<default>-filter_complex fps=1,scale=640:-2:flags=lanczos,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -473,7 +498,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <label>"DAHUA" IP camera with ONVIF and API support.</label>
         <description>Use for all current DAHUA Cameras, as they support an API as well as ONVIF.</description>
         <channels>
-            <channel id="updateImageNow" typeId="updateImageNow"/>          
+            <channel id="updateImageNow" typeId="updateImageNow"/>
+            <channel id="updateGif" typeId="updateGif"/>          
             <channel id="image" typeId="image"/>            
             <channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>
             <channel id="motionAlarm" typeId="motionAlarm"/>
@@ -501,7 +527,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="streamUrl" typeId="streamUrl"/>
             <channel id="rtspUrl" typeId="rtspUrl"/>
             <channel id="imageUrl" typeId="imageUrl"/>
-            <channel id="hlsUrl" typeId="hlsUrl"/>     
+            <channel id="hlsUrl" typeId="hlsUrl"/> 
+            <channel id="lastMotionType" typeId="lastMotionType"/>    
         </channels>     
         <config-description>
         
@@ -556,6 +583,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
 <default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
+</parameter>
+
+<parameter name="FFMPEG_GIF_OUT_ARGUMENTS" type="text" required="false" groupName="Image Settings">
+<label>FFMPEG_GIF_OUT_ARGUMENTS</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
+</description>
+<default>-filter_complex fps=1,scale=640:-2:flags=lanczos,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -660,7 +694,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <label>"DOORBIRD" IP camera with ONVIF and API support.</label>
         <description>Use for all current Doorbird Cameras, as they support an API as well as ONVIF.</description>
         <channels>
-            <channel id="updateImageNow" typeId="updateImageNow"/>          
+            <channel id="updateImageNow" typeId="updateImageNow"/>   
+            <channel id="updateGif" typeId="updateGif"/>       
             <channel id="image" typeId="image"/>            
             <channel id="motionAlarm" typeId="motionAlarm"/>
             <channel id="activateAlarmOutput" typeId="activateAlarmOutput"/>
@@ -670,7 +705,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="streamUrl" typeId="streamUrl"/>
             <channel id="rtspUrl" typeId="rtspUrl"/>
             <channel id="imageUrl" typeId="imageUrl"/>
-            <channel id="hlsUrl" typeId="hlsUrl"/>     
+            <channel id="hlsUrl" typeId="hlsUrl"/>
+            <channel id="lastMotionType" typeId="lastMotionType"/>     
         </channels>     
         <config-description>
         
@@ -725,6 +761,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
 <default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
+</parameter>
+
+<parameter name="FFMPEG_GIF_OUT_ARGUMENTS" type="text" required="false" groupName="Image Settings">
+<label>FFMPEG_GIF_OUT_ARGUMENTS</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
+</description>
+<default>-filter_complex fps=1,scale=640:-2:flags=lanczos,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -819,6 +862,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <description>Use for all current HD FOSCAM Cameras as they support an API as well as ONVIF.</description>
         <channels>
         <channel id="updateImageNow" typeId="updateImageNow"/>
+        <channel id="updateGif" typeId="updateGif"/>
             <channel id="image" typeId="image"/>
             <channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>               
             <channel id="motionAlarm" typeId="motionAlarm"/>
@@ -833,7 +877,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="streamUrl" typeId="streamUrl"/>
             <channel id="rtspUrl" typeId="rtspUrl"/>
             <channel id="imageUrl" typeId="imageUrl"/>
-            <channel id="hlsUrl" typeId="hlsUrl"/>          
+            <channel id="hlsUrl" typeId="hlsUrl"/>
+            <channel id="lastMotionType" typeId="lastMotionType"/>          
         </channels>     
         <config-description>
         
@@ -888,6 +933,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
 <default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
+</parameter>
+
+<parameter name="FFMPEG_GIF_OUT_ARGUMENTS" type="text" required="false" groupName="Image Settings">
+<label>FFMPEG_GIF_OUT_ARGUMENTS</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
+</description>
+<default>-filter_complex fps=1,scale=640:-2:flags=lanczos,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -999,7 +1051,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <label>"HIKVISION" IP camera with ONVIF and API support.</label>
         <description>Use for all current Hikvision Cameras as they support an API as well as ONVIF.</description>
         <channels>
-            <channel id="updateImageNow" typeId="updateImageNow"/>          
+            <channel id="updateImageNow" typeId="updateImageNow"/>
+            <channel id="updateGif" typeId="updateGif"/>          
             <channel id="image" typeId="image"/>            
             <channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>
             <channel id="motionAlarm" typeId="motionAlarm"/>
@@ -1021,7 +1074,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="streamUrl" typeId="streamUrl"/>
             <channel id="rtspUrl" typeId="rtspUrl"/>        
             <channel id="imageUrl" typeId="imageUrl"/>
-            <channel id="hlsUrl" typeId="hlsUrl"/>     
+            <channel id="hlsUrl" typeId="hlsUrl"/>
+            <channel id="lastMotionType" typeId="lastMotionType"/>     
         </channels>     
         <config-description>
         
@@ -1076,6 +1130,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
 <default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
+</parameter>
+
+<parameter name="FFMPEG_GIF_OUT_ARGUMENTS" type="text" required="false" groupName="Image Settings">
+<label>FFMPEG_GIF_OUT_ARGUMENTS</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
+</description>
+<default>-filter_complex fps=1,scale=640:-2:flags=lanczos,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -1180,7 +1241,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <label>"INSTAR" HD IP camera with ONVIF and API support.</label>
         <description>Use for all current INSTAR HD Cameras, as they support an API as well as ONVIF.</description>
         <channels>
-            <channel id="updateImageNow" typeId="updateImageNow"/>          
+            <channel id="updateImageNow" typeId="updateImageNow"/>
+            <channel id="updateGif" typeId="updateGif"/>          
             <channel id="image" typeId="image"/>            
             <channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>
             <channel id="enableAudioAlarm" typeId="enableAudioAlarm"/>
@@ -1246,6 +1308,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
 <default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
+</parameter>
+
+<parameter name="FFMPEG_GIF_OUT_ARGUMENTS" type="text" required="false" groupName="Image Settings">
+<label>FFMPEG_GIF_OUT_ARGUMENTS</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
+</description>
+<default>-filter_complex fps=1,scale=640:-2:flags=lanczos,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -1335,8 +1404,14 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <channel-type id="updateImageNow">
 <item-type>Switch</item-type>
 <label>Update the Image</label>
-<description>Can be used to update the Image for each button press if you have the image settings selected to never update.</description>   
+<description>Can be used to update the Image for each button press if you have the image settings selected to never update or a low refresh.</description>   
 </channel-type>
+
+<channel-type id="updateGif">
+<item-type>Switch</item-type>
+<label>Create an animated GIF</label>
+<description>Turn ON to create an animated GIF called ipcamera.gif with ffmpeg. When the file is created the switch will move itself back to OFF.</description>   
+</channel-type>     
         
         <channel-type id="image">
         <item-type>Image</item-type>
@@ -1374,6 +1449,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <label>HLS URL</label>
         <description>A link you can use in Openhab to cast video feeds.</description>
         <category>Camera</category>
+        <state readOnly="true" />
+        </channel-type>
+        
+        <channel-type id="lastMotionType">
+        <item-type>String</item-type>
+        <label>Last Motion Type</label>
+        <description>A string that contains the type of motion alarm that was last triggered.</description>
         <state readOnly="true" />
         </channel-type>
     
