@@ -304,17 +304,27 @@ For the above notifications to work you will need to setup multiple users with t
 
 ## How to get working video streams
 
-DISCLAIMER:
-Unlike the snapshots, the streaming server works by allowing access to the video streams with no user/password for requests that come from an IP address in the white list. Requests from outside IP's or internal requests not on the whitelist will fail to get any answer. If you do not understand how to keep your internal network secure it would be best to keep this disabled which is the default setting.
+IMPORTANT:
+Unlike the snapshots, the streaming server works by allowing access to the video streams with no user/password for requests that come from an IP address in the white list. Requests from outside IP's or internal requests not on the white list will fail to get any answer. 
 
 There are now multiple ways to get a moving picture:
 + Animated GIF
 + HLS Http Live Streaming which uses h264
 + MJPEG which uses multiple jpeg files to create what is called MOTION JPEG
 
-Cameras with h264 format streams can have this copied into HLS format which can be used to stream to Chromecasts and also display in browsers that support this format using the webview or Habpanel items. Apple devices have excellent support for HLS due to the standard being invented by Apple.
+To get the first two video formats working, you need to install the ffmpeg program. Visit their site here to learn how <https://ffmpeg.org/>
 
-Cameras that have MJPEG abilities and also an API can stream to Openhab with the MJPEG format. The main cameras that can do this are Amcrest, Dahua, Hikvision and Foscam HD. If your camera can not do MJPEG you can use this method to turn a h.264 stream into MJPEG steam.
+Under linux ffmpeg can be installed very easily with this command.
+
+```
+sudo apt update && sudo apt install ffmpeg
+```
+
+**MJPEG Streaming**
+
+Cameras that have MJPEG abilities and also an API can stream to Openhab with the MJPEG format. The main cameras that can do this are Amcrest, Dahua, Hikvision and Foscam HD. For cameras that do not auto detect the url for mjpeg streams, you will need to enter a working url for ``STREAM_URL_OVERRIDE`` This can be skipped for Amcrest, Dahua, Doorbird, Hikvision and Foscam HD.
+
+If your camera can not do MJPEG you can use this method to turn a h.264 stream into MJPEG steam.
 
 <https://community.openhab.org/t/how-to-display-rtsp-streams-from-ip-cameras-in-openhab-and-habpanel-linux-only/69021>
 
@@ -322,14 +332,17 @@ Alternatively you can use 3rd party software running on a server to do the conve
 <https://github.com/ccrisan/motioneyeos/wiki>
 
 
+**HLS Http Live Streaming**
+
+Cameras with h264 format streams can have this copied into the HLS format which can be used to stream to Chromecasts and also display in browsers that support this format using the webview or Habpanel items. Apple devices have excellent support for HLS due to the standard being invented by Apple. Some browsers like chrome require a plugin to be installed and then it is able to display the video.
+
 
 To use the new steaming features, you need to:
 1. Set a valid ``SERVER_PORT`` as the default value of -1 will turn the features off.
-2. Add any IPs that need access to the ``IP_WHITELIST`` surrounding each one in brackets (see below example). Internal IPs will trigger a warning in the logs if they are not in the whitelist, however external IPs or localhost will not trigger a warning in the logs as they are completely ignored and the binding will refuse to connect to them. 
-3. For cameras that do not auto detect the url for mjpeg streams, you need to enter a working url for ``STREAM_URL_OVERRIDE`` This can be skipped for Amcrest, Dahua, Doorbird, Hikvision and Foscam HD.
-4. For cameras that do not auto detect the H264 stream which is done for ONVIF cameras, you will need to use the ``FFMPEG_INPUT`` and provide a http or rtsp link. This is used for the HLS and animated GIF features.
-5. You need to enter your cameras setup and ensure one of the streams is set to use MJPEG format and not mp4 encoding. You can leave the mainstream as mp4/h.264/h.265 and only turn MJPEG on for one of the substreams.
-6. For most brands the ``ONVIF_MEDIA_PROFILE`` needs to match the stream number you have setup for h264. This is usually 0 and is the main-stream, the higher numbers are the sub-streams. The DEBUG log output will help guide you with this in the openhab.log if ONVIF is setup correctly.
+2. Add any IPs that need access to the ``IP_WHITELIST`` surrounding each one in brackets (see below example). Internal IPs will trigger a warning in the logs if they are not in the whitelist, however external IPs or localhost will not trigger a warning in the logs as they are completely ignored and the binding will refuse to connect to them. This is a security feature.
+3. Ensure ffmpeg is installed.
+4. For cameras that do not auto detect the H264 stream which is done for ONVIF cameras, you will need to use the ``FFMPEG_INPUT`` and provide a http or rtsp link. This is used for both the HLS and animated GIF features.
+5. For most brands the ``ONVIF_MEDIA_PROFILE`` needs to match the stream number you have setup for h264. This is usually 0 and is the main-stream, the higher numbers are the sub-streams. The DEBUG log output will help guide you with this in the openhab.log if ONVIF is setup correctly.
 
 
 Example thing file for a Dahua camera that turns off snapshots (not necessary as it can do both) and enables streaming instead.... 
@@ -349,13 +362,13 @@ Text label="iOS Stream" icon="camera"{Webview url="http://192.168.1.9:54321/ipca
 ```
 
 
-## How to use the animated GIF feature
+**Animated GIF feature**
 
-The cameras have a channel called updateGif and when this switch is turned 'ON' the binding will create an animated GIF called ipcamera.gif in the ffmpeg output folder. Once the file is created the switch will turn 'OFF' and this can be used in rules to then be sent via email, pushover or telegram messages. The switch can be turned on with a rule triggered by an external PIR sensor or the cameras own motion alarms, the choice and logic can be created by yourself.
+The cameras have a channel called updateGif and when this switch is turned 'ON' (either by a rule or manually) the binding will create an animated GIF called ipcamera.gif in the ffmpeg output folder. Once the file is created the switch will turn 'OFF' and this can trigger a rule to then send the picture via email, pushover or telegram messages. The switch can be turned on with a rule triggered by an external zwave PIR sensor or the cameras own motion alarm, the choice and the logic can be created by yourself.
 
 
 ```
-Switch BabyCamCreateGif "Create animated GIF" { channel="ipcamera:DAHUA:BabyCamera:updateGif" }
+Switch DoorCamCreateGif "Create animated GIF" { channel="ipcamera:DAHUA:DoorCam:updateGif" }
 
 ```
 
@@ -506,16 +519,13 @@ If you wish to contribute then please create an issue ticket first to discuss ho
 
 If this binding becomes popular, I can look at extending the frame work to support:
 
-RTSP Video streams (some work is already done and ffmpeg gives some support too).
++ Auto find and setup cameras on your network.
 
-Auto find and setup cameras on your network.
++ PTZ methods for continuous move.
 
-PTZ methods for continuous move.
++ FTP/NAS features to save the images and delete old files.
 
-FTP/NAS features to save the images and delete old files.
++ ONVIF alarms
 
-ONVIF alarms
-
-1 and 2 way audio.
-
++ 1 and 2 way audio.
 
