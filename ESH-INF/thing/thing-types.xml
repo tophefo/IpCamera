@@ -16,16 +16,16 @@
         <channel id="hlsUrl" typeId="hlsUrl"/>              
         </channels>     
         <config-description>
-        
-<parameter-group name="Image Settings">
-<label>Snapshot/Image Settings</label>
-<description>Settings for the snapshot features.</description>
-<advanced>false</advanced>
-</parameter-group>
-    
+
 <parameter-group name="Settings">
 <label>Main Settings</label>
 <description>Settings required to connect to the camera.</description>
+<advanced>false</advanced>
+</parameter-group>
+       
+<parameter-group name="Image Settings">
+<label>Snapshot/Image Settings</label>
+<description>Settings for the snapshot features.</description>
 <advanced>false</advanced>
 </parameter-group>
 
@@ -102,14 +102,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
+<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="FFMPEG_GIF_OUT_ARGUMENTS" type="text" required="false" groupName="Image Settings">
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=1,scale=640:-2:flags=lanczos,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -163,16 +165,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="hlsUrl" typeId="hlsUrl"/>         
         </channels>     
         <config-description>
+
+<parameter-group name="Settings">
+<label>Main Settings</label>
+<description>Settings required to connect to the camera.</description>
+<advanced>false</advanced>
+</parameter-group>
         
 <parameter-group name="Image Settings">
 <label>Snapshot/Image Settings</label>
 <description>Settings for the snapshot features.</description>
-<advanced>false</advanced>
-</parameter-group>
-    
-<parameter-group name="Settings">
-<label>Main Settings</label>
-<description>Settings required to connect to the camera.</description>
 <advanced>false</advanced>
 </parameter-group>
 
@@ -228,14 +230,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
+<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="FFMPEG_GIF_OUT_ARGUMENTS" type="text" required="false" groupName="Image Settings">
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=1,scale=640:-2:flags=lanczos,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -335,17 +339,17 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         </channels>     
         <config-description>
         
-<parameter-group name="Image Settings">
-<label>Snapshot/Image Settings</label>
-<description>Settings for the snapshot features.</description>
-<advanced>false</advanced>
-</parameter-group>
-    
 <parameter-group name="Settings">
 <label>Main Settings</label>
 <description>Settings required to connect to the camera.</description>
 <advanced>false</advanced>
 </parameter-group>
+        
+<parameter-group name="Image Settings">
+<label>Snapshot/Image Settings</label>
+<description>Settings for the snapshot features.</description>
+<advanced>false</advanced>
+</parameter-group>    
 
 <parameter-group name="Streaming Setup">
 <label>Stream Settings</label>
@@ -385,14 +389,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
+<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="FFMPEG_GIF_OUT_ARGUMENTS" type="text" required="false" groupName="Image Settings">
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=1,scale=640:-2:flags=lanczos,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -531,6 +537,12 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="lastMotionType" typeId="lastMotionType"/>    
         </channels>     
         <config-description>
+
+<parameter-group name="Settings">
+<label>Main Settings</label>
+<description>Settings required to connect to the camera.</description>
+<advanced>false</advanced>
+</parameter-group>
         
 <parameter-group name="Image Settings">
 <label>Snapshot/Image Settings</label>
@@ -538,12 +550,6 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <advanced>false</advanced>
 </parameter-group>
     
-<parameter-group name="Settings">
-<label>Main Settings</label>
-<description>Settings required to connect to the camera.</description>
-<advanced>false</advanced>
-</parameter-group>
-
 <parameter-group name="Streaming Setup">
 <label>Stream Settings</label>
 <description>Settings that setup or effect the video stream.</description>
@@ -582,14 +588,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
+<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="FFMPEG_GIF_OUT_ARGUMENTS" type="text" required="false" groupName="Image Settings">
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=1,scale=640:-2:flags=lanczos,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -709,6 +717,12 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="lastMotionType" typeId="lastMotionType"/>     
         </channels>     
         <config-description>
+
+<parameter-group name="Settings">
+<label>Main Settings</label>
+<description>Settings required to connect to the camera.</description>
+<advanced>false</advanced>
+</parameter-group>        
         
 <parameter-group name="Image Settings">
 <label>Snapshot/Image Settings</label>
@@ -716,12 +730,6 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <advanced>false</advanced>
 </parameter-group>
     
-<parameter-group name="Settings">
-<label>Main Settings</label>
-<description>Settings required to connect to the camera.</description>
-<advanced>false</advanced>
-</parameter-group>
-
 <parameter-group name="Streaming Setup">
 <label>Stream Settings</label>
 <description>Settings that setup or effect the video stream.</description>
@@ -760,14 +768,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
+<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="FFMPEG_GIF_OUT_ARGUMENTS" type="text" required="false" groupName="Image Settings">
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=1,scale=640:-2:flags=lanczos,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -881,18 +891,18 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="lastMotionType" typeId="lastMotionType"/>          
         </channels>     
         <config-description>
-        
-<parameter-group name="Image Settings">
-<label>Snapshot/Image Settings</label>
-<description>Settings for the snapshot features.</description>
-<advanced>false</advanced>
-</parameter-group>
-    
+
 <parameter-group name="Settings">
 <label>Main Settings</label>
 <description>Settings required to connect to the camera.</description>
 <advanced>false</advanced>
 </parameter-group>
+        
+<parameter-group name="Image Settings">
+<label>Snapshot/Image Settings</label>
+<description>Settings for the snapshot features.</description>
+<advanced>false</advanced>
+</parameter-group>  
 
 <parameter-group name="Streaming Setup">
 <label>Stream Settings</label>
@@ -932,14 +942,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
+<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="FFMPEG_GIF_OUT_ARGUMENTS" type="text" required="false" groupName="Image Settings">
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=1,scale=640:-2:flags=lanczos,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -1078,18 +1090,18 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="lastMotionType" typeId="lastMotionType"/>     
         </channels>     
         <config-description>
-        
-<parameter-group name="Image Settings">
-<label>Snapshot/Image Settings</label>
-<description>Settings for the snapshot features.</description>
-<advanced>false</advanced>
-</parameter-group>
-    
+
 <parameter-group name="Settings">
 <label>Main Settings</label>
 <description>Settings required to connect to the camera.</description>
 <advanced>false</advanced>
 </parameter-group>
+        
+<parameter-group name="Image Settings">
+<label>Snapshot/Image Settings</label>
+<description>Settings for the snapshot features.</description>
+<advanced>false</advanced>
+</parameter-group>    
 
 <parameter-group name="Streaming Setup">
 <label>Stream Settings</label>
@@ -1130,13 +1142,15 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
 <default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="FFMPEG_GIF_OUT_ARGUMENTS" type="text" required="false" groupName="Image Settings">
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=1,scale=640:-2:flags=lanczos,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
@@ -1256,18 +1270,18 @@ The Image channel can be set to Update in a number of ways to help reduce networ
             <channel id="hlsUrl" typeId="hlsUrl"/>     
         </channels>     
         <config-description>
-        
-<parameter-group name="Image Settings">
-<label>Snapshot/Image Settings</label>
-<description>Settings for the snapshot features.</description>
-<advanced>false</advanced>
-</parameter-group>
-    
+
 <parameter-group name="Settings">
 <label>Main Settings</label>
 <description>Settings required to connect to the camera.</description>
 <advanced>false</advanced>
 </parameter-group>
+        
+<parameter-group name="Image Settings">
+<label>Snapshot/Image Settings</label>
+<description>Settings for the snapshot features.</description>
+<advanced>false</advanced>
+</parameter-group>   
 
 <parameter-group name="Streaming Setup">
 <label>Stream Settings</label>
@@ -1307,14 +1321,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-acodec copy -vcodec copy -hls_flags delete_segments</default>
+<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="FFMPEG_GIF_OUT_ARGUMENTS" type="text" required="false" groupName="Image Settings">
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=1,scale=640:-2:flags=lanczos,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">

@@ -522,7 +522,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     String ffmpegInput = (config.get(CONFIG_FFMPEG_INPUT) == null) ? rtspUri
                             : config.get(CONFIG_FFMPEG_INPUT).toString();
 
-                    ffmpegGIF = new Ffmpeg(config.get(CONFIG_FFMPEG_LOCATION).toString(), "-y -t 5", ffmpegInput,
+                    ffmpegGIF = new Ffmpeg(config.get(CONFIG_FFMPEG_LOCATION).toString(), "-y -t 6", ffmpegInput,
                             config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
                             config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.gif",
                             config.get(CONFIG_USERNAME).toString(), config.get(CONFIG_PASSWORD).toString());
