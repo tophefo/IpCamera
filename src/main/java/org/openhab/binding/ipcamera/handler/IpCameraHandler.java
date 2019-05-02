@@ -975,7 +975,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     httpRequestURL);
         }
 
-        logger.trace("request to camera is :{}", request);
+        // logger.trace("request to camera is :{}", request);
 
         ch.writeAndFlush(request);
         // Cleanup
