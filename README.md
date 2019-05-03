@@ -361,6 +361,34 @@ Text label="iOS Stream" icon="camera"{Webview url="http://192.168.1.9:54321/ipca
 
 ```
 
+**ffmpeg Special settings**
+
+To get audio working you need to have the camera include audio in the stream and in a format that is supported by Chromecast or your browser, I suggest AAC. Then you need to change the from the first line to the second one.
+
+
+
+For cameras with no audio in the stream (default setting)
+
+```
+-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments
+```
+
+For cameras with audio in the stream. Note will break Chromecast if the camera does not send audio.
+
+```
+-acodec copy -vcodec copy -hls_flags delete_segments
+```
+
+Some browsers require larger segment sizes to prevent choppy playback, this can be done with this setting to create 10 second segment files which increases the time before you can get playback working.
+
+```
+-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_time 10 -hls_flags delete_segments
+
+```
+
+
+
+
 
 **Animated GIF feature**
 

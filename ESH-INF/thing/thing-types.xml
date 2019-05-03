@@ -110,7 +110,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-filter_complex fps=2,scale=480:-2:flags=lanczos,setpts=0.5*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -155,14 +155,15 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         <description>Use when the binding does not list your brand of ONVIF compatible Camera</description>
         <channels>
         <channel id="updateImageNow" typeId="updateImageNow"/>
-            <channel id="image" typeId="image"/>
-            <channel id="pan" typeId="pan"/>
-            <channel id="tilt" typeId="tilt"/>
-            <channel id="zoom" typeId="zoom"/>
-            <channel id="streamUrl" typeId="streamUrl"/>   
-            <channel id="rtspUrl" typeId="rtspUrl"/>
-            <channel id="imageUrl" typeId="imageUrl"/>
-            <channel id="hlsUrl" typeId="hlsUrl"/>         
+        <channel id="updateGif" typeId="updateGif"/>
+        <channel id="image" typeId="image"/>
+        <channel id="pan" typeId="pan"/>
+        <channel id="tilt" typeId="tilt"/>
+        <channel id="zoom" typeId="zoom"/>
+        <channel id="streamUrl" typeId="streamUrl"/>   
+        <channel id="rtspUrl" typeId="rtspUrl"/>
+        <channel id="imageUrl" typeId="imageUrl"/>
+        <channel id="hlsUrl" typeId="hlsUrl"/>         
         </channels>     
         <config-description>
 
@@ -238,7 +239,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-filter_complex fps=2,scale=480:-2:flags=lanczos,setpts=0.5*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -397,7 +398,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-filter_complex fps=2,scale=480:-2:flags=lanczos,setpts=0.5*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -596,7 +597,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-filter_complex fps=2,scale=480:-2:flags=lanczos,setpts=0.5*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -776,7 +777,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-filter_complex fps=2,scale=480:-2:flags=lanczos,setpts=0.5*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -950,7 +951,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-filter_complex fps=2,scale=480:-2:flags=lanczos,setpts=0.5*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -1149,7 +1150,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-filter_complex fps=2,scale=480:-2:flags=lanczos,setpts=0.5*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -1329,7 +1330,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-filter_complex fps=2,scale=480:-2:flags=lanczos,setpts=0.5*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 <advanced>true</advanced>
 </parameter>
 
