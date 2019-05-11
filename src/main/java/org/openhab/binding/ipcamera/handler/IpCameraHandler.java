@@ -522,8 +522,13 @@ public class IpCameraHandler extends BaseThingHandler {
                     String ffmpegInput = (config.get(CONFIG_FFMPEG_INPUT) == null) ? rtspUri
                             : config.get(CONFIG_FFMPEG_INPUT).toString();
 
-                    ffmpegGIF = new Ffmpeg(config.get(CONFIG_FFMPEG_LOCATION).toString(), "-y -t 8 -rtsp_transport tcp",
-                            ffmpegInput, config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
+                    String inOptions = "-y -t 8 -rtsp_transport tcp";
+                    if (!ffmpegInput.contains("rtsp")) {
+                        inOptions = "-y -t 8";
+                    }
+
+                    ffmpegGIF = new Ffmpeg(config.get(CONFIG_FFMPEG_LOCATION).toString(), inOptions, ffmpegInput,
+                            config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
                             config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.gif",
                             config.get(CONFIG_USERNAME).toString(), config.get(CONFIG_PASSWORD).toString());
                 }
@@ -2404,8 +2409,6 @@ public class IpCameraHandler extends BaseThingHandler {
                         updateStatus(ThingStatus.ONLINE);
                         isOnline = true;
                         logger.info("IP Camera at {}:{} is now online.", ipAddress, config.get(CONFIG_PORT).toString());
-                        cameraConnectionJob.cancel(true);
-                        cameraConnectionJob = null;
                         fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 5000,
                                 Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
                         sendHttpGET(getCorrectUrlFormat(snapshotUri));
@@ -2414,6 +2417,9 @@ public class IpCameraHandler extends BaseThingHandler {
                         if (!"-1".contentEquals(config.get(CONFIG_SERVER_PORT).toString())) {
                             startStreamServer(true);
                         }
+
+                        cameraConnectionJob.cancel(true);
+                        cameraConnectionJob = null;
                     }
                 }
                 return;

@@ -4,7 +4,7 @@
 	xsi:schemaLocation="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0 http://eclipse.org/smarthome/schemas/thing-description-1.0.0.xsd">
 
     <thing-type id="HTTPONLY">
-        <label>"HTTPONLY" Generic IP camera with only HTTP/S support.</label>
+        <label>"HTTPONLY" Generic IP camera with only HTTP support.</label>
         <description>Use when your camera is not ONVIF compatible.</description>
         <channels>
         <channel id="updateImageNow" typeId="updateImageNow"/>
@@ -36,7 +36,7 @@
 </parameter-group>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
-<label>Update the Image when:</label>
+<label>Update the Snapshot/Image when:</label>
 <description>
 <![CDATA[
 The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
@@ -57,8 +57,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">
-<label>The port of the camera that accepts HTTP/S.</label>
-<description>This port will be used for http/https as the binding will not change between the two.
+<label>The port of the camera that accepts HTTP.</label>
+<description>This port will be used for http calls for fetching the snapshot and alarm states.
 </description>
 <default>80</default>
 </parameter>
@@ -67,21 +67,21 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <context>url</context>
 <label>SNAPSHOT_URL_OVERRIDE</label>
 <description>Enter a http url to where a snapshot can be seen if entered into any browser.
-</description>        
+</description>     
 </parameter>
 
 <parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
 <label>STREAM_URL_OVERRIDE</label>
 <description>Full http address to where a MJPEG stream can be watched if entered into any browser. 
-</description>        
+</description>     
 </parameter>
 
 <parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
 <label>FFMPEG_INPUT</label>
 <description>Enter any HTTP or RTSP URL that ffmpeg can use as an input. 
-</description>        
+</description>     
 </parameter>
 
 <parameter name="FFMPEG_LOCATION" type="text" required="false" groupName="Streaming Setup">
@@ -186,7 +186,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter-group>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
-<label>Update the Image when:</label>
+<label>Update the Snapshot/Image when:</label>
 <description>
 <![CDATA[
 The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
@@ -203,14 +203,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <context>url</context>
 <label>STREAM_URL_OVERRIDE</label>
 <description>Full http address to where a MJPEG stream can be watched if entered into any browser. 
-</description>        
+</description>  
+<advanced>true</advanced>      
 </parameter>
 
 <parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
 <label>FFMPEG_INPUT</label>
 <description>Leave this blank to use the auto detected RTSP address, or enter a URL for any type of stream that ffmpeg can use as an input. 
-</description>        
+</description>
+<advanced>true</advanced>        
 </parameter>
 
 <parameter name="FFMPEG_LOCATION" type="text" required="false" groupName="Streaming Setup">
@@ -261,7 +263,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <context>url</context>
 <label>SNAPSHOT_URL_OVERRIDE</label>
 <description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
-</description>        
+</description>  
+<advanced>true</advanced>      
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
@@ -272,15 +275,15 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">
-<label>The port of the camera that accepts HTTP/S.</label>
-<description>This port will be used for http/https as the binding will not change between the two.
+<label>The port of the camera that accepts HTTP.</label>
+<description>This port will be used for http calls for fetching the snapshot and alarm states.
 </description>
 <default>80</default>
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
 <label>ONVIF_PORT</label>
-<description>The port your camera uses for ONVIF connections. This is mainly needed for PTZ movement.
+<description>The port your camera uses for ONVIF connections. This is needed for PTZ movement and auto discovery of rtsp and snapshot urls. Giving the wrong port will cause camera to connect faster if you manually provide the urls.
 </description>        
 <default>80</default>
 </parameter>
@@ -362,14 +365,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <context>url</context>
 <label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
-</description>        
+</description> 
+<advanced>true</advanced>       
 </parameter>
 
 <parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
 <label>FFMPEG_INPUT</label>
 <description>Leave this blank to use the auto detected RTSP address, or enter a URL for any type of stream that ffmpeg can use as an input. 
-</description>        
+</description> 
+<advanced>true</advanced>       
 </parameter>
 
 <parameter name="FFMPEG_LOCATION" type="text" required="false" groupName="Streaming Setup">
@@ -417,7 +422,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
-<label>Update the Image when:</label>
+<label>Update the Snapshot/Image when:</label>
 <description><![CDATA[
 The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
 ]]>
@@ -443,8 +448,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">
-<label>The port of the camera that accepts HTTP/S.</label>
-<description>This port will be used for http/https as the binding will not change between the two.
+<label>The port of the camera that accepts HTTP.</label>
+<description>This port will be used for http calls for fetching the snapshot and alarm states.
 </description>
 <default>80</default>
 </parameter>
@@ -454,18 +459,20 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>Set this to 1 if it is a stand alone camera, or to the input channel number of your NVR that the camera is connected to.
 </description>
 <default>1</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Image Settings">
 <context>url</context>
 <label>SNAPSHOT_URL_OVERRIDE</label>
 <description>Leave this empty to auto detect the snapshot url. Enter a http address if you wish to over-ride with a different address which also makes the camera connect quicker.
-</description>   
+</description>  
+<advanced>true</advanced> 
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
 <label>ONVIF_PORT</label>
-<description>The port your camera uses for ONVIF connections. This is mainly needed for PTZ movement.
+<description>The port your camera uses for ONVIF connections. This is needed for PTZ movement and auto discovery of rtsp and snapshot urls. Giving the wrong port will cause camera to connect faster if you manually provide the urls.
 </description>        
 <default>80</default>
 </parameter>
@@ -561,14 +568,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <context>url</context>
 <label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
-</description>        
+</description>
+<advanced>true</advanced>        
 </parameter>
 
 <parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
 <label>FFMPEG_INPUT</label>
 <description>Leave this blank to use the auto detected RTSP address, or enter a URL for any type of stream that ffmpeg can use as an input. 
-</description>        
+</description> 
+<advanced>true</advanced>       
 </parameter>
 
 <parameter name="FFMPEG_LOCATION" type="text" required="false" groupName="Streaming Setup">
@@ -616,7 +625,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
-<label>Update the Image when:</label>
+<label>Update the Snapshot/Image when:</label>
 <description><![CDATA[
 The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
 ]]>
@@ -646,11 +655,12 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>Set this to 1 if it is a stand alone camera, or to the input channel number of your NVR that the camera is connected to.
 </description>
 <default>1</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">
-<label>The port of the camera that accepts HTTP/S.</label>
-<description>This port will be used for http/https as the binding will not change between the two.
+<label>The port of the camera that accepts HTTP.</label>
+<description>This port will be used for http calls for fetching the snapshot and alarm states.
 </description>
 <default>80</default>
 </parameter>
@@ -659,12 +669,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <context>url</context>
 <label>SNAPSHOT_URL_OVERRIDE</label>
 <description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
-</description>        
+</description> 
+<advanced>true</advanced>       
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
 <label>ONVIF_PORT</label>
-<description>The port your camera uses for ONVIF connections. This is mainly needed for PTZ movement.
+<description>The port your camera uses for ONVIF connections. This is needed for PTZ movement and auto discovery of rtsp and snapshot urls. Giving the wrong port will cause camera to connect faster if you manually provide the urls.
 </description>        
 <default>80</default>
 </parameter>
@@ -741,14 +752,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <context>url</context>
 <label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
-</description>        
+</description>  
+<advanced>true</advanced>      
 </parameter>
 
 <parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
 <label>FFMPEG_INPUT</label>
 <description>Leave this blank to use the auto detected RTSP address, or enter a URL for any type of stream that ffmpeg can use as an input. 
-</description>        
+</description>  
+<advanced>true</advanced>      
 </parameter>
 
 <parameter name="FFMPEG_LOCATION" type="text" required="false" groupName="Streaming Setup">
@@ -796,7 +809,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
-<label>Update the Image when:</label>
+<label>Update the Snapshot/Image when:</label>
 <description><![CDATA[
 The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
 ]]>
@@ -818,8 +831,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">
-<label>The port of the camera that accepts HTTP/S.</label>
-<description>This port will be used for http/https as the binding will not change between the two.
+<label>The port of the camera that accepts HTTP.</label>
+<description>This port will be used for http calls for fetching the snapshot and alarm states.
 </description>
 <default>80</default>
 </parameter>
@@ -828,12 +841,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <context>url</context>
 <label>SNAPSHOT_URL_OVERRIDE</label>
 <description>Leave this empty to auto detect the snapshot url. Enter a http address if you wish to over-ride with a different address which also makes the camera connect quicker.
-</description>   
+</description> 
+<advanced>true</advanced>  
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
 <label>ONVIF_PORT</label>
-<description>The port your camera uses for ONVIF connections. This is mainly needed for PTZ movement.
+<description>The port your camera uses for ONVIF connections. This is needed for PTZ movement and auto discovery of rtsp and snapshot urls. Giving the wrong port will cause camera to connect faster if you manually provide the urls.
 </description>        
 <default>80</default>
 </parameter>
@@ -915,14 +929,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <context>url</context>
 <label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
-</description>        
+</description> 
+<advanced>true</advanced>       
 </parameter>
 
 <parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
 <label>FFMPEG_INPUT</label>
 <description>Leave this blank to use the auto detected RTSP address, or enter a URL for any type of stream that ffmpeg can use as an input. 
-</description>        
+</description>  
+<advanced>true</advanced>      
 </parameter>
 
 <parameter name="FFMPEG_LOCATION" type="text" required="false" groupName="Streaming Setup">
@@ -970,7 +986,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
-<label>Update the Image when:</label>
+<label>Update the Snapshot/Image when:</label>
 <description><![CDATA[
 The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
 ]]>
@@ -996,8 +1012,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">
-<label>The port of the camera that accepts HTTP/S.</label>
-<description>This port will be used for http/https as the binding will not change between the two.
+<label>The port of the camera that accepts HTTP.</label>
+<description>This port will be used for http calls for fetching the snapshot and alarm states.
 </description>
 <default>88</default>
 </parameter>
@@ -1006,7 +1022,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <context>url</context>
 <label>SNAPSHOT_URL_OVERRIDE</label>
 <description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
-</description>        
+</description> 
+<advanced>true</advanced>       
 </parameter>
 
 <parameter name="MOTION_URL_OVERRIDE" type="text" required="false" groupName="Settings">
@@ -1025,7 +1042,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
 <label>ONVIF_PORT</label>
-<description>The port your camera uses for ONVIF connections. This is mainly needed for PTZ movement.
+<description>The port your camera uses for ONVIF connections. This is needed for PTZ movement and auto discovery of rtsp and snapshot urls. Giving the wrong port will cause camera to connect faster if you manually provide the urls.
 </description>        
 <default>888</default>
 </parameter>
@@ -1114,14 +1131,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <context>url</context>
 <label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
-</description>        
+</description> 
+<advanced>true</advanced>       
 </parameter>
 
 <parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
 <label>FFMPEG_INPUT</label>
 <description>Leave this blank to use the auto detected RTSP address, or enter a URL for any type of stream that ffmpeg can use as an input. 
-</description>        
+</description> 
+<advanced>true</advanced>       
 </parameter>
 
 <parameter name="FFMPEG_LOCATION" type="text" required="false" groupName="Streaming Setup">
@@ -1169,7 +1188,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
-<label>Update the Image when:</label>
+<label>Update the Snapshot/Image when:</label>
 <description><![CDATA[
 The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
 ]]>
@@ -1195,8 +1214,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">
-<label>The port of the camera that accepts HTTP/S.</label>
-<description>This port will be used for http/https as the binding will not change between the two.
+<label>The port of the camera that accepts HTTP.</label>
+<description>This port will be used for http calls for fetching the snapshot and alarm states.
 </description>
 <default>80</default>
 </parameter>
@@ -1206,18 +1225,20 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>Set this to 1 if it is a stand alone camera, or to the input channel number if you use a compatible NVR.
 </description>
 <default>1</default>
+<advanced>true</advanced>
 </parameter>
 
 <parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Image Settings">
 <context>url</context>
 <label>SNAPSHOT_URL_OVERRIDE</label>
 <description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
-</description>  
+</description>
+<advanced>true</advanced>  
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
 <label>ONVIF_PORT</label>
-<description>The port your camera uses for ONVIF connections. This is mainly needed for PTZ movement.
+<description>The port your camera uses for ONVIF connections. This is needed for PTZ movement and auto discovery of rtsp and snapshot urls. Giving the wrong port will cause camera to connect faster if you manually provide the urls.
 </description>        
 <default>80</default>
 </parameter>
@@ -1294,14 +1315,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <context>url</context>
 <label>STREAM_URL_OVERRIDE</label>
 <description>Leave this blank to use the auto detected URL, or enter a full http address to where a MJPEG stream can be watched if entered into any browser. 
-</description>        
+</description>  
+<advanced>true</advanced>      
 </parameter>
 
 <parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
 <label>FFMPEG_INPUT</label>
 <description>Leave this blank to use the auto detected RTSP address, or enter any URL that ffmpeg can use as an input. 
-</description>        
+</description> 
+<advanced>true</advanced>       
 </parameter>
 
 <parameter name="FFMPEG_LOCATION" type="text" required="false" groupName="Streaming Setup">
@@ -1349,7 +1372,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
-<label>Update the Image when:</label>
+<label>Update the Snapshot/Image when:</label>
 <description><![CDATA[
 The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
 ]]>
@@ -1369,8 +1392,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">
-<label>The port of the camera that accepts HTTP/S.</label>
-<description>This port will be used for http/https as the binding will not change between the two.
+<label>The port of the camera that accepts HTTP.</label>
+<description>This port will be used for http calls for fetching the snapshot and alarm states.
 </description>
 <default>80</default>
 </parameter>
@@ -1379,12 +1402,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <context>url</context>
 <label>SNAPSHOT_URL_OVERRIDE</label>
 <description>Leave blank to use the autodetected URL for snapshots, or enter a http url to where a snapshot can be seen if entered into any browser.
-</description>        
+</description>
+<advanced>true</advanced>        
 </parameter>
 
 <parameter name="ONVIF_PORT" type="text" required="true" groupName="Settings">
 <label>ONVIF_PORT</label>
-<description>The port your camera uses for ONVIF connections. This is mainly needed for PTZ movement.
+<description>The port your camera uses for ONVIF connections. This is needed for PTZ movement and auto discovery of rtsp and snapshot urls. Giving the wrong port will cause camera to connect faster if you manually provide the urls.
 </description>        
 <default>8080</default>
 </parameter>
