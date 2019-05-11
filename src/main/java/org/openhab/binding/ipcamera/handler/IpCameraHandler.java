@@ -2418,7 +2418,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             startStreamServer(true);
                         }
 
-                        cameraConnectionJob.cancel(true);
+                        cameraConnectionJob.cancel(false);
                         cameraConnectionJob = null;
                     }
                 }
@@ -2554,9 +2554,6 @@ public class IpCameraHandler extends BaseThingHandler {
                         updateState(CHANNEL_RTSP_URL, new StringType(rtspUri));
                     }
 
-                    cameraConnectionJob.cancel(false);
-                    cameraConnectionJob = null;
-
                     fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 7000,
                             Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
 
@@ -2567,6 +2564,10 @@ public class IpCameraHandler extends BaseThingHandler {
                     if (!"-1".contentEquals(config.get(CONFIG_SERVER_PORT).toString())) {
                         startStreamServer(true);
                     }
+
+                    cameraConnectionJob.cancel(false);
+                    cameraConnectionJob = null;
+
                 }
             } else {
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
