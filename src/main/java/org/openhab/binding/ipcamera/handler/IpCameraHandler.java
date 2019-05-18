@@ -553,7 +553,9 @@ public class IpCameraHandler extends BaseThingHandler {
                     logger.debug("Stream Server recieved request \t{}:{}", httpRequest.method(), httpRequest.uri());
                     String requestIP = "("
                             + ((InetSocketAddress) ctx.channel().remoteAddress()).getAddress().getHostAddress() + ")";
-                    if (!config.get(CONFIG_IP_WHITELIST).toString().contains(requestIP)) {
+                    
+                 
+                     if (!config.get(CONFIG_IP_WHITELIST).toString().contains(requestIP) && !config.get(CONFIG_IP_WHITELIST).toString().contentEquals("DISABLE")) {
                         logger.warn("The request made from {} was not in the whitelist and will be ignored.",
                                 requestIP);
                         return;
@@ -2310,6 +2312,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
     void getAbsolutePan() {
         if (ptzDevices != null) {
+        	ptzLocation = getPtzPosition();
             currentPanPercentage = (((panRange.getMin() - ptzLocation.getPanTilt().getX()) * -1)
                     / ((panRange.getMin() - panRange.getMax()) * -1)) * 100;
             currentPanCamValue = ((((panRange.getMin() - panRange.getMax()) * -1) / 100) * currentPanPercentage

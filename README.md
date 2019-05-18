@@ -418,6 +418,8 @@ Each alarm you wish to use must have "Notify Surveillance Center" enabled under 
 If you need a channel or control updated in case you have made a change with the cameras app, you can call a refresh on it by using a cron rule.
 
 ```
+import org.eclipse.smarthome.core.types.RefreshType
+
 rule "refresh"
 when
     Time cron "0 */15 * * * ? *"

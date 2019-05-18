@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<features name="org.openhab.binding.ipcamera-${project.version}" xmlns="http://karaf.apache.org/xmlns/features/v1.4.0">
+    <repository>mvn:org.openhab.core.features.karaf/org.openhab.core.features.karaf.openhab-core/${project.version}/xml/features</repository>
+
+    <feature name="openhab-binding-ipcamera" description="IpCamera Binding" version="${project.version}">
+    <feature>openhab-runtime-base</feature>
+		<feature prerequisite="true">wrap</feature>
+		<bundle dependency="true">wrap:mvn:io.netty/netty-all/4.1.36.Final$Bundle-Name=Netty%20All&amp;Bundle-SymbolicName=io.netty.netty-all&amp;Bundle-Version=4.1.36</bundle>
+        <bundle start-level="80">mvn:org.openhab.addons.bundles/org.openhab.binding.ipcamera/${project.version}</bundle>       
+    </feature>
+            
+</features>
