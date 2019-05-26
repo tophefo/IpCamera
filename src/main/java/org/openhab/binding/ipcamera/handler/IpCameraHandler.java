@@ -14,12 +14,8 @@
 package org.openhab.binding.ipcamera.handler;
 
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.*;
-
-import java.io.BufferedReader;
+import org.openhab.binding.ipcamera.internal.Ffmpeg;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.ConnectException;
 import java.net.InetAddress;
@@ -54,6 +50,7 @@ import org.eclipse.smarthome.core.thing.ThingStatusDetail;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
 import org.eclipse.smarthome.core.types.Command;
+import org.eclipse.smarthome.core.types.State;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.onvif.ver10.schema.FloatRange;
 import org.onvif.ver10.schema.PTZVector;
@@ -87,7 +84,6 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.base64.Base64;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
-import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpClientCodec;
@@ -102,11 +98,6 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
-import io.netty.handler.codec.rtsp.RtspDecoder;
-import io.netty.handler.codec.rtsp.RtspEncoder;
-import io.netty.handler.codec.rtsp.RtspHeaderNames;
-import io.netty.handler.codec.rtsp.RtspMethods;
-import io.netty.handler.codec.rtsp.RtspVersions;
 import io.netty.handler.stream.ChunkedFile;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import io.netty.handler.timeout.IdleState;
@@ -134,7 +125,7 @@ public class IpCameraHandler extends BaseThingHandler {
     private final ScheduledExecutorService scheduledMovePTZ = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService fetchCameraOutput = Executors.newSingleThreadScheduledExecutor();
 
-    private Configuration config;
+    public Configuration config;
     private OnvifDevice onvifCamera;
     Ffmpeg ffmpegHLS = null;
     Ffmpeg ffmpegGIF = null;
@@ -145,7 +136,6 @@ public class IpCameraHandler extends BaseThingHandler {
     private ScheduledFuture<?> fetchCameraOutputJob = null;
     private int selectedMediaProfile = 0;
     private Bootstrap mainBootstrap;
-    private Bootstrap rtspBootstrap;
     private ServerBootstrap serverBootstrap;
     private EventLoopGroup mainEventLoopGroup = new NioEventLoopGroup();
     private EventLoopGroup serversLoopGroup = new NioEventLoopGroup();
@@ -225,58 +215,6 @@ public class IpCameraHandler extends BaseThingHandler {
         } else {
             logger.error("Camera is asking for Basic Auth when you have not provided a username and/or password !");
         }
-    }
-
-    private HttpRequest getRTSPoptions(String rtspURL) {
-        HttpRequest request = new DefaultHttpRequest(RtspVersions.RTSP_1_0, RtspMethods.OPTIONS, rtspURL);
-        request.headers().add(RtspHeaderNames.CSEQ, "1");
-        return request;
-    }
-
-    private HttpRequest getRTSPdescribe(String rtspURL) {
-        HttpRequest request = new DefaultHttpRequest(RtspVersions.RTSP_1_0, RtspMethods.DESCRIBE, rtspURL);
-        request.headers().add(RtspHeaderNames.CSEQ, "2");
-        return request;
-    }
-
-    /*
-     * v=0
-     * o=- 2252115724 2252115724 IN IP4 0.0.0.0
-     * s=Media Server
-     * c=IN IP4 0.0.0.0
-     * t=0 0
-     * a=control:*
-     * a=packetization-supported:DH
-     * a=rtppayload-supported:DH
-     * a=range:npt=now-
-     * m=video 0 RTP/AVP 26
-     * a=control:trackID=0
-     * a=framerate:10.000000
-     * a=rtpmap:26 JPEG/90000
-     * a=recvonly
-     * m=audio 0 RTP/AVP 97
-     * a=control:trackID=1
-     * a=rtpmap:97 MPEG4-GENERIC/16000
-     * a=fmtp:97 streamtype=5;profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1408
-     * a=recvonly
-     * m=application 0 RTP/AVP 107
-     * a=control:trackID=4
-     * a=rtpmap:107 vnd.onvif.metadata/90000
-     * a=recvonly
-     */
-
-    private HttpRequest getRTSPsetup(String rtspURL) {
-        HttpRequest request = new DefaultHttpRequest(RtspVersions.RTSP_1_0, RtspMethods.SETUP, rtspURL);
-        request.headers().add(RtspHeaderNames.CSEQ, "3");
-        request.headers().add(RtspHeaderNames.TRANSPORT, "RTP/AVP;unicast;client_port=5000-5001");
-        return request;
-    }
-
-    private HttpRequest getRTSPplay(String rtspURL) {
-        HttpRequest request = new DefaultHttpRequest(RtspVersions.RTSP_1_0, RtspMethods.PLAY, rtspURL);
-        request.headers().add(RtspHeaderNames.CSEQ, "4");
-        request.headers().add(RtspHeaderNames.SESSION, "12345678"); // need session number to match that of setup
-        return request;
     }
 
     private String getCorrectUrlFormat(String url) {
@@ -509,7 +447,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     String ffmpegInput = (config.get(CONFIG_FFMPEG_INPUT) == null) ? rtspUri
                             : config.get(CONFIG_FFMPEG_INPUT).toString();
 
-                    ffmpegHLS = new Ffmpeg(config.get(CONFIG_FFMPEG_LOCATION).toString(), "-rtsp_transport tcp",
+                    ffmpegHLS = new Ffmpeg((IpCameraHandler) thing.getHandler(), config.get(CONFIG_FFMPEG_LOCATION).toString(), "-rtsp_transport tcp",
                             ffmpegInput, config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
                             config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8",
                             config.get(CONFIG_USERNAME).toString(), config.get(CONFIG_PASSWORD).toString());
@@ -527,7 +465,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         inOptions = "-y -t 8";
                     }
 
-                    ffmpegGIF = new Ffmpeg(config.get(CONFIG_FFMPEG_LOCATION).toString(), inOptions, ffmpegInput,
+                    ffmpegGIF = new Ffmpeg((IpCameraHandler) thing.getHandler(),config.get(CONFIG_FFMPEG_LOCATION).toString(), inOptions, ffmpegInput,
                             config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
                             config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.gif",
                             config.get(CONFIG_USERNAME).toString(), config.get(CONFIG_PASSWORD).toString());
@@ -644,161 +582,9 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     }
 
-    class Ffmpeg {
-        private Process process = null;
-        private String location, inArguments, input, outArguments, output;
-        private String ffmpegCommand, format, password, username;
-        private String[] commandArray = null;
-        private StreamRunning streamRunning = new StreamRunning();
-        private int keepAlive = 0;
 
-        public void setKeepAlive() {
-            // reset to Keep alive ffmpeg for another 60 seconds
-            keepAlive = 60 / (Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()) / 1000);
-        }
 
-        public void setFormat(String format) {
-            this.format = format;
-        }
-
-        public int getKeepAlive() {
-            if (keepAlive < 0) {
-                this.stopConverting();
-            }
-            return --keepAlive;
-        }
-
-        Ffmpeg(String location, String inArguments, String input, String outArguments, String output, String username,
-                String password) {
-            this.location = location;
-            if (input != null) {
-                this.input = input;
-            }
-            this.inArguments = inArguments;
-            this.outArguments = outArguments;
-            this.output = output;
-            this.username = username;
-            this.password = password;
-            buildFfmpegCommand();
-        }
-
-        private void buildFfmpegCommand() {
-            if (input == null) {
-                logger.error(
-                        "Camera did not know its RTSP url, please use FFMPEG_INPUT to specify a working http or rtsp url.");
-                return;
-            } else {
-                if (password != null && !input.contains("@")) {
-                    String credentials = username + ":" + password + "@";
-                    // will not work for https: but currently binding does not use https
-                    input = input.substring(0, 7) + credentials + input.substring(7);
-                }
-            }
-            ffmpegCommand = location + " " + inArguments + " -i " + input + " " + outArguments + " " + output;
-            commandArray = ffmpegCommand.trim().split("\\s+");
-        }
-
-        private class StreamRunning extends Thread {
-
-            @Override
-            public void run() {
-                try {
-                    process = Runtime.getRuntime().exec(commandArray);
-                    InputStream errorStream = process.getErrorStream();
-                    InputStreamReader errorStreamReader = new InputStreamReader(errorStream);
-                    BufferedReader bufferedReader = new BufferedReader(errorStreamReader);
-                    String line = null;
-                    while ((line = bufferedReader.readLine()) != null) {
-                        logger.debug(line);
-                    }
-                } catch (IOException e) {
-                    logger.error(e.toString());
-                } finally {
-                    if ("GIF".contentEquals(format)) {
-                        updateState(CHANNEL_UPDATE_GIF, OnOffType.valueOf("OFF"));
-                        logger.debug("Animated GIF has been created and is ready for use.");
-                    }
-                }
-            }
-        }
-
-        public void startConverting() {
-            if (!streamRunning.isAlive()) {
-                streamRunning = new StreamRunning();
-                logger.debug("Starting ffmpeg with this command now:{}", ffmpegCommand);
-                setKeepAlive();
-                streamRunning.start();
-                try {
-                    Thread.sleep(4000);
-                } catch (InterruptedException e) {
-                }
-            }
-        }
-
-        public void stopConverting() {
-            if (streamRunning.isAlive()) {
-                logger.debug("Stopping ffmpeg now");
-                process.destroy();
-                if (process.isAlive()) {
-                    process.destroyForcibly();
-                }
-            }
-        }
-    }
-
-    public void setupRTSP() {
-
-        if (rtspBootstrap == null) {
-            rtspBootstrap = new Bootstrap();
-            rtspBootstrap.group(mainEventLoopGroup);
-            rtspBootstrap.channel(NioSocketChannel.class);
-            rtspBootstrap.option(ChannelOption.SO_KEEPALIVE, true);
-            rtspBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 4500);
-            rtspBootstrap.option(ChannelOption.SO_SNDBUF, 1024 * 8);
-            rtspBootstrap.option(ChannelOption.SO_RCVBUF, 1024 * 1024);
-            rtspBootstrap.option(ChannelOption.TCP_NODELAY, true);
-            rtspBootstrap.handler(new ChannelInitializer<SocketChannel>() {
-
-                @Override
-                public void initChannel(SocketChannel socketChannel) throws Exception {
-                    // socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(18, 0, 0));
-                    socketChannel.pipeline().addLast("RtspDecoder", new RtspDecoder());
-                    socketChannel.pipeline().addLast("RtspEncoder", new RtspEncoder());
-                    socketChannel.pipeline().addLast("myRTSPHandler", new myRTSPHandler());
-                }
-            });
-        }
-
-        ChannelFuture chFuture = rtspBootstrap.connect(new InetSocketAddress(ipAddress, 554));
-        chFuture.awaitUninterruptibly(); // ChannelOption.CONNECT_TIMEOUT_MILLIS means this will not hang here
-        if (!chFuture.isSuccess()) {
-            logger.debug("!!!! RTSP could not open channel.");
-        }
-        Channel ch = chFuture.channel();
-
-        // ch.writeAndFlush(getRTSPoptions(rtspUri));
-        // returns this:
-        // RTSP/1.0 200 OK
-        // CSeq: 1
-        // Server: Rtsp Server/3.0
-        // Public: OPTIONS, DESCRIBE, ANNOUNCE, SETUP, PLAY, RECORD, PAUSE, TEARDOWN, SET_PARAMETER, GET_PARAMETER
-
-        // ch.writeAndFlush(getRTSPdescribe(rtspUri));
-        // returns this:
-        // RTSP/1.0 200 OK
-        // CSeq: 2
-        // x-Accept-Dynamic-Rate: 1
-        // Content-Base: rtsp://192.168.xx.xx:554/cam/realmonitor?channel=1&subtype=1&unicast=true&proto=Onvif/
-        // Cache-Control: must-revalidate
-        // Content-Length: 582
-        // Content-Type: application/sdp
-
-        // ch.writeAndFlush(getRTSPsetup(rtspUri));
-        // ch.writeAndFlush(getRTSPplay(rtspUri));
-
-        // Cleanup
-        chFuture = null;
-    }
+   
 
     // Always use this as sendHttpGET(GET/POST/PUT/DELETE, "/foo/bar",null,false)//
     // The authHandler will use this method with a digest string as needed.
@@ -1271,42 +1057,7 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     }
 
-    private class myRTSPHandler extends ChannelDuplexHandler {
-        @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 
-            logger.info(msg.toString());
-
-            if (msg instanceof HttpContent) {
-                HttpContent content = (HttpContent) msg;
-                String detail = content.content().toString(CharsetUtil.UTF_8);
-                logger.info("detail is {}", detail);
-            }
-        }
-
-        @Override
-        public void channelReadComplete(ChannelHandlerContext ctx) {
-        }
-
-        @Override
-        public void handlerAdded(ChannelHandlerContext ctx) {
-            logger.debug("RTSP handler just created now");
-        }
-
-        @Override
-        public void handlerRemoved(ChannelHandlerContext ctx) {
-            logger.debug("RTSP handler removed just now");
-        }
-
-        @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        }
-
-        @Override
-        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-
-        }
-    }
 
     private class AmcrestHandler extends ChannelDuplexHandler {
         private String requestUrl = "Empty";
@@ -1828,7 +1579,7 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     public IpCameraHandler(Thing thing) {
-        super(thing);
+        super(thing);   
     }
 
     private void motionDetected(String thisAlarmsChannel) {
@@ -2806,4 +2557,8 @@ public class IpCameraHandler extends BaseThingHandler {
         onvifCamera = null; // needed in case user edits password.
         restart();
     }
+
+	public void setChannelState(String channelToUpdate, State valueOf) {
+		updateState(channelToUpdate, valueOf);		
+	}
 }
