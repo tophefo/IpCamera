@@ -1,8 +1,6 @@
-# <bindingName> Binding
+# IpCamera Binding
 
-This binding allows you to use IP cameras in Openhab 2. If the brand of camera does not have a full API then the camera will only fetch a picture/stream and will not have any support for alarms, or any of the other advanced features that the binding has implemented. Each brand that does have an API will have different features, as each brands API is different and hence the support in this binding will differ between brands. Choose your camera wisely by looking at what the APIs allow you to do or ask in the forum what cameras can perform the task you are after. 
-
-In Alphabetical order the brands that are known to have an API are:
+This binding allows you to use IP cameras in Openhab 2. If the brand of camera does not have a full API then the camera will only fetch a picture/stream and will not have any support for alarms, or any of the other advanced features that the binding has implemented. Each brand that has an API is listed below in Alphabetical order:
 
 **AMCREST**
 
@@ -40,11 +38,11 @@ Not implemented, but should be possible to add.
 
 If using the manual text configuration and/or when needing to setup HABPANEL/sitemaps, you are going to need to know what your camera is as a "thing type". These are listed in CAPS below and are only a single word. Example: The thing type for a generic onvif camera is "ONVIF".
 
-HTTPONLY: For any camera that is not ONVIF compatible, yet still has the ability to fetch a snapshot or MJPEG stream with a url.
+HTTPONLY: For any camera that is not ONVIF compatible, yet still has the ability to fetch a snapshot or stream with a url.
 
-ONVIF: Use for all ONVIF Cameras from any brand that do not have an API. You gain PTZ and auto finding of the snapshot url over httponly things. If your camera does not have PTZ you may prefer to set it up as httponly due to a faster connection time as onvif is skipped.
+ONVIF: Use for all ONVIF Cameras from any brand that do not have an API. You gain Pan Tilt and Zoom controls and auto discovery of the snapshot and rtsp urls over a httponly thing. If your camera does not have PTZ you may prefer to set it up as httponly due to the camera connecting faster.
 
-AMCREST: Use for all Amcrest Cameras that do not work as a dahua thing as this uses an older polling method for alarm detection which is not as efficient as the newer method used in dahua. Amcrest are made by Dahua and hence their cameras can be setup as a Dahua thing.
+AMCREST: Use for all Amcrest Cameras that do not work as a Dahua thing as this uses an older polling method for alarm detection which is not as efficient as the newer method used in Dahua. Amcrest are made by Dahua and hence their cameras can be setup as a Dahua thing.
 
 DAHUA: Use for all current Dahua and Amcrest cameras as they support an API as well as ONVIF.
 
@@ -59,7 +57,7 @@ INSTAR: Use for all current INSTAR Cameras as they support an API as well as ONV
 
 ## Discovery
 
-Auto discovery is not supported currently and I would love a PR if someone has experience finding cameras on a network. ONVIF documents a way to use UDP multicast to find cameras, however a lot of cameras have this feature disabled by default in their firmwares hence why this is not high on the list to do. Currently you need to manually add the IP camera either via PaperUI or textual configuration which is covered below in more detail. Once the camera is added you then supply the IP address and port settings for the camera. Optionally a username and password can also be filled in if the camera is secured with these, which I highly recommend. Clicking on the pencil icon in PaperUI is how you reach these parameters and how you make all the settings unless you have chosen to use manual text configuration. You can not mix manual and PaperUI methods, but it is handy to see and read the descriptions of all the controls in PaperUI.
+Auto discovery is not supported currently and I would love a PR if someone has experience finding cameras on a network. ONVIF documents a way to use UDP multicast to find cameras, however a lot of cameras have this feature disabled by default in their firmwares hence why this is not high on the list to do. Currently you need to manually add the IP camera either via PaperUI or textual configuration which is covered below in more detail.
 
 ## Binding Configuration
 
@@ -305,12 +303,12 @@ For the above notifications to work you will need to setup multiple users with t
 ## How to get working video streams
 
 IMPORTANT:
-Unlike the snapshots, the streaming server works by allowing access to the video streams with no user/password for requests that come from an IP address in the white list. Requests from outside IP's or internal requests not on the white list will fail to get any answer. 
+Unlike snapshots, the streaming server works by allowing access to the video streams with no user/password for requests that come from an IP listed in the white list. Requests from outside IP's or internal requests not on the white list will fail to get any answer. If you prefer to use your own firewall, you can make the ip whitelist equal "DISABLE" to turn this feature off.
 
 There are now multiple ways to get a moving picture:
-+ Animated GIF
-+ HLS Http Live Streaming which uses h264
-+ MJPEG which uses multiple jpeg files to create what is called MOTION JPEG
++ Animated GIF.
++ HLS Http Live Streaming which uses h264 can can be used to cast to a Chromecast.
++ MJPEG which uses multiple jpeg files to create what is called MOTION JPEG.
 
 To get the first two video formats working, you need to install the ffmpeg program. Visit their site here to learn how <https://ffmpeg.org/>
 
@@ -328,13 +326,13 @@ If your camera can not do MJPEG you can use this method to turn a h.264 stream i
 
 <https://community.openhab.org/t/how-to-display-rtsp-streams-from-ip-cameras-in-openhab-and-habpanel-linux-only/69021>
 
-Alternatively you can use 3rd party software running on a server to do the conversion as this takes a lot of CPU power to handle the conversion. You can run the opensource motion software on a raspberry Pi with this project.
+Alternatively you can use 3rd party software running on a server to do the conversion. Converting from h264 to mjpeg takes a lot of CPU power to handle the conversion, so it is better to use HLS format as this will use h264 and not require a conversion that needs CPU grunt. You can run the opensource motion software on a raspberry Pi with this project.
 <https://github.com/ccrisan/motioneyeos/wiki>
 
 
 **HLS Http Live Streaming**
 
-Cameras with h264 format streams can have this copied into the HLS format which can be used to stream to Chromecasts and also display in browsers that support this format using the webview or Habpanel items. Apple devices have excellent support for HLS due to the standard being invented by Apple. Some browsers like chrome require a plugin to be installed and then it is able to display the video.
+Cameras with h264 format streams can have this copied into the HLS format which can be used to stream to Chromecasts and also display in browsers that support this format using the webview or Habpanel items. Apple devices have excellent support for HLS due to the standard being invented by Apple. Some browsers like Chrome require a plugin to be installed and before being able to display the video.
 
 
 To use the new steaming features, you need to:
@@ -342,7 +340,22 @@ To use the new steaming features, you need to:
 2. Add any IPs that need access to the ``IP_WHITELIST`` surrounding each one in brackets (see below example). Internal IPs will trigger a warning in the logs if they are not in the whitelist, however external IPs or localhost will not trigger a warning in the logs as they are completely ignored and the binding will refuse to connect to them. This is a security feature.
 3. Ensure ffmpeg is installed.
 4. For cameras that do not auto detect the H264 stream which is done for ONVIF cameras, you will need to use the ``FFMPEG_INPUT`` and provide a http or rtsp link. This is used for both the HLS and animated GIF features.
-5. For most brands the ``ONVIF_MEDIA_PROFILE`` needs to match the stream number you have setup for h264. This is usually 0 and is the main-stream, the higher numbers are the sub-streams. The DEBUG log output will help guide you with this in the openhab.log if ONVIF is setup correctly.
+5. For most brands the ``ONVIF_MEDIA_PROFILE`` needs to match the stream number you have setup for h264. This is usually 0 and is the main-stream, the higher numbers are the sub-streams if your camera has any. The DEBUG log output will help guide you with this in the openhab.log if ONVIF is setup correctly.
+6. Consider using a SSD, HDD or a tmpfs (ram drive) if using SD/flash cards as the HLS streams are written to the FFMPEG_OUTPUT folder. Only a small amount of storage is needed.
+
+
+To create a tmpfs of 10mb at /tmp/camera1/ run this command to open the file for editing.
+
+```
+nano /etc/fstab
+```
+
+Enter and save this at the bottom of the file using ctrl X when done.
+
+```
+tmpfs /tmp/camera1 tmpfs defaults,nosuid,nodev,noatime,size=10m 0 0
+```
+
 
 
 Example thing file for a Dahua camera that turns off snapshots (not necessary as it can do both) and enables streaming instead.... 
