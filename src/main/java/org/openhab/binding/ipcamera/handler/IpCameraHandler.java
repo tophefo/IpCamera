@@ -16,6 +16,10 @@ package org.openhab.binding.ipcamera.handler;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.*;
 import org.openhab.binding.ipcamera.internal.Ffmpeg;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.ConnectException;
 import java.net.InetAddress;
@@ -24,6 +28,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
+import java.nio.Buffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,6 +43,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import javax.xml.soap.SOAPException;
 
+import org.apache.commons.collections.buffer.CircularFifoBuffer;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.PercentType;
@@ -141,6 +147,8 @@ public class IpCameraHandler extends BaseThingHandler {
     private EventLoopGroup serversLoopGroup = new NioEventLoopGroup();
     private FullHttpRequest putRequestWithBody;
     private String nvrChannel;
+    private CircularFifoBuffer fifoSnapshotBuffer;
+    private int preroll,postroll,snapCount=0;
 
     public ArrayList<String> listOfRequests = new ArrayList<String>(18);
     public ArrayList<Channel> listOfChannels = new ArrayList<Channel>(18);
@@ -439,6 +447,25 @@ public class IpCameraHandler extends BaseThingHandler {
             ReferenceCountUtil.release(msg);
         }
     }
+    
+    private void storeSnapshots() {
+    	int count=0;
+    	OutputStream fos =null;
+    	for(Object lastSnapshot:fifoSnapshotBuffer) {
+    		byte[] foo=	(byte[])lastSnapshot;
+    		File file = new File(config.get(CONFIG_FFMPEG_OUTPUT).toString() + "snapshot"+count+".jpg");
+    		count++;
+    		try {
+				fos = new FileOutputStream(file);
+				fos.write(foo);
+				fos.close();
+			} catch (FileNotFoundException e) {
+				logger.error("FileNotFoundException {}",e);
+			} catch (IOException e) {
+				logger.error("IOException {}",e);
+			}  		
+    	}
+    }
 
     public void setupFfmpegFormat(String format) {
         switch (format) {
@@ -456,20 +483,34 @@ public class IpCameraHandler extends BaseThingHandler {
                 ffmpegHLS.startConverting();
                 break;
             case "GIF":
-                if (ffmpegGIF == null) {
+            	if (ffmpegGIF == null) {
+            		if(preroll>0) {
+            			ffmpegGIF = new Ffmpeg((IpCameraHandler) thing.getHandler(),config.get(CONFIG_FFMPEG_LOCATION).toString(),"-y -f image2 -framerate 1" ,config.get(CONFIG_FFMPEG_OUTPUT).toString() + "snapshot%d.jpg",
+                                config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
+                                config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.gif",
+                                null, null);
+                	}
+            		else {
+            		
                     String ffmpegInput = (config.get(CONFIG_FFMPEG_INPUT) == null) ? rtspUri
                             : config.get(CONFIG_FFMPEG_INPUT).toString();
 
-                    String inOptions = "-y -t 8 -rtsp_transport tcp";
+                    String inOptions = "-y -t "+postroll+" -rtsp_transport tcp";
                     if (!ffmpegInput.contains("rtsp")) {
-                        inOptions = "-y -t 8";
+                        inOptions = "-y -t "+postroll;
                     }
 
                     ffmpegGIF = new Ffmpeg((IpCameraHandler) thing.getHandler(),config.get(CONFIG_FFMPEG_LOCATION).toString(), inOptions, ffmpegInput,
                             config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
                             config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.gif",
                             config.get(CONFIG_USERNAME).toString(), config.get(CONFIG_PASSWORD).toString());
-                }
+                	}
+            	}
+                
+                if(preroll>0) {
+            		storeSnapshots();
+            	} 
+                
                 ffmpegGIF.setFormat(format);
                 ffmpegGIF.startConverting();
                 break;
@@ -843,29 +884,6 @@ public class IpCameraHandler extends BaseThingHandler {
                                     }
                                 }
 
-                                // new code starts here, may break other brands//
-                                // logger.debug("Message header contains this ContentType header :{}", contentType);
-                                // ByteBuf delimiter;
-                                /*
-                                 * switch (thing.getThingTypeUID().getId()) {
-                                 * case "HIKVISION":
-                                 * // multipart/x-mixed-replace;boundary=boundarySample
-                                 * delimiter = Unpooled.copiedBuffer("boundarySample".getBytes()); // HIK
-                                 * break;
-                                 * case "AMCREST":
-                                 * case "DAHUA":
-                                 * delimiter = Unpooled.copiedBuffer("myboundary".getBytes()); // Dahua
-                                 * break;
-                                 * default:
-                                 * delimiter = Unpooled.copiedBuffer("boundarySample".getBytes());
-                                 * }
-                                 * // stream(msg);
-                                 * // ctx.pipeline().addAfter("HttpClientCodec", "DelimiterBasedFrameDecoder",
-                                 * new DelimiterBasedFrameDecoder(500000, delimiter));
-                                 * ctx.pipeline().remove("HttpClientCodec");
-                                 */
-                                // end new experimental code//
-
                             } else if (closeConnection) {
                                 lock.lock();
                                 try {
@@ -909,7 +927,11 @@ public class IpCameraHandler extends BaseThingHandler {
 
                             if (content instanceof LastHttpContent) {
                                 if (contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
-                                    updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
+                                	updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
+                                	if(preroll>0) {
+                                	fifoSnapshotBuffer.add(lastSnapshot);
+                                	}
+                                    
                                     lastSnapshot = null;
                                     if (closeConnection) {
                                         logger.debug("Snapshot recieved: Binding will now close the channel.");
@@ -1782,7 +1804,12 @@ public class IpCameraHandler extends BaseThingHandler {
                 break;
             case CHANNEL_UPDATE_GIF:
                 if ("ON".equals(command.toString())) {
+                	if(preroll>0) {
+                	snapCount=postroll;	
+                	}
+                	else {
                     setupFfmpegFormat("GIF");
+                	}
                 }
                 break;
             case CHANNEL_ENABLE_LED:
@@ -2368,6 +2395,12 @@ public class IpCameraHandler extends BaseThingHandler {
                     shortMotionAlarm = false;
                 }
             }
+            
+            if(snapCount>0) {
+            	if(--snapCount==0) {
+                setupFfmpegFormat("GIF");
+            	}
+            }
 
             switch (thing.getThingTypeUID().getId()) {
                 case "FOSCAM":
@@ -2445,8 +2478,11 @@ public class IpCameraHandler extends BaseThingHandler {
         ipAddress = config.get(CONFIG_IPADDRESS).toString();
         port = Integer.parseInt(config.get(CONFIG_PORT).toString());
         username = (config.get(CONFIG_USERNAME) == null) ? null : config.get(CONFIG_USERNAME).toString();
-        password = (config.get(CONFIG_PASSWORD) == null) ? null : config.get(CONFIG_PASSWORD).toString();
-
+        password = (config.get(CONFIG_PASSWORD) == null) ? null : config.get(CONFIG_PASSWORD).toString();     
+        preroll = Integer.parseInt(config.get(CONFIG_GIF_PREROLL).toString());
+        postroll = Integer.parseInt(config.get(CONFIG_GIF_POSTROLL).toString());
+        fifoSnapshotBuffer = new CircularFifoBuffer(preroll+postroll);
+        
         if ("FOSCAM".contentEquals(thing.getThingTypeUID().getId())) {
             // Foscam needs any special char like spaces (%20) to be encoded for URLs.
             username = encodeSpecialChars(username);

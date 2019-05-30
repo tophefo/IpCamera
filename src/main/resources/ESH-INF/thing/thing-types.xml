@@ -102,7 +102,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
+<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -111,6 +111,22 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
 <default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_PREROLL" type="integer" required="true" min="0" max="30" groupName="Image Settings">
+<label>GIF_PREROLL</label>
+<description>Store this many snapshots from BEFORE you trigger a GIF creation.
+</description>
+<default>0</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_POSTROLL" type="integer" required="true" min="1" max="30" groupName="Image Settings">
+<label>GIF_POSTROLL</label>
+<description>How long in seconds to create a GIF from a stream. Alternatively if using GIF_PREROLL this is how many snapshots to use AFTER you trigger a GIF creation.
+</description>
+<default>8</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -233,7 +249,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
+<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -242,6 +258,22 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
 <default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_PREROLL" type="integer" required="true" min="0" max="30" groupName="Image Settings">
+<label>GIF_PREROLL</label>
+<description>Store this many snapshots from BEFORE you trigger a GIF creation.
+</description>
+<default>0</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_POSTROLL" type="integer" required="true" min="1" max="30" groupName="Image Settings">
+<label>GIF_POSTROLL</label>
+<description>How long in seconds to create a GIF from a stream. Alternatively if using GIF_PREROLL this is how many snapshots to use AFTER you trigger a GIF creation.
+</description>
+<default>8</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -395,7 +427,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
+<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -404,6 +436,22 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
 <default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_PREROLL" type="integer" required="true" min="0" max="30" groupName="Image Settings">
+<label>GIF_PREROLL</label>
+<description>Store this many snapshots from BEFORE you trigger a GIF creation.
+</description>
+<default>0</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_POSTROLL" type="integer" required="true" min="1" max="30" groupName="Image Settings">
+<label>GIF_POSTROLL</label>
+<description>How long in seconds to create a GIF from a stream. Alternatively if using GIF_PREROLL this is how many snapshots to use AFTER you trigger a GIF creation.
+</description>
+<default>8</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -598,7 +646,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
+<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -607,6 +655,22 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
 <default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_PREROLL" type="integer" required="true" min="0" max="30" groupName="Image Settings">
+<label>GIF_PREROLL</label>
+<description>Store this many snapshots from BEFORE you trigger a GIF creation.
+</description>
+<default>0</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_POSTROLL" type="integer" required="true" min="1" max="30" groupName="Image Settings">
+<label>GIF_POSTROLL</label>
+<description>How long in seconds to create a GIF from a stream. Alternatively if using GIF_PREROLL this is how many snapshots to use AFTER you trigger a GIF creation.
+</description>
+<default>8</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -782,7 +846,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
+<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -791,6 +855,22 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
 <default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_PREROLL" type="integer" required="true" min="0" max="30" groupName="Image Settings">
+<label>GIF_PREROLL</label>
+<description>Store this many snapshots from BEFORE you trigger a GIF creation.
+</description>
+<default>0</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_POSTROLL" type="integer" required="true" min="1" max="30" groupName="Image Settings">
+<label>GIF_POSTROLL</label>
+<description>How long in seconds to create a GIF from a stream. Alternatively if using GIF_PREROLL this is how many snapshots to use AFTER you trigger a GIF creation.
+</description>
+<default>8</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -959,7 +1039,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
+<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -968,6 +1048,22 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
 <default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_PREROLL" type="integer" required="true" min="0" max="30" groupName="Image Settings">
+<label>GIF_PREROLL</label>
+<description>Store this many snapshots from BEFORE you trigger a GIF creation.
+</description>
+<default>0</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_POSTROLL" type="integer" required="true" min="1" max="30" groupName="Image Settings">
+<label>GIF_POSTROLL</label>
+<description>How long in seconds to create a GIF from a stream. Alternatively if using GIF_PREROLL this is how many snapshots to use AFTER you trigger a GIF creation.
+</description>
+<default>8</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -1161,7 +1257,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
+<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -1170,6 +1266,22 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
 <default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_PREROLL" type="integer" required="true" min="0" max="30" groupName="Image Settings">
+<label>GIF_PREROLL</label>
+<description>Store this many snapshots from BEFORE you trigger a GIF creation.
+</description>
+<default>0</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_POSTROLL" type="integer" required="true" min="1" max="30" groupName="Image Settings">
+<label>GIF_POSTROLL</label>
+<description>How long in seconds to create a GIF from a stream. Alternatively if using GIF_PREROLL this is how many snapshots to use AFTER you trigger a GIF creation.
+</description>
+<default>8</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -1345,7 +1457,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments</default>
+<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -1354,6 +1466,22 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
 <default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_PREROLL" type="integer" required="true" min="0" max="30" groupName="Image Settings">
+<label>GIF_PREROLL</label>
+<description>Store this many snapshots from BEFORE you trigger a GIF creation.
+</description>
+<default>0</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_POSTROLL" type="integer" required="true" min="1" max="30" groupName="Image Settings">
+<label>GIF_POSTROLL</label>
+<description>How long in seconds to create a GIF from a stream. Alternatively if using GIF_PREROLL this is how many snapshots to use AFTER you trigger a GIF creation.
+</description>
+<default>8</default>
 <advanced>true</advanced>
 </parameter>
 
