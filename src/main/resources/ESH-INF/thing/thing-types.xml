@@ -1584,7 +1584,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
         
         <channel-type id="image">
         <item-type>Image</item-type>
-        <label>A JPG Image that can be made to update from your cameras feed.</label>
+        <label>Snapshot from camera</label>
         <description>Low frame rate and low bandwidth to keep demands on your internet connection low when using to remote view.</description>
         <category>Camera</category>
         </channel-type>

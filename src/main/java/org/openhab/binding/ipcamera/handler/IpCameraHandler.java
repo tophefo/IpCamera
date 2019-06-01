@@ -15,6 +15,7 @@ package org.openhab.binding.ipcamera.handler;
 
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.*;
 import org.openhab.binding.ipcamera.internal.Ffmpeg;
+import org.openhab.binding.ipcamera.internal.StreamServerHandler;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -28,7 +29,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
-import java.nio.Buffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -78,7 +78,6 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
@@ -90,7 +89,6 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.base64.Base64;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
-import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpContent;
@@ -98,13 +96,10 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
-import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
-import io.netty.handler.stream.ChunkedFile;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
@@ -133,8 +128,8 @@ public class IpCameraHandler extends BaseThingHandler {
 
     public Configuration config;
     private OnvifDevice onvifCamera;
-    Ffmpeg ffmpegHLS = null;
-    Ffmpeg ffmpegGIF = null;
+    public Ffmpeg ffmpegHLS = null;
+    public Ffmpeg ffmpegGIF = null;
     private List<Profile> profiles;
     private String username;
     private String password;
@@ -163,7 +158,7 @@ public class IpCameraHandler extends BaseThingHandler {
     public boolean useDigestAuth = false;
 
     private String snapshotUri = null;
-    private String mjpegUri = null;
+    public String mjpegUri = null;
     ChannelFuture serverFuture = null;
     int serverPort = 0;
     Object firstStreamedMsg = null;
@@ -404,7 +399,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(0, 10, 0));
                             socketChannel.pipeline().addLast("HttpServerCodec", new HttpServerCodec());
                             socketChannel.pipeline().addLast("ChunkedWriteHandler", new ChunkedWriteHandler());
-                            socketChannel.pipeline().addLast(new StreamServerHandler());
+                            socketChannel.pipeline().addLast(new StreamServerHandler((IpCameraHandler) thing.getHandler()));
                         }
                     });
                     serverFuture = serverBootstrap.bind().sync();
@@ -421,7 +416,7 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     // If start is true the CTX is added to the list to stream video to, false stops the stream.
-    private void setupMjpegStreaming(boolean start, ChannelHandlerContext ctx) {
+    public void setupMjpegStreaming(boolean start, ChannelHandlerContext ctx) {
         if (start) {
             mjpegChannelGroup.add(ctx.channel());
             if (mjpegChannelGroup.size() == 1) {
@@ -516,116 +511,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 break;
         }
     }
-
-    class StreamServerHandler extends ChannelInboundHandlerAdapter {
-
-        @Override
-        public void handlerAdded(ChannelHandlerContext ctx) {
-        }
-
-        @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            try {
-                if (msg instanceof HttpRequest) {
-                    HttpRequest httpRequest = (HttpRequest) msg;
-                    // logger.debug("{}", msg);
-                    logger.debug("Stream Server recieved request \t{}:{}", httpRequest.method(), httpRequest.uri());
-                    String requestIP = "("
-                            + ((InetSocketAddress) ctx.channel().remoteAddress()).getAddress().getHostAddress() + ")";
-                    
-                 
-                     if (!config.get(CONFIG_IP_WHITELIST).toString().contains(requestIP) && !config.get(CONFIG_IP_WHITELIST).toString().contentEquals("DISABLE")) {
-                        logger.warn("The request made from {} was not in the whitelist and will be ignored.",
-                                requestIP);
-                        return;
-                    } else if ("GET".equalsIgnoreCase(httpRequest.method().toString())) {
-                        if (httpRequest.uri().contains("/ipcamera.mjpeg")) {
-                            if (mjpegUri != null) {
-                                setupMjpegStreaming(true, ctx);
-                            } else {
-                                logger.error(
-                                        "MJPEG stream was told to start and there is no STREAM_URL_OVERRIDE supplied.");
-                            }
-                        } else if (httpRequest.uri().contains("/ipcamera.m3u8")) {
-                            setupFfmpegFormat("HLS");
-                            ffmpegHLS.setKeepAlive();// setup must come first
-
-                            String uri = httpRequest.uri();
-                            File file = new File(config.get(CONFIG_FFMPEG_OUTPUT).toString() + uri);
-                            // logger.info("File is:{}", file.toString());
-                            ChunkedFile chunkedFile = new ChunkedFile(file);
-                            HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1,
-                                    HttpResponseStatus.OK);
-                            response.headers().add(HttpHeaderNames.CONTENT_TYPE, "application/x-mpegURL");
-                            response.headers().add("Access-Control-Allow-Origin", "*");
-                            response.headers().add("Access-Control-Expose-Headers", "content-length");
-                            response.headers().set(HttpHeaderNames.CACHE_CONTROL, HttpHeaderValues.NO_CACHE);
-                            response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
-                            response.headers().add(HttpHeaderNames.CONTENT_LENGTH, chunkedFile.length());
-                            ctx.channel().write(response);
-                            ctx.channel().writeAndFlush(chunkedFile);
-                        } else if (httpRequest.uri().contains(".ts")) {
-                            String uri = httpRequest.uri();
-                            File file = new File(config.get(CONFIG_FFMPEG_OUTPUT).toString() + uri);
-                            // logger.info("File is:{}", file.toString());
-                            ChunkedFile chunkedFile = new ChunkedFile(file);
-                            HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1,
-                                    HttpResponseStatus.OK);
-                            response.headers().add(HttpHeaderNames.CONTENT_TYPE, "video/MP2T");
-                            response.headers().add("Access-Control-Allow-Origin", "*");
-                            response.headers().add("Access-Control-Expose-Headers", "content-length");
-                            response.headers().set(HttpHeaderNames.CACHE_CONTROL, HttpHeaderValues.NO_CACHE);
-                            response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
-                            response.headers().add(HttpHeaderNames.CONTENT_LENGTH, chunkedFile.length());
-                            ctx.channel().write(response);
-                            ctx.channel().writeAndFlush(chunkedFile);
-                        }
-                    }
-                }
-            } finally {
-                ReferenceCountUtil.release(msg);
-            }
-        }
-
-        @Override
-        public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-        }
-
-        @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-            if (cause.toString().contains("Connection reset by peer")) {
-                logger.debug("Connection reset by peer");
-            } else if (cause.toString().contains("An established connection was aborted by the software")) {
-                logger.debug("An established connection was aborted by the software");
-            } else if (cause.toString().contains("An existing connection was forcibly closed by the remote host")) {
-                logger.debug("An existing connection was forcibly closed by the remote host");
-            } else {
-                logger.warn("Exception caught from stream server:{}", cause);
-            }
-            ctx.close();
-        }
-
-        @Override
-        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-            if (evt instanceof IdleStateEvent) {
-                IdleStateEvent e = (IdleStateEvent) evt;
-                if (e.state() == IdleState.WRITER_IDLE) {
-                    logger.debug("Stream server is going to close an idle channel.");
-                    ctx.close();
-                }
-            }
-        }
-
-        @Override
-        public void handlerRemoved(ChannelHandlerContext ctx) {
-            logger.debug("Closing a StreamServerHandler.");
-            setupMjpegStreaming(false, ctx);
-        }
-    }
-
-
-
-   
 
     // Always use this as sendHttpGET(GET/POST/PUT/DELETE, "/foo/bar",null,false)//
     // The authHandler will use this method with a digest string as needed.
