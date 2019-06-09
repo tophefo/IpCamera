@@ -44,7 +44,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update Image (0)</option>
+<option value="0">When updateImageNow is ON (0)</option>
 <option value="1">Always Update Image(1)</option>
 </options>
 </parameter>
@@ -210,7 +210,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update Image (0)</option>
+<option value="0">When updateImageNow is ON (0)</option>
 <option value="1">Always Update Image (1)</option>
 </options>
 </parameter>
@@ -477,7 +477,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update Image (0)</option>
+<option value="0">When updateImageNow is ON (0)</option>
 <option value="1">Always Update Image (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="3">Start Audio Alarm (3)</option>
@@ -696,7 +696,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update Image (0)</option>
+<option value="0">When updateImageNow is ON (0)</option>
 <option value="1">Always Update Image (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="3">Start Audio Alarm (3)</option>
@@ -896,7 +896,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update Image (0)</option>
+<option value="0">When updateImageNow is ON (0)</option>
 <option value="1">Always Update Image (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="4">During Motion Alarm (4)</option>
@@ -1089,7 +1089,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update Image (0)</option>
+<option value="0">When updateImageNow is ON (0)</option>
 <option value="1">Always Update Image (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="3">Start Audio Alarm (3)</option>
@@ -1307,7 +1307,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update Image (0)</option>
+<option value="0">When updateImageNow is ON (0)</option>
 <option value="1">Always Update Image (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="3">Start Audio Alarm (3)</option>
@@ -1507,7 +1507,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">Never Update Image (0)</option>
+<option value="0">When updateImageNow is ON (0)</option>
 <option value="1">Always Update Image (1)</option>
 </options>
 </parameter>
@@ -1573,7 +1573,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <channel-type id="updateImageNow">
 <item-type>Switch</item-type>
 <label>Update the Image</label>
-<description>Can be used to update the Image for each button press if you have the image settings selected to never update or a low refresh.</description>   
+<description>This can be used to trigger snapshot updates when an external PIR, button or other form of sensor turns this channel ON.</description>   
 </channel-type>
 
 <channel-type id="updateGif">
