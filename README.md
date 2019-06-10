@@ -1,6 +1,8 @@
 # IpCamera Binding
 
-This binding allows you to use IP cameras in Openhab 2. If the brand of camera does not have a full API then the camera will only fetch a picture/stream and will not have any support for alarms, or any of the other advanced features that the binding has implemented. Each brand that has an API is listed below in Alphabetical order:
+This binding allows you to use IP cameras in Openhab 2. If the brand of camera does not have a full API then the camera will only fetch a picture/stream and will not have any support for alarms, or any of the other advanced features that the binding has implemented. 
+
+Each brand that has an API is listed below in Alphabetical order:
 
 **AMCREST**
 
@@ -10,7 +12,7 @@ This binding allows you to use IP cameras in Openhab 2. If the brand of camera d
 
 See the Amcrest API link above.
 
-**Doorbird**
+**DOORBIRD**
 
 <https://www.doorbird.com/api>
 
@@ -18,7 +20,7 @@ See the Amcrest API link above.
 
 <https://www.foscam.es/descarga/Foscam-IPCamera-CGI-User-Guide-AllPlatforms-2015.11.06.pdf>
 
-**Grandstream**
+**GRANDSTREAM**
 
 Not implemented, but should be possible to add.
 
@@ -36,7 +38,7 @@ Not implemented, but should be possible to add.
 
 ## Supported Things
 
-If using the manual text configuration and/or when needing to setup HABPANEL/sitemaps, you are going to need to know what your camera is as a "thing type". These are listed in CAPS below and are only a single word. Example: The thing type for a generic onvif camera is "ONVIF".
+If using Openhab's manual text configuration or when needing to setup HABPANEL/sitemaps, you are going to need to know what your camera is as a "thing type". These are listed in CAPS below. Example: The thing type for a generic onvif camera is "ONVIF".
 
 HTTPONLY: For any camera that is not ONVIF compatible, yet still has the ability to fetch a snapshot or stream with a url.
 
@@ -57,13 +59,13 @@ INSTAR: Use for all current INSTAR Cameras as they support an API as well as ONV
 
 ## Discovery
 
-Auto discovery is not supported currently and I would love a PR if someone has experience finding cameras on a network. ONVIF documents a way to use UDP multicast to find cameras, however a lot of cameras have this feature disabled by default in their firmwares hence why this is not high on the list to do. Currently you need to manually add the IP camera either via PaperUI or textual configuration which is covered below in more detail.
+Auto discovery is not supported currently and I would love a PR if someone has experience finding cameras on a network. ONVIF documents a way to use UDP multicast to find cameras, however some cameras have this feature disabled by default for security reasons in their firmware hence why this is not high on the list to do. Currently you need to manually add the IP camera either via PaperUI or textual configuration which is covered below in more detail.
 
 ## Binding Configuration
 
-The binding can be configured with PaperUI by clicking on the pencil icon of any of the cameras that you have manually added via the PaperUI inbox by pressing on the PLUS (+) icon. 
+The binding can be configured with PaperUI by clicking on the pencil icon of any of the cameras that you have manually added via the PaperUI inbox. To add a camera just press on the PLUS (+) icon in the INBOX of PaperUI. 
 
-It can also be manually configured with text files by doing the following. DO NOT try and change a setting using PaperUI after using textual configuration as the two will conflict as the text file locks the settings preventing them from changing. Because the binding is changing so much at the moment I would recommend you use textual configuration, as each time Openhab restarts it removes and adds the camera so you automatically gain any extra channels or config abilities that I add. If using PaperUI, each time I add a new channel you need to remove and re-add the camera which then gives it a new UID number (Unique ID number), which in turn can break your sitemap and HABPanel setups. Textual configuration has its advantages and locks the camera to use a simple UID.
+Cameras can also be manually configured with text files by doing the following. DO NOT try and change a setting using PaperUI after using textual configuration as the two will conflict as the text file locks the settings preventing them from changing. Because the binding is changing so much at the moment I would recommend you use textual configuration, as each time Openhab restarts it removes and adds the camera so you automatically gain any extra channels or abilities that I add. If using PaperUI, each time I add a new channel you will need to remove and re-add the camera which then gives it a new UID number (Unique ID number), which in turn can break your sitemap and HABPanel setups. Textual configuration has its advantages and locks the camera to use a simple UID which can be a plain text name like "DrivewayCamera".
 
 The configuration parameters that can be used in textual configuration are:
 
@@ -107,6 +109,10 @@ FFMPEG_HLS_OUT_ARGUMENTS
 
 FFMPEG_GIF_OUT_ARGUMENTS
 
+GIF_PREROLL
+
+GIF_POSTROLL
+
 IP_WHITELIST
 
 
@@ -135,18 +141,51 @@ BindingID: is always ipcamera.
 
 THINGTYPE: is found listed above under the heading "supported things"
 
-UID: Can be made up but it must be UNIQUE, hence why it is called uniqueID. If you use PaperUI you will notice the UID will be something like "0A78687F" which is not very nice when using it in sitemaps and rules, also paperui will choose a new random ID each time you remove and add the camera causing you to edit your rules, items and sitemaps to make them match. You can use text to name it something useful like DrivewayCamera if you wish.
+UID: Can be made up but it must be UNIQUE, hence why it is called uniqueID. If you use PaperUI you will notice the UID will be something like "0A78687F" which is not very nice when using it in sitemaps and rules. PaperUI will choose a new random ID each time you remove and add the camera causing you to edit your rules, items and sitemaps to make them match. You can use text to name it something useful like "DrivewayCamera" if you wish.
 
 
 ## Thing Configuration
 
+Not all the configuration controls will be explained here, only the ones which are hard to understand by reading the description in PaperUI.
+
 **IMAGE_UPDATE_EVENTS**
 
-If you look in PaperUI you will notice that there are numbers in brackets after each option. These numbers represents the number for textual config that you can enter into the thing file which is described above. Cameras with supported alarms have more options compared to generic cameras.
+If you look in PaperUI you will notice that there are numbers in brackets after each option. These numbers represents the number for textual config that you can enter into the thing file which is described above. Cameras with supported alarms have more options compared to generic cameras. The channel updateImageNow can work with this setting to allow you to manually start and stop the image from updating.
 
 ## Channels
 
-See PaperUI for a full list of channels and the descriptions. Each camera brand will have different channels depending on how much of the support for an API has been added. The channels are kept consistent as much as possible from brand to brand to make upgrading to a different branded camera easier and to help when sharing rules with other users.
+See PaperUI for a full list of channels and the descriptions as most are easy to understand, any which need further explainations will be added here. Each camera brand will have different channels depending on how much of the support for an API has been added. The channels are kept consistent as much as possible from brand to brand to make upgrading to a different branded camera easier and to help when sharing rules with other users.
+
+**updateImageNow**
+
+This control can be used to start updating the image if the IMAGE_UPDATE_EVENTS config means the camera will not be updating unless an alarm is occurring. When ON the image will update at the POLL_CAMERA_MS rate. When OFF the image will update as is described by the IMAGE_UPDATE_EVENTS setting.
+
+**updateGif**
+
+When this control is turned ON it will trigger an animated Gif to be created by ffmpeg which will need to be installed on your server. Once the file is created the control will turn itself back OFF which can be used to trigger a rule to email or use Pushover/Telegram to send the file to your mobile phone. When GIF_PREROLL is set to a value higher than 0, the binding will create and use snapshots instead of using the RTSP feed from the camera which is the default behaviour when the GIF_PREROLL is set to 0. IMAGE_UPDATE_EVENTS must be set to always update the image and POLL_CAMERA_MS sets how often the snapshot is added to the FIFO buffer that creates the animated GIF. The snapshot files are not deleted and this can be used to create and email Jpeg files also giving you a number to choose from in case your camera has delayed footage. The files are placed into the folder specified by FFMPEG_OUTPUT.
+
+**lastMotionType**
+
+Cameras with multiple alarm types will update this with which alarm detected motion. You can use this to create a timestamp of when the last motion was detected by creating a rule when this channel is updated.
+
+items:
+
+```
+String BabyCamLastMotionType "Last Motion Type" { channel="ipcamera:DAHUA:BabyCamera:lastMotionType" }
+DateTime BabyCamLastMotionTime "Last Update [%1$ta %1$tR]"
+```
+
+rules:
+
+```
+rule "Create timestamp of last movement"
+	when
+	Item BabyCamLastMotionType received update
+	then
+	BabyCamLastMotionTime.postUpdate( new DateTimeType() )
+end
+```
+
 
 ## API Access Channel
 
@@ -303,7 +342,7 @@ For the above notifications to work you will need to setup multiple users with t
 ## How to get working video streams
 
 IMPORTANT:
-Unlike snapshots, the streaming server works by allowing access to the video streams with no user/password for requests that come from an IP listed in the white list. Requests from outside IP's or internal requests not on the white list will fail to get any answer. If you prefer to use your own firewall, you can make the ip whitelist equal "DISABLE" to turn this feature off.
+Unlike snapshots, the streaming server works by allowing access to the video streams with no user/password for requests that come from an IP listed in the white list. Requests from outside IP's or internal requests not on the white list will fail to get any answer. If you prefer to use your own firewall, you can also choose to make the ip whitelist equal "DISABLE" to turn this feature off and then all internal IP's will have access but external access is still blocked.
 
 There are now multiple ways to get a moving picture:
 + Animated GIF.
@@ -320,7 +359,7 @@ sudo apt update && sudo apt install ffmpeg
 
 **MJPEG Streaming**
 
-Cameras that have MJPEG abilities and also an API can stream to Openhab with the MJPEG format. The main cameras that can do this are Amcrest, Dahua, Hikvision and Foscam HD. For cameras that do not auto detect the url for mjpeg streams, you will need to enter a working url for ``STREAM_URL_OVERRIDE`` This can be skipped for Amcrest, Dahua, Doorbird, Hikvision and Foscam HD.
+Cameras that have MJPEG abilities and also an API can stream to Openhab with the MJPEG format. The main cameras that can do this are Amcrest, Dahua, Hikvision, Foscam HD and possibly Instar HD. For cameras that do not auto detect the url for mjpeg streams, you will need to enter a working url for ``STREAM_URL_OVERRIDE`` This can be skipped for Amcrest, Dahua, Doorbird, Hikvision and Foscam HD. If you can not find STREAM_URL_OVERRIDE you need to click on the pencil icon in PaperUI to edit the configuration and then scroll to the very bottom of the page and click on SHOW MORE link.
 
 If your camera can not do MJPEG you can use this method to turn a h.264 stream into MJPEG steam.
 
@@ -344,7 +383,7 @@ To use the new steaming features, you need to:
 6. Consider using a SSD, HDD or a tmpfs (ram drive) if using SD/flash cards as the HLS streams are written to the FFMPEG_OUTPUT folder. Only a small amount of storage is needed.
 
 
-To create a tmpfs of 10mb at /tmp/camera1/ run this command to open the file for editing.
+To create a tmpfs of 10mb at /tmp/ run this command to open the file for editing.
 
 ```
 nano /etc/fstab
@@ -353,7 +392,7 @@ nano /etc/fstab
 Enter and save this at the bottom of the file using ctrl X when done.
 
 ```
-tmpfs /tmp/camera1 tmpfs defaults,nosuid,nodev,noatime,size=10m 0 0
+tmpfs /tmp tmpfs defaults,nosuid,nodev,noatime,size=10m 0 0
 ```
 
 
@@ -551,8 +590,7 @@ You can specify the item name in the filter to remove just 1 camera, or you can 
 
 ## Roadmap for further development
 
-Currently the focus is on stability, speed and creating a good framework that allows multiple brands to be used in RULES in a consistent way. What this means is hopefully the binding is less work to add a new API function to instead of people creating stand alone scripts which are not easy for new Openhab users to find or use. By consistent I mean if a camera breaks down and you wish to change brands, your rules with this binding should be easy to adapt to the new brand of camera with no/minimal changes. 
-
+Currently the focus is on stability and creating a good framework that allows multiple brands to be used in RULES in a consistent way. What this means is hopefully the binding is less work to add a new API function to instead of people creating stand alone scripts which are not easy for new Openhab users to find or use. By consistent I mean if a camera breaks down and you wish to change brands, your rules with this binding should be easy to adapt to the new brand of camera with no/minimal changes. 
 
 If you need a feature added that is in an API and you can not program, please raise an issue ticket here at this github project with a sample of what a browser shows when you enter in the URL and it is usually very quick to add these features. 
 
