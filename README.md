@@ -383,7 +383,7 @@ To use the new steaming features, you need to:
 6. Consider using a SSD, HDD or a tmpfs (ram drive) if using SD/flash cards as the HLS streams are written to the FFMPEG_OUTPUT folder. Only a small amount of storage is needed.
 
 
-To create a tmpfs of 10mb at /tmp/ run this command to open the file for editing.
+To create a tmpfs of 10mb at /cameratmpfs/ run this command to open the file for editing.
 
 ```
 nano /etc/fstab
@@ -392,7 +392,7 @@ nano /etc/fstab
 Enter and save this at the bottom of the file using ctrl X when done.
 
 ```
-tmpfs /tmp tmpfs defaults,nosuid,nodev,noatime,size=10m 0 0
+tmpfs /cameratmpfs tmpfs defaults,nosuid,nodev,noatime,size=10m 0 0
 ```
 
 
