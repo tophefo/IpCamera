@@ -13,17 +13,7 @@
 
 package org.openhab.binding.ipcamera.handler;
 
-import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ACTIVATE_ALARM_OUTPUT;
-import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ACTIVATE_ALARM_OUTPUT2;
-import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_API_ACCESS;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_AUDIO_ALARM;
-import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_AUTO_LED;
-import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ENABLE_AUDIO_ALARM;
-import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ENABLE_FIELD_DETECTION_ALARM;
-import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ENABLE_LED;
-import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ENABLE_LINE_CROSSING_ALARM;
-import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ENABLE_MOTION_ALARM;
-import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_EXTERNAL_LIGHT;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_HLS_URL;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_IMAGE;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_IMAGE_URL;
@@ -31,13 +21,10 @@ import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_LAST
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_PAN;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_RTSP_URL;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_STREAM_URL;
-import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_TEXT_OVERLAY;
-import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_THRESHOLD_AUDIO_ALARM;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_TILT;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_UPDATE_GIF;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_UPDATE_IMAGE_NOW;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ZOOM;
-import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_AUDIO_URL_OVERRIDE;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_FFMPEG_GIF_OUT_ARGUMENTS;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_FFMPEG_HLS_OUT_ARGUMENTS;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_FFMPEG_INPUT;
@@ -47,7 +34,6 @@ import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_GIF_P
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_GIF_PREROLL;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_IMAGE_UPDATE_EVENTS;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_IPADDRESS;
-import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_MOTION_URL_OVERRIDE;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_NVR_CHANNEL;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_ONVIF_PORT;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_ONVIF_PROFILE_NUMBER;
@@ -108,7 +94,6 @@ import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.UnDefType;
 import org.onvif.ver10.schema.FloatRange;
 import org.onvif.ver10.schema.PTZVector;
 import org.onvif.ver10.schema.Profile;
@@ -615,22 +600,26 @@ public class IpCameraHandler extends BaseThingHandler {
 						socketChannel.pipeline().addLast("amcrestHandler", new AmcrestHandler(thing.getHandler()));
 						break;
 					case "DAHUA":
-						socketChannel.pipeline().addLast(new DahuaHandler(thing.getHandler(), nvrChannel));
+						socketChannel.pipeline().addLast("brandHandler",
+								new DahuaHandler(thing.getHandler(), nvrChannel));
 						break;
 					case "DOORBIRD":
-						socketChannel.pipeline().addLast(new DoorBirdHandler(thing.getHandler()));
+						socketChannel.pipeline().addLast("brandHandler", new DoorBirdHandler(thing.getHandler()));
 						break;
 					case "FOSCAM":
-						socketChannel.pipeline().addLast(new FoscamHandler(thing.getHandler()));
+						socketChannel.pipeline().addLast("brandHandler",
+								new FoscamHandler(thing.getHandler(), username, password));
 						break;
 					case "HIKVISION":
-						socketChannel.pipeline().addLast(new HikvisionHandler(thing.getHandler(), nvrChannel));
+						socketChannel.pipeline().addLast("brandHandler",
+								new HikvisionHandler(thing.getHandler(), nvrChannel));
 						break;
 					case "INSTAR":
-						socketChannel.pipeline().addLast(new InstarHandler(thing.getHandler()));
+						socketChannel.pipeline().addLast("brandHandler", new InstarHandler(thing.getHandler()));
 						break;
 					default:
-						socketChannel.pipeline().addLast(new HikvisionHandler(thing.getHandler(), nvrChannel));
+						socketChannel.pipeline().addLast("brandHandler",
+								new HikvisionHandler(thing.getHandler(), nvrChannel));
 						break;
 					}
 				}
@@ -1140,103 +1129,25 @@ public class IpCameraHandler extends BaseThingHandler {
 	public void handleCommand(ChannelUID channelUID, Command command) {
 		if (command.toString() == "REFRESH") {
 			switch (channelUID.getId()) {
-			case CHANNEL_THRESHOLD_AUDIO_ALARM:
-				switch (thing.getThingTypeUID().getId()) {
-				case "FOSCAM":
-					sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getAudioAlarmConfig&usr=" + username + "&pwd=" + password);
-					break;
-				case "AMCREST":
-				case "DAHUA":
-					sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=AudioDetect[0]");
-					break;
-				}
-				break;
-			case CHANNEL_ENABLE_AUDIO_ALARM:
-				switch (thing.getThingTypeUID().getId()) {
-				case "FOSCAM":
-					sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getAudioAlarmConfig&usr=" + username + "&pwd=" + password);
-					break;
-				case "HIKVISION":
-					sendHttpGET("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01");
-					break;
-				case "AMCREST":
-				case "DAHUA":
-					sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=AudioDetect[0]");
-					break;
-				}
-				break;
-			case CHANNEL_ENABLE_LINE_CROSSING_ALARM:
-				switch (thing.getThingTypeUID().getId()) {
-				case "HIKVISION":
-					sendHttpGET("/ISAPI/Smart/LineDetection/" + nvrChannel + "01");
-					break;
-				case "AMCREST":
-				case "DAHUA":
-					sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=CrossLineDetection[0]");
-					break;
-				}
-				break;
-			case CHANNEL_ENABLE_FIELD_DETECTION_ALARM:
-				switch (thing.getThingTypeUID().getId()) {
-				case "HIKVISION":
-					logger.debug("FieldDetection command");
-					sendHttpGET("/ISAPI/Smart/FieldDetection/" + nvrChannel + "01");
-					break;
-				}
-				break;
-			case CHANNEL_ENABLE_MOTION_ALARM:
-				switch (thing.getThingTypeUID().getId()) {
-				case "AMCREST":
-				case "DAHUA":
-					sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect[0]");
-					break;
-				case "FOSCAM":
-					sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username + "&pwd=" + password);
-					break;
-				case "HIKVISION":
-					sendHttpGET("/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection");
-					break;
-				}
-				break;
 			case CHANNEL_PAN:
 				getAbsolutePan();
-				break;
+				return;
 			case CHANNEL_TILT:
 				getAbsoluteTilt();
-				break;
+				return;
 			case CHANNEL_ZOOM:
 				getAbsoluteZoom();
-				break;
+				return;
 			}
-			return; // Return as we have handled the refresh command above and don't need to
-					// continue further.
 		} // end of "REFRESH"
 		switch (channelUID.getId()) {
-		case CHANNEL_TEXT_OVERLAY:
-			String text = encodeSpecialChars(command.toString());
-			if ("".contentEquals(text)) {
-				sendHttpGET(
-						"/cgi-bin/configManager.cgi?action=setConfig&VideoWidget[0].CustomTitle[1].EncodeBlend=false");
-			} else {
-				sendHttpGET(
-						"/cgi-bin/configManager.cgi?action=setConfig&VideoWidget[0].CustomTitle[1].EncodeBlend=true&VideoWidget[0].CustomTitle[1].Text="
-								+ text);
-			}
-			break;
-		case CHANNEL_API_ACCESS:
-			if (command.toString() != null) {
-				logger.info("API Access was sent this command :{}", command.toString());
-				sendHttpGET(command.toString());
-				updateState(CHANNEL_API_ACCESS, StringType.valueOf(""));
-			}
-			break;
 		case CHANNEL_UPDATE_IMAGE_NOW:
 			if ("ON".equals(command.toString())) {
 				updateImage = true;
 			} else {
 				updateImage = false;
 			}
-			break;
+			return;
 		case CHANNEL_UPDATE_GIF:
 			if ("ON".equals(command.toString())) {
 				if (preroll > 0) {
@@ -1245,276 +1156,45 @@ public class IpCameraHandler extends BaseThingHandler {
 					setupFfmpegFormat("GIF");
 				}
 			}
-			break;
-		case CHANNEL_ENABLE_LED:
-			switch (thing.getThingTypeUID().getId()) {
-			case "FOSCAM":
-				// Disable the auto mode first
-				sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setInfraLedConfig&mode=1&usr=" + username + "&pwd=" + password);
-				updateState(CHANNEL_AUTO_LED, OnOffType.valueOf("OFF"));
-				if ("0".equals(command.toString()) || "OFF".equals(command.toString())) {
-					sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=closeInfraLed&usr=" + username + "&pwd=" + password);
-				} else {
-					sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=openInfraLed&usr=" + username + "&pwd=" + password);
-				}
-				break;
-			case "AMCREST":
-			case "DAHUA":
-				updateState(CHANNEL_AUTO_LED, OnOffType.valueOf("OFF"));
-				if ("0".equals(command.toString()) || "OFF".equals(command.toString())) {
-					sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&Lighting[0][0].Mode=Off");
-				} else if ("ON".equals(command.toString())) {
-					sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&Lighting[0][0].Mode=Manual");
-				} else {
-					sendHttpGET(
-							"/cgi-bin/configManager.cgi?action=setConfig&Lighting[0][0].Mode=Manual&Lighting[0][0].MiddleLight[0].Light="
-									+ command.toString());
-				}
-				break;
-			}
-			break;
-		case CHANNEL_AUTO_LED:
-			switch (thing.getThingTypeUID().getId()) {
-			case "FOSCAM":
-				if ("ON".equals(command.toString())) {
-					updateState(CHANNEL_ENABLE_LED, UnDefType.valueOf("UNDEF"));
-					sendHttpGET(
-							"/cgi-bin/CGIProxy.fcgi?cmd=setInfraLedConfig&mode=0&usr=" + username + "&pwd=" + password);
-				} else {
-					sendHttpGET(
-							"/cgi-bin/CGIProxy.fcgi?cmd=setInfraLedConfig&mode=1&usr=" + username + "&pwd=" + password);
-				}
-				break;
-			case "AMCREST":
-			case "DAHUA":
-				if ("ON".equals(command.toString())) {
-					updateState(CHANNEL_ENABLE_LED, UnDefType.valueOf("UNDEF"));
-					sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&Lighting[0][0].Mode=Auto");
-				}
-				break;
-			}
-			break;
-		case CHANNEL_THRESHOLD_AUDIO_ALARM:
-			switch (thing.getThingTypeUID().getId()) {
-			case "AMCREST":
-			case "DAHUA":
-				int threshold = Math.round(Float.valueOf(command.toString()));
-
-				if (threshold == 0) {
-					sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AudioDetect[0].MutationThreold=1");
-				} else {
-					sendHttpGET(
-							"/cgi-bin/configManager.cgi?action=setConfig&AudioDetect[0].MutationThreold=" + threshold);
-				}
-				break;
-			case "FOSCAM":
-				int value = Math.round(Float.valueOf(command.toString()));
-				if (value == 0) {
-					sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=0&usr=" + username + "&pwd="
-							+ password);
-				} else if (value <= 33) {
-					sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=0&usr="
-							+ username + "&pwd=" + password);
-				} else if (value <= 66) {
-					sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=1&usr="
-							+ username + "&pwd=" + password);
-				} else {
-					sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=2&usr="
-							+ username + "&pwd=" + password);
-				}
-				break;
-			case "INSTAR":
-				value = Math.round(Float.valueOf(command.toString()));
-				if (value == 0) {
-					sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=0");
-				} else {
-					sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1");
-					sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1&-aa_value="
-							+ command.toString());
-				}
-				break;
-			}
-			break;
-		case CHANNEL_ENABLE_AUDIO_ALARM:
-			switch (thing.getThingTypeUID().getId()) {
-			case "FOSCAM":
-				if ("ON".equals(command.toString())) {
-					if (config.get(CONFIG_AUDIO_URL_OVERRIDE) == null) {
-						sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&usr=" + username
-								+ "&pwd=" + password);
-					} else {
-						sendHttpGET(config.get(CONFIG_AUDIO_URL_OVERRIDE).toString());
-					}
-				} else {
-					sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=0&usr=" + username + "&pwd="
-							+ password);
-				}
-				break;
-			case "INSTAR":
-				if ("ON".equals(command.toString())) {
-					sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1");
-				} else {
-					sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=0");
-				}
-				break;
-			case "HIKVISION":
-				if ("ON".equals(command.toString())) {
-					hikChangeSetting("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01",
-							"<enabled>false</enabled>", "<enabled>true</enabled>");
-				} else {
-					hikChangeSetting("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01",
-							"<enabled>true</enabled>", "<enabled>false</enabled>");
-				}
-				break;
-			case "AMCREST":
-			case "DAHUA":
-				if ("ON".equals(command.toString())) {
-					sendHttpGET(
-							"/cgi-bin/configManager.cgi?action=setConfig&AudioDetect[0].MutationDetect=true&AudioDetect[0].EventHandler.Dejitter=1");
-				} else {
-					sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AudioDetect[0].MutationDetect=false");
-				}
-				break;
-			}
-			break;
-		case CHANNEL_ENABLE_LINE_CROSSING_ALARM:
-			switch (thing.getThingTypeUID().getId()) {
-			case "AMCREST":
-			case "DAHUA":
-				if ("ON".equals(command.toString())) {
-
-				} else {
-
-				}
-				break;
-			case "HIKVISION":
-				if ("ON".equals(command.toString())) {
-					hikChangeSetting("/ISAPI/Smart/LineDetection/" + nvrChannel + "01", "<enabled>false</enabled>",
-							"<enabled>true</enabled>");
-				} else {
-					hikChangeSetting("/ISAPI/Smart/LineDetection/" + nvrChannel + "01", "<enabled>true</enabled>",
-							"<enabled>false</enabled>");
-				}
-				break;
-			}
-			break;
-		case CHANNEL_ENABLE_MOTION_ALARM:
-			switch (thing.getThingTypeUID().getId()) {
-			case "FOSCAM":
-				if ("ON".equals(command.toString())) {
-					if (config.get(CONFIG_MOTION_URL_OVERRIDE) == null) {
-						sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig&isEnable=1&usr=" + username
-								+ "&pwd=" + password);
-						sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig1&isEnable=1&usr=" + username
-								+ "&pwd=" + password);
-					} else {
-						sendHttpGET(config.get(CONFIG_MOTION_URL_OVERRIDE).toString());
-					}
-				} else {
-					sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig&isEnable=0&usr=" + username + "&pwd="
-							+ password);
-					sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig1&isEnable=0&usr=" + username + "&pwd="
-							+ password);
-				}
-				break;
-			case "HIKVISION":
-				if ("ON".equals(command.toString())) {
-
-					hikChangeSetting("/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection",
-							"<enabled>false</enabled>", "<enabled>true</enabled>");
-				} else {
-					hikChangeSetting("/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection",
-							"<enabled>true</enabled>", "<enabled>false</enabled>");
-				}
-				break;
-
-			case "INSTAR":
-				if ("ON".equals(command.toString())) {
-					sendHttpGET(
-							"/cgi-bin/hi3510/param.cgi?cmd=setmdattr&-enable=1&-name=1&cmd=setmdattr&-enable=1&-name=2&cmd=setmdattr&-enable=1&-name=3&cmd=setmdattr&-enable=1&-name=4");
-				} else {
-					sendHttpGET(
-							"/cgi-bin/hi3510/param.cgi?cmd=setmdattr&-enable=0&-name=1&cmd=setmdattr&-enable=0&-name=2&cmd=setmdattr&-enable=0&-name=3&cmd=setmdattr&-enable=0&-name=4");
-				}
-				break;
-			case "AMCREST":
-			case "DAHUA":
-				if ("ON".equals(command.toString())) {
-					sendHttpGET(
-							"/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=true&MotionDetect[0].EventHandler.Dejitter=1");
-				} else {
-					sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=false");
-				}
-				break;
-			}
-
-			break;
+			return;
 		case CHANNEL_PAN:
 			setAbsolutePan(Float.valueOf(command.toString()));
-			break;
+			return;
 		case CHANNEL_TILT:
 			setAbsoluteTilt(Float.valueOf(command.toString()));
-			break;
+			return;
 		case CHANNEL_ZOOM:
 			setAbsoluteZoom(Float.valueOf(command.toString()));
+			return;
+		}
+
+		switch (thing.getThingTypeUID().getId()) {
+		case "AMCREST":
+			AmcrestHandler amcrestHandler = new AmcrestHandler(thing.getHandler());
+			amcrestHandler.handleCommand(channelUID, command);
+		case "DAHUA":
+			DahuaHandler dahuaHandler = new DahuaHandler(thing.getHandler(), nvrChannel);
+			dahuaHandler.handleCommand(channelUID, command);
 			break;
-		case CHANNEL_ENABLE_FIELD_DETECTION_ALARM:
-			// Only HIK has this so far
-			if ("ON".equals(command.toString())) {
-				hikChangeSetting("/ISAPI/Smart/FieldDetection/" + nvrChannel + "01", "<enabled>false</enabled>",
-						"<enabled>true</enabled>");
-			} else {
-				hikChangeSetting("/ISAPI/Smart/FieldDetection/" + nvrChannel + "01", "<enabled>true</enabled>",
-						"<enabled>false</enabled>");
-			}
+		case "DOORBIRD":
+			DoorBirdHandler doorBirdHandler = new DoorBirdHandler(thing.getHandler());
+			doorBirdHandler.handleCommand(channelUID, command);
 			break;
-		case CHANNEL_ACTIVATE_ALARM_OUTPUT:
-			switch (thing.getThingTypeUID().getId()) {
-			case "HIKVISION":
-				if ("ON".equals(command.toString())) {
-					hikSendXml("/ISAPI/System/IO/outputs/" + nvrChannel + "/trigger",
-							"<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n    <outputState>high</outputState>\r\n</IOPortData>\r\n");
-				} else {
-					hikSendXml("/ISAPI/System/IO/outputs/" + nvrChannel + "/trigger",
-							"<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n    <outputState>low</outputState>\r\n</IOPortData>\r\n");
-				}
-				break;
-			case "DAHUA":
-				if ("ON".equals(command.toString())) {
-					sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AlarmOut[0].Mode=1");
-				} else {
-					sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AlarmOut[0].Mode=0");
-				}
-				break;
-			case "DOORBIRD":
-				if ("ON".equals(command.toString())) {
-					sendHttpGET("/bha-api/open-door.cgi");
-				}
-			}
+		case "HIKVISION":
+			HikvisionHandler hikvisionHandler = new HikvisionHandler(thing.getHandler(), nvrChannel);
+			hikvisionHandler.handleCommand(channelUID, command);
 			break;
-		case CHANNEL_ACTIVATE_ALARM_OUTPUT2:
-			switch (thing.getThingTypeUID().getId()) {
-			case "DAHUA":
-				if ("ON".equals(command.toString())) {
-					sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AlarmOut[1].Mode=1");
-				} else {
-					sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AlarmOut[1].Mode=0");
-				}
-				break;
-			case "DOORBIRD":
-				if ("ON".equals(command.toString())) {
-					sendHttpGET("/bha-api/open-door.cgi?r=2");
-				}
-			}
+		case "FOSCAM":
+			FoscamHandler foscamHandler = new FoscamHandler(thing.getHandler(), username, password);
+			foscamHandler.handleCommand(channelUID, command);
 			break;
-		case CHANNEL_EXTERNAL_LIGHT:
-			switch (thing.getThingTypeUID().getId()) {
-			case "DOORBIRD":
-				if ("ON".equals(command.toString())) {
-					sendHttpGET("/bha-api/light-on.cgi");
-				}
-				break;
-			}
+		case "INSTAR":
+			InstarHandler instarHandler = new InstarHandler(thing.getHandler());
+			instarHandler.handleCommand(channelUID, command);
+			break;
+		default:
+			HikvisionHandler defaultHandler = new HikvisionHandler(thing.getHandler(), nvrChannel);
+			defaultHandler.handleCommand(channelUID, command);
 			break;
 		}
 	}
@@ -1600,7 +1280,7 @@ public class IpCameraHandler extends BaseThingHandler {
 		}
 	}
 
-	String encodeSpecialChars(String text) {
+	public String encodeSpecialChars(String text) {
 		String Processed = null;
 		try {
 			Processed = URLEncoder.encode(text, "UTF-8").replace("+", "%20");

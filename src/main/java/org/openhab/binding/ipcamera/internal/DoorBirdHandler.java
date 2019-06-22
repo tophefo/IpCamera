@@ -13,11 +13,16 @@
 
 package org.openhab.binding.ipcamera.internal;
 
+import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ACTIVATE_ALARM_OUTPUT;
+import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ACTIVATE_ALARM_OUTPUT2;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_DOORBELL;
+import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_EXTERNAL_LIGHT;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_MOTION_ALARM;
 
 import org.eclipse.smarthome.core.library.types.OnOffType;
+import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.binding.ThingHandler;
+import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.ipcamera.handler.IpCameraHandler;
 
 import io.netty.channel.ChannelDuplexHandler;
@@ -31,6 +36,7 @@ public class DoorBirdHandler extends ChannelDuplexHandler {
 		ipCameraHandler = (IpCameraHandler) handler;
 	}
 
+	// This handles the incoming http replies back from the camera.
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 		String content = null;
@@ -59,6 +65,30 @@ public class DoorBirdHandler extends ChannelDuplexHandler {
 		} finally {
 			ReferenceCountUtil.release(msg);
 			content = null;
+		}
+	}
+
+	// This handles the commands that come from the Openhab event bus.
+	public void handleCommand(ChannelUID channelUID, Command command) {
+		if (command.toString() == "REFRESH") {
+			return;
+		} // end of "REFRESH"
+		switch (channelUID.getId()) {
+		case CHANNEL_ACTIVATE_ALARM_OUTPUT:
+			if ("ON".equals(command.toString())) {
+				ipCameraHandler.sendHttpGET("/bha-api/open-door.cgi");
+			}
+			break;
+		case CHANNEL_ACTIVATE_ALARM_OUTPUT2:
+			if ("ON".equals(command.toString())) {
+				ipCameraHandler.sendHttpGET("/bha-api/open-door.cgi?r=2");
+			}
+			break;
+		case CHANNEL_EXTERNAL_LIGHT:
+			if ("ON".equals(command.toString())) {
+				ipCameraHandler.sendHttpGET("/bha-api/light-on.cgi");
+			}
+			break;
 		}
 	}
 }

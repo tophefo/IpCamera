@@ -12,6 +12,7 @@
 	 */
 package org.openhab.binding.ipcamera.internal;
 
+import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ACTIVATE_ALARM_OUTPUT;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ENABLE_AUDIO_ALARM;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ENABLE_FIELD_DETECTION_ALARM;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ENABLE_LINE_CROSSING_ALARM;
@@ -26,7 +27,9 @@ import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_MOTI
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_PIR_ALARM;
 
 import org.eclipse.smarthome.core.library.types.OnOffType;
+import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.binding.ThingHandler;
+import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.ipcamera.handler.IpCameraHandler;
 
 import io.netty.channel.ChannelDuplexHandler;
@@ -43,51 +46,7 @@ public class HikvisionHandler extends ChannelDuplexHandler {
 		this.nvrChannel = nvrChannel;
 	}
 
-	void countDown() {
-		if (lineCount > 1) {
-			lineCount--;
-		} else if (lineCount == 1) {
-			ipCameraHandler.setChannelState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
-			lineCount--;
-		}
-		if (vmdCount > 1) {
-			vmdCount--;
-		} else if (vmdCount == 1) {
-			ipCameraHandler.setChannelState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-			vmdCount--;
-		}
-		if (leftCount > 1) {
-			leftCount--;
-		} else if (leftCount == 1) {
-			ipCameraHandler.setChannelState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("OFF"));
-			leftCount--;
-		}
-		if (takenCount > 1) {
-			takenCount--;
-		} else if (takenCount == 1) {
-			ipCameraHandler.setChannelState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("OFF"));
-			takenCount--;
-		}
-		if (faceCount > 1) {
-			faceCount--;
-		} else if (faceCount == 1) {
-			ipCameraHandler.setChannelState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("OFF"));
-			faceCount--;
-		}
-		if (pirCount > 1) {
-			pirCount--;
-		} else if (pirCount == 1) {
-			ipCameraHandler.setChannelState(CHANNEL_PIR_ALARM, OnOffType.valueOf("OFF"));
-			pirCount--;
-		}
-		if (fieldCount > 1) {
-			fieldCount--;
-		} else if (fieldCount == 1) {
-			ipCameraHandler.setChannelState(CHANNEL_FIELD_DETECTION_ALARM, OnOffType.valueOf("OFF"));
-			fieldCount--;
-		}
-	}
-
+	// This handles the incoming http replies back from the camera.
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 		String content = null;
@@ -237,6 +196,125 @@ public class HikvisionHandler extends ChannelDuplexHandler {
 		} finally {
 			ReferenceCountUtil.release(msg);
 			content = null;
+		}
+	}
+
+	// This does debouncing of the alarms
+	void countDown() {
+		if (lineCount > 1) {
+			lineCount--;
+		} else if (lineCount == 1) {
+			ipCameraHandler.setChannelState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
+			lineCount--;
+		}
+		if (vmdCount > 1) {
+			vmdCount--;
+		} else if (vmdCount == 1) {
+			ipCameraHandler.setChannelState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+			vmdCount--;
+		}
+		if (leftCount > 1) {
+			leftCount--;
+		} else if (leftCount == 1) {
+			ipCameraHandler.setChannelState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("OFF"));
+			leftCount--;
+		}
+		if (takenCount > 1) {
+			takenCount--;
+		} else if (takenCount == 1) {
+			ipCameraHandler.setChannelState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("OFF"));
+			takenCount--;
+		}
+		if (faceCount > 1) {
+			faceCount--;
+		} else if (faceCount == 1) {
+			ipCameraHandler.setChannelState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("OFF"));
+			faceCount--;
+		}
+		if (pirCount > 1) {
+			pirCount--;
+		} else if (pirCount == 1) {
+			ipCameraHandler.setChannelState(CHANNEL_PIR_ALARM, OnOffType.valueOf("OFF"));
+			pirCount--;
+		}
+		if (fieldCount > 1) {
+			fieldCount--;
+		} else if (fieldCount == 1) {
+			ipCameraHandler.setChannelState(CHANNEL_FIELD_DETECTION_ALARM, OnOffType.valueOf("OFF"));
+			fieldCount--;
+		}
+	}
+
+	// This handles the commands that come from the Openhab event bus.
+	public void handleCommand(ChannelUID channelUID, Command command) {
+		if (command.toString() == "REFRESH") {
+			switch (channelUID.getId()) {
+			case CHANNEL_ENABLE_AUDIO_ALARM:
+				ipCameraHandler.sendHttpGET("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01");
+				break;
+			case CHANNEL_ENABLE_LINE_CROSSING_ALARM:
+				ipCameraHandler.sendHttpGET("/ISAPI/Smart/LineDetection/" + nvrChannel + "01");
+				break;
+			case CHANNEL_ENABLE_FIELD_DETECTION_ALARM:
+				ipCameraHandler.logger.debug("FieldDetection command");
+				ipCameraHandler.sendHttpGET("/ISAPI/Smart/FieldDetection/" + nvrChannel + "01");
+				break;
+			case CHANNEL_ENABLE_MOTION_ALARM:
+				ipCameraHandler.sendHttpGET("/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection");
+				break;
+			}
+			return; // Return as we have handled the refresh command above and don't need to
+					// continue further.
+		} // end of "REFRESH"
+		switch (channelUID.getId()) {
+		case CHANNEL_ENABLE_AUDIO_ALARM:
+			if ("ON".equals(command.toString())) {
+				ipCameraHandler.hikChangeSetting("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01",
+						"<enabled>false</enabled>", "<enabled>true</enabled>");
+			} else {
+				ipCameraHandler.hikChangeSetting("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01",
+						"<enabled>true</enabled>", "<enabled>false</enabled>");
+			}
+			break;
+		case CHANNEL_ENABLE_LINE_CROSSING_ALARM:
+			if ("ON".equals(command.toString())) {
+				ipCameraHandler.hikChangeSetting("/ISAPI/Smart/LineDetection/" + nvrChannel + "01",
+						"<enabled>false</enabled>", "<enabled>true</enabled>");
+			} else {
+				ipCameraHandler.hikChangeSetting("/ISAPI/Smart/LineDetection/" + nvrChannel + "01",
+						"<enabled>true</enabled>", "<enabled>false</enabled>");
+			}
+			break;
+		case CHANNEL_ENABLE_MOTION_ALARM:
+			if ("ON".equals(command.toString())) {
+
+				ipCameraHandler.hikChangeSetting(
+						"/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection",
+						"<enabled>false</enabled>", "<enabled>true</enabled>");
+			} else {
+				ipCameraHandler.hikChangeSetting(
+						"/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection",
+						"<enabled>true</enabled>", "<enabled>false</enabled>");
+			}
+			break;
+		case CHANNEL_ENABLE_FIELD_DETECTION_ALARM:
+			if ("ON".equals(command.toString())) {
+				ipCameraHandler.hikChangeSetting("/ISAPI/Smart/FieldDetection/" + nvrChannel + "01",
+						"<enabled>false</enabled>", "<enabled>true</enabled>");
+			} else {
+				ipCameraHandler.hikChangeSetting("/ISAPI/Smart/FieldDetection/" + nvrChannel + "01",
+						"<enabled>true</enabled>", "<enabled>false</enabled>");
+			}
+			break;
+		case CHANNEL_ACTIVATE_ALARM_OUTPUT:
+			if ("ON".equals(command.toString())) {
+				ipCameraHandler.hikSendXml("/ISAPI/System/IO/outputs/" + nvrChannel + "/trigger",
+						"<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n    <outputState>high</outputState>\r\n</IOPortData>\r\n");
+			} else {
+				ipCameraHandler.hikSendXml("/ISAPI/System/IO/outputs/" + nvrChannel + "/trigger",
+						"<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n    <outputState>low</outputState>\r\n</IOPortData>\r\n");
+			}
+			break;
 		}
 	}
 }

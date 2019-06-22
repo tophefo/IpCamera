@@ -14,15 +14,21 @@
 package org.openhab.binding.ipcamera.internal;
 
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_AUDIO_ALARM;
+import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_AUTO_LED;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ENABLE_AUDIO_ALARM;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ENABLE_LED;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ENABLE_MOTION_ALARM;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_MOTION_ALARM;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_THRESHOLD_AUDIO_ALARM;
+import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_AUDIO_URL_OVERRIDE;
+import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_MOTION_URL_OVERRIDE;
 
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.PercentType;
+import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.binding.ThingHandler;
+import org.eclipse.smarthome.core.types.Command;
+import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.ipcamera.handler.IpCameraHandler;
 
 import io.netty.channel.ChannelDuplexHandler;
@@ -31,11 +37,15 @@ import io.netty.util.ReferenceCountUtil;
 
 public class FoscamHandler extends ChannelDuplexHandler {
 	IpCameraHandler ipCameraHandler;
+	String username, password;
 
-	public FoscamHandler(ThingHandler handler) {
+	public FoscamHandler(ThingHandler handler, String username, String password) {
 		ipCameraHandler = (IpCameraHandler) handler;
+		this.username = username;
+		this.password = password;
 	}
 
+	// This handles the incoming http replies back from the camera.
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 		String content = null;
@@ -43,6 +53,8 @@ public class FoscamHandler extends ChannelDuplexHandler {
 			content = msg.toString();
 			if (!content.isEmpty()) {
 				ipCameraHandler.logger.trace("HTTP Result back from camera is \t:{}:", content);
+			} else {
+				return;
 			}
 
 			////////////// Motion Alarm //////////////
@@ -103,6 +115,102 @@ public class FoscamHandler extends ChannelDuplexHandler {
 		} finally {
 			ReferenceCountUtil.release(msg);
 			content = null;
+		}
+	}
+
+	// This handles the commands that come from the Openhab event bus.
+	public void handleCommand(ChannelUID channelUID, Command command) {
+		if (command.toString() == "REFRESH") {
+			switch (channelUID.getId()) {
+			case CHANNEL_THRESHOLD_AUDIO_ALARM:
+				ipCameraHandler.sendHttpGET(
+						"/cgi-bin/CGIProxy.fcgi?cmd=getAudioAlarmConfig&usr=" + username + "&pwd=" + password);
+				break;
+			case CHANNEL_ENABLE_AUDIO_ALARM:
+				ipCameraHandler.sendHttpGET(
+						"/cgi-bin/CGIProxy.fcgi?cmd=getAudioAlarmConfig&usr=" + username + "&pwd=" + password);
+				break;
+			case CHANNEL_ENABLE_MOTION_ALARM:
+				ipCameraHandler
+						.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username + "&pwd=" + password);
+				break;
+			}
+			return; // Return as we have handled the refresh command above and don't need to
+					// continue further.
+		} // end of "REFRESH"
+		switch (channelUID.getId()) {
+		case CHANNEL_ENABLE_LED:
+			// Disable the auto mode first
+			ipCameraHandler.sendHttpGET(
+					"/cgi-bin/CGIProxy.fcgi?cmd=setInfraLedConfig&mode=1&usr=" + username + "&pwd=" + password);
+			ipCameraHandler.setChannelState(CHANNEL_AUTO_LED, OnOffType.valueOf("OFF"));
+			if ("0".equals(command.toString()) || "OFF".equals(command.toString())) {
+				ipCameraHandler
+						.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=closeInfraLed&usr=" + username + "&pwd=" + password);
+			} else {
+				ipCameraHandler
+						.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=openInfraLed&usr=" + username + "&pwd=" + password);
+			}
+			break;
+		case CHANNEL_AUTO_LED:
+			if ("ON".equals(command.toString())) {
+				ipCameraHandler.setChannelState(CHANNEL_ENABLE_LED, UnDefType.valueOf("UNDEF"));
+				ipCameraHandler.sendHttpGET(
+						"/cgi-bin/CGIProxy.fcgi?cmd=setInfraLedConfig&mode=0&usr=" + username + "&pwd=" + password);
+			} else {
+				ipCameraHandler.sendHttpGET(
+						"/cgi-bin/CGIProxy.fcgi?cmd=setInfraLedConfig&mode=1&usr=" + username + "&pwd=" + password);
+			}
+			break;
+		case CHANNEL_THRESHOLD_AUDIO_ALARM:
+			int value = Math.round(Float.valueOf(command.toString()));
+			if (value == 0) {
+				ipCameraHandler.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=0&usr=" + username
+						+ "&pwd=" + password);
+			} else if (value <= 33) {
+				ipCameraHandler
+						.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=0&usr="
+								+ username + "&pwd=" + password);
+			} else if (value <= 66) {
+				ipCameraHandler
+						.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=1&usr="
+								+ username + "&pwd=" + password);
+			} else {
+				ipCameraHandler
+						.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=2&usr="
+								+ username + "&pwd=" + password);
+			}
+			break;
+		case CHANNEL_ENABLE_AUDIO_ALARM:
+			if ("ON".equals(command.toString())) {
+				if (ipCameraHandler.config.get(CONFIG_AUDIO_URL_OVERRIDE) == null) {
+					ipCameraHandler.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&usr="
+							+ username + "&pwd=" + password);
+				} else {
+					ipCameraHandler.sendHttpGET(ipCameraHandler.config.get(CONFIG_AUDIO_URL_OVERRIDE).toString());
+				}
+			} else {
+				ipCameraHandler.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=0&usr=" + username
+						+ "&pwd=" + password);
+			}
+			break;
+		case CHANNEL_ENABLE_MOTION_ALARM:
+			if ("ON".equals(command.toString())) {
+				if (ipCameraHandler.config.get(CONFIG_MOTION_URL_OVERRIDE) == null) {
+					ipCameraHandler.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig&isEnable=1&usr="
+							+ username + "&pwd=" + password);
+					ipCameraHandler.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig1&isEnable=1&usr="
+							+ username + "&pwd=" + password);
+				} else {
+					ipCameraHandler.sendHttpGET(ipCameraHandler.config.get(CONFIG_MOTION_URL_OVERRIDE).toString());
+				}
+			} else {
+				ipCameraHandler.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig&isEnable=0&usr="
+						+ username + "&pwd=" + password);
+				ipCameraHandler.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig1&isEnable=0&usr="
+						+ username + "&pwd=" + password);
+			}
+			break;
 		}
 	}
 }

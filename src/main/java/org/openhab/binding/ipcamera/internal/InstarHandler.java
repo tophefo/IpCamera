@@ -19,7 +19,9 @@ import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_THRE
 
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.PercentType;
+import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.binding.ThingHandler;
+import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.ipcamera.handler.IpCameraHandler;
 
 import io.netty.channel.ChannelDuplexHandler;
@@ -33,6 +35,7 @@ public class InstarHandler extends ChannelDuplexHandler {
 		ipCameraHandler = (IpCameraHandler) thingHandler;
 	}
 
+	// This handles the incoming http replies back from the camera.
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 		String content = null;
@@ -68,6 +71,41 @@ public class InstarHandler extends ChannelDuplexHandler {
 		} finally {
 			ReferenceCountUtil.release(msg);
 			content = null;
+		}
+	}
+
+	// This handles the commands that come from the Openhab event bus.
+	public void handleCommand(ChannelUID channelUID, Command command) {
+		if (command.toString() == "REFRESH") {
+			return;
+		} // end of "REFRESH"
+		switch (channelUID.getId()) {
+		case CHANNEL_THRESHOLD_AUDIO_ALARM:
+			int value = Math.round(Float.valueOf(command.toString()));
+			if (value == 0) {
+				ipCameraHandler.sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=0");
+			} else {
+				ipCameraHandler.sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1");
+				ipCameraHandler.sendHttpGET(
+						"/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1&-aa_value=" + command.toString());
+			}
+			break;
+		case CHANNEL_ENABLE_AUDIO_ALARM:
+			if ("ON".equals(command.toString())) {
+				ipCameraHandler.sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1");
+			} else {
+				ipCameraHandler.sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=0");
+			}
+			break;
+		case CHANNEL_ENABLE_MOTION_ALARM:
+			if ("ON".equals(command.toString())) {
+				ipCameraHandler.sendHttpGET(
+						"/cgi-bin/hi3510/param.cgi?cmd=setmdattr&-enable=1&-name=1&cmd=setmdattr&-enable=1&-name=2&cmd=setmdattr&-enable=1&-name=3&cmd=setmdattr&-enable=1&-name=4");
+			} else {
+				ipCameraHandler.sendHttpGET(
+						"/cgi-bin/hi3510/param.cgi?cmd=setmdattr&-enable=0&-name=1&cmd=setmdattr&-enable=0&-name=2&cmd=setmdattr&-enable=0&-name=3&cmd=setmdattr&-enable=0&-name=4");
+			}
+			break;
 		}
 	}
 }
