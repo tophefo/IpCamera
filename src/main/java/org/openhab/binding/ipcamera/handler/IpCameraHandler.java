@@ -168,7 +168,7 @@ public class IpCameraHandler extends BaseThingHandler {
 	public final Logger logger = LoggerFactory.getLogger(getClass());
 	private final ScheduledExecutorService cameraConnection = Executors.newSingleThreadScheduledExecutor();
 	private final ScheduledExecutorService scheduledMovePTZ = Executors.newSingleThreadScheduledExecutor();
-	private final ScheduledExecutorService fetchCameraOutput = Executors.newSingleThreadScheduledExecutor();
+	private final ScheduledExecutorService pollCamera = Executors.newSingleThreadScheduledExecutor();
 
 	public Configuration config;
 	private OnvifDevice onvifCamera;
@@ -178,7 +178,7 @@ public class IpCameraHandler extends BaseThingHandler {
 	private String username;
 	private String password;
 	private ScheduledFuture<?> cameraConnectionJob = null;
-	private ScheduledFuture<?> fetchCameraOutputJob = null;
+	private ScheduledFuture<?> pollCameraJob = null;
 	private int selectedMediaProfile = 0;
 	private Bootstrap mainBootstrap;
 	private ServerBootstrap serverBootstrap;
@@ -208,6 +208,7 @@ public class IpCameraHandler extends BaseThingHandler {
 	ChannelFuture serverFuture = null;
 	int serverPort = 0;
 	Object firstStreamedMsg = null;
+	public byte[] currentSnapshot;
 	private String rtspUri = null;
 
 	public String ipAddress = "empty";
@@ -874,7 +875,7 @@ public class IpCameraHandler extends BaseThingHandler {
 									if (preroll > 0) {
 										fifoSnapshotBuffer.add(lastSnapshot);
 									}
-
+									currentSnapshot = lastSnapshot;
 									lastSnapshot = null;
 									if (closeConnection) {
 										logger.debug("Snapshot recieved: Binding will now close the channel.");
@@ -1301,7 +1302,7 @@ public class IpCameraHandler extends BaseThingHandler {
 						updateStatus(ThingStatus.ONLINE);
 						isOnline = true;
 						logger.info("IP Camera at {}:{} is now online.", ipAddress, config.get(CONFIG_PORT).toString());
-						fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 5000,
+						pollCameraJob = pollCamera.scheduleAtFixedRate(pollingCamera, 5000,
 								Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
 						sendHttpGET(getCorrectUrlFormat(snapshotUri));
 						updateState(CHANNEL_IMAGE_URL, new StringType(snapshotUri));
@@ -1447,7 +1448,7 @@ public class IpCameraHandler extends BaseThingHandler {
 						updateState(CHANNEL_RTSP_URL, new StringType(rtspUri));
 					}
 
-					fetchCameraOutputJob = fetchCameraOutput.scheduleAtFixedRate(pollingCamera, 7000,
+					pollCameraJob = pollCamera.scheduleAtFixedRate(pollingCamera, 7000,
 							Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
 
 					updateStatus(ThingStatus.ONLINE);
@@ -1675,9 +1676,9 @@ public class IpCameraHandler extends BaseThingHandler {
 		basicAuth = null; // clear out stored password hash
 		startStreamServer(false);
 
-		if (fetchCameraOutputJob != null) {
-			fetchCameraOutputJob.cancel(true);
-			fetchCameraOutputJob = null;
+		if (pollCameraJob != null) {
+			pollCameraJob.cancel(true);
+			pollCameraJob = null;
 		}
 		if (cameraConnectionJob != null) {
 			cameraConnectionJob.cancel(false);

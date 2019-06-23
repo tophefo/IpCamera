@@ -95,7 +95,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_OUTPUT</label>
 <description>The full path where ffmpeg has the ability to write files to ending with a slash. For windows use this format, c:\openhabconf\html\ipcamera\
 </description>
-<default>/etc/openhab2/html/tmpfs/</default>
+<default>/cameratmpfs/camera1/</default>
 </parameter>
 
 <parameter name="FFMPEG_HLS_OUT_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
@@ -242,7 +242,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_OUTPUT</label>
 <description>The full path where ffmpeg has the ability to write files to ending with a slash. For windows use this format, c:\openhabconf\html\ipcamera\
 </description>
-<default>/etc/openhab2/html/tmpfs/</default>
+<default>/cameratmpfs/camera1/</default>
 </parameter>
 
 <parameter name="FFMPEG_HLS_OUT_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
@@ -420,7 +420,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_OUTPUT</label>
 <description>The full path where ffmpeg has the ability to write files to ending with a slash. For windows use this format, c:\openhabconf\html\ipcamera\
 </description>
-<default>/etc/openhab2/html/tmpfs/</default>
+<default>/cameratmpfs/camera1/</default>
 </parameter>
 
 <parameter name="FFMPEG_HLS_OUT_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
@@ -639,7 +639,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_OUTPUT</label>
 <description>The full path where ffmpeg has the ability to write files to ending with a slash. For windows use this format, c:\openhabconf\html\ipcamera\
 </description>
-<default>/etc/openhab2/html/tmpfs/</default>
+<default>/cameratmpfs/camera1/</default>
 </parameter>
 
 <parameter name="FFMPEG_HLS_OUT_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
@@ -839,7 +839,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_OUTPUT</label>
 <description>The full path where ffmpeg has the ability to write files to ending with a slash. For windows use this format, c:\openhabconf\html\ipcamera\
 </description>
-<default>/etc/openhab2/html/tmpfs/</default>
+<default>/cameratmpfs/camera1/</default>
 </parameter>
 
 <parameter name="FFMPEG_HLS_OUT_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
@@ -1032,7 +1032,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_OUTPUT</label>
 <description>The full path where ffmpeg has the ability to write files to ending with a slash. For windows use this format, c:\openhabconf\html\ipcamera\
 </description>
-<default>/etc/openhab2/html/tmpfs/</default>
+<default>/cameratmpfs/camera1/</default>
 </parameter>
 
 <parameter name="FFMPEG_HLS_OUT_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
@@ -1250,7 +1250,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_OUTPUT</label>
 <description>The full path where ffmpeg has the ability to write files to ending with a slash. For windows use this format, c:\openhabconf\html\ipcamera\
 </description>
-<default>/etc/openhab2/html/tmpfs/</default>
+<default>/cameratmpfs/camera1/</default>
 </parameter>
 
 <parameter name="FFMPEG_HLS_OUT_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
@@ -1453,7 +1453,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <label>FFMPEG_OUTPUT</label>
 <description>The full path where ffmpeg has the ability to write files to ending with a slash. For windows use this format, c:\openhabconf\html\ipcamera\
 </description>
-<default>/etc/openhab2/html/tmpfs/</default>
+<default>/cameratmpfs/camera1/</default>
 </parameter>
 
 <parameter name="FFMPEG_HLS_OUT_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">

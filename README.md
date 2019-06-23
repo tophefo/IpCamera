@@ -1,8 +1,10 @@
 # IpCamera Binding
 
-This binding allows you to use IP cameras in Openhab 2. If the brand of camera does not have a full API then the camera will only fetch a picture/stream and will not have any support for alarms, or any of the other advanced features that the binding has implemented. 
+This binding allows you to use IP cameras in Openhab 2 and has loads of features and ways to work around common issues that cameras present. Please take the time to read through this guide as it will show hidden features and different ways to work with cameras that you may not know about. I highly recommend purchasing a brand of camera that has an open API to give you easy access to alarms or any of the other advanced features that the binding has implemented. To see what each brand has implemented from the API, please see this post:
 
-Each brand that has an API is listed below in Alphabetical order:
+<https://community.openhab.org/t/ipcamera-new-ip-camera-binding/42771> 
+
+Each brand that has an API is listed below in Alphabetical order with a link to where the API is located:
 
 **AMCREST**
 
@@ -10,7 +12,7 @@ Each brand that has an API is listed below in Alphabetical order:
 
 **DAHUA**
 
-See the Amcrest API link above.
+See the Amcrest API link above as they work the same.
 
 **DOORBIRD**
 
@@ -38,7 +40,7 @@ Not implemented, but should be possible to add.
 
 ## Supported Things
 
-If using Openhab's manual text configuration or when needing to setup HABPANEL/sitemaps, you are going to need to know what your camera is as a "thing type". These are listed in CAPS below. Example: The thing type for a generic onvif camera is "ONVIF".
+If using Openhab's textual configuration or when needing to setup HABPANEL/sitemaps, you are going to need to know what your camera is as a "thing type". These are listed in CAPS below. Example: The thing type for a generic onvif camera is "ONVIF".
 
 HTTPONLY: For any camera that is not ONVIF compatible, yet still has the ability to fetch a snapshot or stream with a url.
 
@@ -338,20 +340,31 @@ end
 
 For the above notifications to work you will need to setup multiple users with the same email address's at the Openhab cloud. 
 
+## Snapshots
+
+There are a number of ways to use snapshots with this binding, however the best way is to always request the snapshot directly from the camera unless there is a reason why this does not work. The reason for this is to keep network traffic to a minimum and to prevent creating a bottleneck with loads of traffic in and out of your Openhab servers network port.
+
+Ways to use snapshots are:
+
++ Request a snapshot with the url ``http://192.168.xxx.xxx:54321/ipcamera.jpg`` for the current snapshot which only works if the binding is setup to fetch snapshots for the image channel. This file does not exist on disk and is served out of ram to keep disk writes to a minimum with this binding.
++ Use the Create GIF feature (explained in more detail below) and use a preroll value >0. This creates a number of snapshots in the ffmpeg output folder called snapshotXXX.jpg where XXX starts at 0 and increases each poll amount of time. This means you can get a snapshot from an exact amount of time before, on or after triggering the GIF to be created. Handy for cameras which lag due to slow processors and buffering. These snapshots can be fetched either directly as they exist on disk, or via this url format. ``http://192.168.xxx.xxx:54321/snapshot0.jpg``
++ You can also read the image data directly and use it in rules, there are some examples on the forum how to do this, however it is easier to use the above methods.
+ 
+ 
 
 ## How to get working video streams
 
 IMPORTANT:
-Unlike snapshots, the streaming server works by allowing access to the video streams with no user/password for requests that come from an IP listed in the white list. Requests from outside IP's or internal requests not on the white list will fail to get any answer. If you prefer to use your own firewall, you can also choose to make the ip whitelist equal "DISABLE" to turn this feature off and then all internal IP's will have access but external access is still blocked.
+The bindings file server works by allowing access to the snapshot and video streams with no user/password for requests that come from an IP located in the white list. Requests from outside IP's or internal requests not on the white list will fail to get any answer. If you prefer to use your own firewall instead, you can also choose to make the ip whitelist equal "DISABLE" to turn this feature off and then all internal IP's will have access. All external IP access is still blocked.
 
 There are now multiple ways to get a moving picture:
 + Animated GIF.
-+ HLS Http Live Streaming which uses h264 can can be used to cast to a Chromecast.
++ HLS (Http Live Streaming) which uses h264 that can be used to cast to Chromecast devices.
 + MJPEG which uses multiple jpeg files to create what is called MOTION JPEG.
 
 To get the first two video formats working, you need to install the ffmpeg program. Visit their site here to learn how <https://ffmpeg.org/>
 
-Under linux ffmpeg can be installed very easily with this command.
+Under linux, Ffmpeg can be installed very easily with this command.
 
 ```
 sudo apt update && sudo apt install ffmpeg
@@ -441,10 +454,9 @@ Some browsers require larger segment sizes to prevent choppy playback, this can 
 
 
 
-
 **Animated GIF feature**
 
-The cameras have a channel called updateGif and when this switch is turned 'ON' (either by a rule or manually) the binding will create an animated GIF called ipcamera.gif in the ffmpeg output folder. Once the file is created the switch will turn 'OFF' and this can trigger a rule to then send the picture via email, pushover or telegram messages. The switch can be turned on with a rule triggered by an external zwave PIR sensor or the cameras own motion alarm, the choice and the logic can be created by yourself.
+The cameras have a channel called updateGif and when this switch is turned 'ON' (either by a rule or manually) the binding will create an animated GIF called ipcamera.gif in the ffmpeg output folder. Once the file is created the switch will turn 'OFF' and this can be used to trigger a rule to send the picture via email, pushover or telegram messages. This feature saves you from using sleep commands in your rules to ensure a file is created as the control only turns off when the file is created. The switch can be turned on with a rule triggered by an external zwave PIR sensor or the cameras own motion alarm, the choice and the logic can be created by yourself. The feature has two options called preroll and postroll to be aware of. When preroll is 0 (the default) the binding will use the RTSP stream to fetch the amount of seconds specified in the postroll config to create the GIF from. By changing to a preroll value above 0 the binding will change to using snapshots as the source and this requires the image channel to be updating and the time between the snapshots is the Polling time of the camera which is 2 seconds by default and can be raised or lowered to 1 second if you desire. The snapshots are saved to disk and can be used as a feature that is described in the snapshot section above in more detail.
 
 
 ```
@@ -590,9 +602,9 @@ You can specify the item name in the filter to remove just 1 camera, or you can 
 
 ## Roadmap for further development
 
-Currently the focus is on stability and creating a good framework that allows multiple brands to be used in RULES in a consistent way. What this means is hopefully the binding is less work to add a new API function to instead of people creating stand alone scripts which are not easy for new Openhab users to find or use. By consistent I mean if a camera breaks down and you wish to change brands, your rules with this binding should be easy to adapt to the new brand of camera with no/minimal changes. 
+Currently the focus is on stability and creating a good framework that allows multiple brands to be used in RULES in a consistent way. Hopefully the binding is less work to add a new functions to instead of creating stand alone scripts which are not easy for new Openhab users to find, setup or use. By consistent I mean if a camera breaks down and you wish to change brands, your rules with this binding should be easy to adapt to the new brand of camera with no/minimal changes. Sharing rules with others also becomes far easier if all brands are handled the same way.
 
-If you need a feature added that is in an API and you can not program, please raise an issue ticket here at this github project with a sample of what a browser shows when you enter in the URL and it is usually very quick to add these features. 
+If you need a feature added that is in an API and you can not program, please raise an issue ticket here at this Github project with a sample of what a browser shows when you enter in the URL and it is usually very quick to add these features. 
 
 If you wish to contribute then please create an issue ticket first to discuss how things will work before doing any coding. This is for multiple reasons due to needing to keep things CONSISTENT between brands and also easy to maintain. This list of areas that could be added are a great place to start helping with this binding if you wish to contribute. Any feedback, push requests and ideas are welcome.
 
@@ -602,11 +614,10 @@ If this binding becomes popular, I can look at extending the frame work to suppo
 
 + Auto find and setup cameras on your network.
 
-+ PTZ methods for continuous move.
-
-+ FTP/NAS features to save the images and delete old files.
-
 + ONVIF alarms
+
++ PTZ methods for continuous move.
 
 + 1 and 2 way audio.
 
++ FTP/NAS features to save the images and delete old files.
