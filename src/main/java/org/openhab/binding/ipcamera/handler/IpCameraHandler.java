@@ -43,6 +43,7 @@ import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_PORT;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_SERVER_PORT;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_SNAPSHOT_URL_OVERRIDE;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_STREAM_URL_OVERRIDE;
+import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_UPDATE_IMAGE;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_USERNAME;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.THING_TYPE_AMCREST;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.THING_TYPE_DAHUA;
@@ -251,7 +252,6 @@ public class IpCameraHandler extends BaseThingHandler {
 			basicAuth = null;
 			return;
 		}
-		logger.debug("Setting up the BASIC auth now, this should only happen once.");
 		if (username != null && password != null) {
 			String authString = username + ":" + password;
 			ByteBuf byteBuf = null;
@@ -424,7 +424,7 @@ public class IpCameraHandler extends BaseThingHandler {
 						for (int i = 0; i < ipConnections.length; i++) {
 							if (ipConnections[i].isSiteLocalAddress()) {
 								ip = ipConnections[i].getHostAddress();
-								logger.debug("Stream Server is serving on IP:{}", ip);
+								// logger.debug("Stream Server is serving on IP:{}", ip);
 							}
 						}
 					}
@@ -453,7 +453,7 @@ public class IpCameraHandler extends BaseThingHandler {
 					});
 					serverFuture = serverBootstrap.bind().sync();
 					serverFuture.await(4000);
-					logger.info("IpCamera stream server has started on port:{}.", serverPort);
+					logger.info("IpCamera file server for camera {} has started on port {}", ipAddress, serverPort);
 					updateState(CHANNEL_STREAM_URL,
 							new StringType("http://" + ip + ":" + serverPort + "/ipcamera.mjpeg"));
 					updateState(CHANNEL_HLS_URL, new StringType("http://" + ip + ":" + serverPort + "/ipcamera.m3u8"));
@@ -871,7 +871,9 @@ public class IpCameraHandler extends BaseThingHandler {
 
 							if (content instanceof LastHttpContent) {
 								if (contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
-									updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
+									if ("true".equalsIgnoreCase(config.get(CONFIG_UPDATE_IMAGE).toString())) {
+										updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
+									}
 									if (preroll > 0) {
 										fifoSnapshotBuffer.add(lastSnapshot);
 									}
@@ -1001,11 +1003,27 @@ public class IpCameraHandler extends BaseThingHandler {
 					try {
 						byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
 						if (indexInLists >= 0) {
-							if ("DAHUA".equals(thing.getThingTypeUID().getId())) {
-								String url = listOfRequests.get(indexInLists);
-								if ("/cgi-bin/eventManager.cgi?action=attach&codes=[All]".contentEquals(url)) {
+							String urlToKeepOpen;
+							switch (thing.getThingTypeUID().getId()) {
+							case "DAHUA":
+								urlToKeepOpen = listOfRequests.get(indexInLists);
+								if ("/cgi-bin/eventManager.cgi?action=attach&codes=[All]"
+										.contentEquals(urlToKeepOpen)) {
 									return;
 								}
+								break;
+							case "HIKVISION":
+								urlToKeepOpen = listOfRequests.get(indexInLists);
+								if ("/ISAPI/Event/notification/alertStream".contentEquals(urlToKeepOpen)) {
+									return;
+								}
+								break;
+							case "DOORBIRD":
+								urlToKeepOpen = listOfRequests.get(indexInLists);
+								if ("/bha-api/monitor.cgi?ring=doorbell,motionsensor".contentEquals(urlToKeepOpen)) {
+									return;
+								}
+								break;
 							}
 							logger.debug("! Channel was found idle for more than 15 seconds so closing it down. !");
 							listOfChStatus.set(indexInLists, (byte) 0);
@@ -1524,8 +1542,7 @@ public class IpCameraHandler extends BaseThingHandler {
 				break;
 			case "HIKVISION":
 				if (streamIsStopped("/ISAPI/Event/notification/alertStream")) {
-					logger.warn(
-							"The alarm checking stream was not running. Cleaning channels and then going to re-start it now.");
+					logger.warn("The alarm stream was not running for camera {}, re-starting it now", ipAddress);
 					sendHttpGET("/ISAPI/Event/notification/alertStream");
 				}
 				sendHttpGET("/ISAPI/System/IO/inputs/" + nvrChannel + "/status");
@@ -1543,14 +1560,14 @@ public class IpCameraHandler extends BaseThingHandler {
 			case "DAHUA":
 				// Check for alarms, channel for NVRs appears not to work at filtering.
 				if (streamIsStopped("/cgi-bin/eventManager.cgi?action=attach&codes=[All]")) {
-					logger.debug("The alarm checking stream was not running, going to re-start it now.");
+					logger.warn("The alarm stream was not running for camera {}, re-starting it now", ipAddress);
 					sendHttpGET("/cgi-bin/eventManager.cgi?action=attach&codes=[All]");
 				}
 				break;
 			case "DOORBIRD":
 				// Check for alarms, channel for NVRs appears not to work at filtering.
 				if (streamIsStopped("/bha-api/monitor.cgi?ring=doorbell,motionsensor")) {
-					logger.debug("The alarm checking stream was not running, going to re-start it now.");
+					logger.warn("The alarm stream was not running for camera {}, re-starting it now", ipAddress);
 					sendHttpGET("/bha-api/monitor.cgi?ring=doorbell,motionsensor");
 				}
 				break;

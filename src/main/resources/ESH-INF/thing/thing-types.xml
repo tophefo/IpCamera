@@ -44,9 +44,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">When updateImageNow is ON (0)</option>
-<option value="1">Always Update Image(1)</option>
+<option value="0">Only when updateImageNow is ON (0)</option>
+<option value="1">Always update snapshot (1)</option>
 </options>
+</parameter>
+
+<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
+<label>Update Image channel</label>
+<description>When switched OFF the binding fetches a snapshot that can be requested by url, but it will not update the Image channel. When on, both the image and the snapshot are updated.
+</description>
+<default>true</default>
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
@@ -210,9 +217,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">When updateImageNow is ON (0)</option>
-<option value="1">Always Update Image (1)</option>
+<option value="0">Only when updateImageNow is ON (0)</option>
+<option value="1">Always update snapshot (1)</option>
 </options>
+</parameter>
+
+<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
+<label>Update Image channel</label>
+<description>When switched OFF the binding fetches a snapshot that can be requested by url, but it will not update the Image channel. When on, both the image and the snapshot are updated.
+</description>
+<default>true</default>
 </parameter>
 
 <parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
@@ -477,8 +491,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">When updateImageNow is ON (0)</option>
-<option value="1">Always Update Image (1)</option>
+<option value="0">Only when updateImageNow is ON (0)</option>
+<option value="1">Always update snapshot (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="3">Start Audio Alarm (3)</option>
 <option value="23">Start of Motion and Audio Alarms (23)</option>
@@ -486,6 +500,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <option value="5">During Audio Alarm (5)</option>
 <option value="45">During Motion and Audio Alarms (45)</option>
 </options>
+</parameter>
+
+<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
+<label>Update Image channel</label>
+<description>When switched OFF the binding fetches a snapshot that can be requested by url, but it will not update the Image channel. When on, both the image and the snapshot are updated.
+</description>
+<default>true</default>
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
@@ -696,8 +717,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">When updateImageNow is ON (0)</option>
-<option value="1">Always Update Image (1)</option>
+<option value="0">Only when updateImageNow is ON (0)</option>
+<option value="1">Always update snapshot (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="3">Start Audio Alarm (3)</option>
 <option value="23">Start of Motion and Audio Alarms (23)</option>
@@ -705,6 +726,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <option value="5">During Audio Alarm (5)</option>
 <option value="45">During Motion and Audio Alarms (45)</option>
 </options>
+</parameter>
+
+<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
+<label>Update Image channel</label>
+<description>When switched OFF the binding fetches a snapshot that can be requested by url, but it will not update the Image channel. When on, both the image and the snapshot are updated.
+</description>
+<default>true</default>
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
@@ -896,11 +924,18 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">When updateImageNow is ON (0)</option>
-<option value="1">Always Update Image (1)</option>
+<option value="0">Only when updateImageNow is ON (0)</option>
+<option value="1">Always update snapshot (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="4">During Motion Alarm (4)</option>
 </options>
+</parameter>
+
+<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
+<label>Update Image channel</label>
+<description>When switched OFF the binding fetches a snapshot that can be requested by url, but it will not update the Image channel. When on, both the image and the snapshot are updated.
+</description>
+<default>true</default>
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
@@ -1089,8 +1124,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">When updateImageNow is ON (0)</option>
-<option value="1">Always Update Image (1)</option>
+<option value="0">Only when updateImageNow is ON (0)</option>
+<option value="1">Always update snapshot (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="3">Start Audio Alarm (3)</option>
 <option value="23">Start of Motion and Audio Alarms (23)</option>
@@ -1098,6 +1133,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <option value="5">During Audio Alarm (5)</option>
 <option value="45">During Motion and Audio Alarms (45)</option>
 </options>
+</parameter>
+
+<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
+<label>Update Image channel</label>
+<description>When switched OFF the binding fetches a snapshot that can be requested by url, but it will not update the Image channel. When on, both the image and the snapshot are updated.
+</description>
+<default>true</default>
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
@@ -1307,8 +1349,8 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">When updateImageNow is ON (0)</option>
-<option value="1">Always Update Image (1)</option>
+<option value="0">Only when updateImageNow is ON (0)</option>
+<option value="1">Always update snapshot (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="3">Start Audio Alarm (3)</option>
 <option value="23">Start of Motion and Audio Alarms (23)</option>
@@ -1316,6 +1358,13 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <option value="5">During Audio Alarm (5)</option>
 <option value="45">During Motion and Audio Alarms (45)</option>
 </options>
+</parameter>
+
+<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
+<label>Update Image channel</label>
+<description>When switched OFF the binding fetches a snapshot that can be requested by url, but it will not update the Image channel. When on, both the image and the snapshot are updated.
+</description>
+<default>true</default>
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
@@ -1510,9 +1559,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </description>
 <default>1</default>
 <options>
-<option value="0">When updateImageNow is ON (0)</option>
-<option value="1">Always Update Image (1)</option>
+<option value="0">Only when updateImageNow is ON (0)</option>
+<option value="1">Always update snapshot (1)</option>
 </options>
+</parameter>
+
+<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
+<label>Update Image channel</label>
+<description>When switched OFF the binding fetches a snapshot that can be requested by url, but it will not update the Image channel. When on, both the image and the snapshot are updated.
+</description>
+<default>true</default>
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">

@@ -43,6 +43,7 @@ import io.netty.util.ReferenceCountUtil;
 public class StreamServerHandler extends ChannelInboundHandlerAdapter {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 	private IpCameraHandler ipCameraHandler;
+	private boolean handlingMjpeg = false;
 
 	public StreamServerHandler(IpCameraHandler ipCameraHandler) {
 		this.ipCameraHandler = ipCameraHandler;
@@ -70,6 +71,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
 					if (httpRequest.uri().contains("/ipcamera.mjpeg")) {
 						if (ipCameraHandler.mjpegUri != null) {
 							ipCameraHandler.setupMjpegStreaming(true, ctx);
+							handlingMjpeg = true;
 						} else {
 							logger.error(
 									"MJPEG stream was told to start and there is no STREAM_URL_OVERRIDE supplied.");
@@ -157,6 +159,8 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
 	@Override
 	public void handlerRemoved(ChannelHandlerContext ctx) {
 		logger.debug("Closing a StreamServerHandler.");
-		ipCameraHandler.setupMjpegStreaming(false, ctx);
+		if (handlingMjpeg) {
+			ipCameraHandler.setupMjpegStreaming(false, ctx);
+		}
 	}
 }
