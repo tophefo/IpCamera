@@ -213,7 +213,6 @@ public class IpCameraHandler extends BaseThingHandler {
 	private String rtspUri = null;
 
 	public String ipAddress = "empty";
-	private int port;
 	private String profileToken = "empty";
 
 	private String updateImageEvents;
@@ -290,12 +289,16 @@ public class IpCameraHandler extends BaseThingHandler {
 		for (byte index = 0; index < listOfRequests.size(); index++) {
 			logger.debug("Channel status is {} for URL:{}", listOfChStatus.get(index), listOfRequests.get(index));
 			switch (listOfChStatus.get(index)) {
-			/*
-			 * case 0: // closing but still open Channel chan = listOfChannels.get(index);
-			 * chan.close(); listOfChStatus.set(index, (byte) -1);
-			 * logger.warn("Cleaning the channels has just force closed a connection.");
-			 * break;
-			 */
+			case 2: // Open and OK to reuse
+			case 1: // Open
+			case 0: // Closing but still open Channel chan = listOfChannels.get(index);
+				Channel channel = listOfChannels.get(index);
+				if (channel.isOpen()) {
+					break;
+				} else {
+					listOfChStatus.set(index, (byte) -1);
+					logger.warn("Cleaning the channels has just found a connection with wrong open state.");
+				}
 			case -1: // closed
 				listOfRequests.remove(index);
 				listOfChStatus.remove(index);
@@ -472,14 +475,13 @@ public class IpCameraHandler extends BaseThingHandler {
 			if (mjpegChannelGroup.size() == 1) {
 				sendHttpGET(mjpegUri);
 			} else if (firstStreamedMsg != null) {
-				// TODO: may be able to cast if msg is hacked to have content type "image/jpeg"
 				ctx.channel().writeAndFlush(firstStreamedMsg);
 			}
 		} else {
 			mjpegChannelGroup.remove(ctx.channel());
 			if (mjpegChannelGroup.isEmpty()) {
 				logger.debug("All MJPEG streams have stopped, so closing the MJPEG source stream now.");
-				closeChannel(mjpegUri);
+				closeChannel(getCorrectUrlFormat(mjpegUri));
 			}
 		}
 	}
@@ -522,10 +524,17 @@ public class IpCameraHandler extends BaseThingHandler {
 				String ffmpegInput = (config.get(CONFIG_FFMPEG_INPUT) == null) ? rtspUri
 						: config.get(CONFIG_FFMPEG_INPUT).toString();
 
-				ffmpegHLS = new Ffmpeg((IpCameraHandler) thing.getHandler(),
-						config.get(CONFIG_FFMPEG_LOCATION).toString(), "-rtsp_transport tcp", ffmpegInput,
-						config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
-						config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8", username, password);
+				if (ffmpegInput.contains(":554")) {
+					ffmpegHLS = new Ffmpeg((IpCameraHandler) thing.getHandler(),
+							config.get(CONFIG_FFMPEG_LOCATION).toString(), "-rtsp_transport tcp", ffmpegInput,
+							config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
+							config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8", username, password);
+				} else {
+					ffmpegHLS = new Ffmpeg((IpCameraHandler) thing.getHandler(),
+							config.get(CONFIG_FFMPEG_LOCATION).toString(), "", ffmpegInput,
+							config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
+							config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8", username, password);
+				}
 			}
 			ffmpegHLS.setFormat(format);
 			ffmpegHLS.startConverting();
@@ -568,13 +577,26 @@ public class IpCameraHandler extends BaseThingHandler {
 
 	// Always use this as sendHttpGET(GET/POST/PUT/DELETE, "/foo/bar",null,false)//
 	// The authHandler will use this method with a digest string as needed.
-	public boolean sendHttpRequest(String httpMethod, String httpRequestURL, String digestString) {
+	public boolean sendHttpRequest(String httpMethod, String httpRequestFullURL, String digestString) {
 
 		Channel ch;
 		ChannelFuture chFuture = null;
 		CommonCameraHandler commonHandler;
 		MyNettyAuthHandler authHandler;
 		AmcrestHandler amcrestHandler;
+		String httpRequestURL = getCorrectUrlFormat(httpRequestFullURL);
+
+		URI uri;
+		int port = 80;
+		try {
+			uri = new URI(httpRequestFullURL);
+			port = uri.getPort();
+		} catch (URISyntaxException e1) {
+			logger.error("A non valid url was given to the binding - {}", e1);
+		}
+		if (port < 0) {
+			port = Integer.parseInt(config.get(CONFIG_PORT).toString());
+		}
 
 		if (mainBootstrap == null) {
 			mainBootstrap = new Bootstrap();
@@ -703,7 +725,11 @@ public class IpCameraHandler extends BaseThingHandler {
 		}
 
 		chFuture = mainBootstrap.connect(new InetSocketAddress(ipAddress, port));
-		chFuture.awaitUninterruptibly(); // ChannelOption.CONNECT_TIMEOUT_MILLIS means this will not hang here
+		chFuture.awaitUninterruptibly(); // ChannelOption.CONNECT_TIMEOUT_MILLIS
+											// means
+											// this will
+											// not hang
+											// here
 
 		if (!chFuture.isSuccess()) {
 			updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
@@ -761,8 +787,8 @@ public class IpCameraHandler extends BaseThingHandler {
 		return true;
 	}
 
-	// These methods handle the response from all Camera brands, nothing specific to
-	// any brand should be in here //
+// These methods handle the response from all Camera brands, nothing specific to
+// any brand should be in here //
 	private class CommonCameraHandler extends ChannelDuplexHandler {
 		private int bytesToRecieve = 0;
 		private int bytesAlreadyRecieved = 0;
@@ -818,7 +844,7 @@ public class IpCameraHandler extends BaseThingHandler {
 							}
 							if (contentType.contains("multipart")) {
 								closeConnection = false;
-								if (requestUrl.equalsIgnoreCase(mjpegUri)) {
+								if (requestUrl.equalsIgnoreCase(getCorrectUrlFormat(mjpegUri))) {
 									if (msg instanceof HttpMessage) {
 										// logger.debug("First stream packet back from camera is HttpMessage:{}", msg);
 										ReferenceCountUtil.retain(msg, 2);
@@ -847,8 +873,9 @@ public class IpCameraHandler extends BaseThingHandler {
 				}
 
 				if (msg instanceof HttpContent) {
-					if (requestUrl.equalsIgnoreCase(mjpegUri)) {
+					if (requestUrl.equalsIgnoreCase(getCorrectUrlFormat(mjpegUri))) {
 						// multiple MJPEG stream packets come back as this.
+						// logger.trace("Stream packets back from camera is :{}", msg);
 						ReferenceCountUtil.retain(msg, 1);
 						stream(msg);
 					} else {
@@ -1040,6 +1067,7 @@ public class IpCameraHandler extends BaseThingHandler {
 				}
 			}
 		}
+
 	}
 
 	public IpCameraHandler(Thing thing) {
@@ -1342,8 +1370,15 @@ public class IpCameraHandler extends BaseThingHandler {
 							config.get(CONFIG_ONVIF_PORT).toString());
 
 					if (username != null && password != null) {
-						onvifCamera = new OnvifDevice(ipAddress + ":" + config.get(CONFIG_ONVIF_PORT).toString(),
-								username, password);
+
+						if ("FOSCAM".contentEquals(thing.getThingTypeUID().getId())) {
+							// Foscam user/pass has been changed to remove special chars for URL format.
+							onvifCamera = new OnvifDevice(ipAddress + ":" + config.get(CONFIG_ONVIF_PORT).toString(),
+									config.get(CONFIG_USERNAME).toString(), config.get(CONFIG_PASSWORD).toString());
+						} else {
+							onvifCamera = new OnvifDevice(ipAddress + ":" + config.get(CONFIG_ONVIF_PORT).toString(),
+									username, password);
+						}
 					} else {
 						onvifCamera = new OnvifDevice(ipAddress + ":" + config.get(CONFIG_ONVIF_PORT).toString());
 					}
@@ -1434,6 +1469,9 @@ public class IpCameraHandler extends BaseThingHandler {
 					logger.debug(
 							"Finished with PTZ with no errors, now fetching the Video URL for RTSP from the camera.");
 					rtspUri = onvifCamera.getMedia().getRTSPStreamUri(profileToken);
+					if (rtspUri.contains(":80:")) {// fixes a possible bug in onvif lib that puts IP:80:554/foo
+						rtspUri.replace(":80:", ":");
+					}
 
 				} catch (ConnectException e) {
 					logger.debug(
@@ -1609,7 +1647,6 @@ public class IpCameraHandler extends BaseThingHandler {
 		logger.debug("initialize() called.");
 		config = thing.getConfiguration();
 		ipAddress = config.get(CONFIG_IPADDRESS).toString();
-		port = Integer.parseInt(config.get(CONFIG_PORT).toString());
 		username = (config.get(CONFIG_USERNAME) == null) ? null : config.get(CONFIG_USERNAME).toString();
 		password = (config.get(CONFIG_PASSWORD) == null) ? null : config.get(CONFIG_PASSWORD).toString();
 		preroll = Integer.parseInt(config.get(CONFIG_GIF_PREROLL).toString());
@@ -1680,10 +1717,7 @@ public class IpCameraHandler extends BaseThingHandler {
 				mjpegUri = "/cgi-bin/CGIStream.cgi?cmd=GetMJStream&usr=" + username + "&pwd=" + password;
 				break;
 			}
-		} else {
-			mjpegUri = getCorrectUrlFormat(mjpegUri);
 		}
-
 		cameraConnectionJob = cameraConnection.schedule(pollingCameraConnection, 1, TimeUnit.SECONDS);
 	}
 

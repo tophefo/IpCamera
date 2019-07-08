@@ -51,7 +51,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
 <label>Update Image channel</label>
-<description>When switched OFF the binding fetches a snapshot that can be requested by url, but it will not update the Image channel. When on, both the image and the snapshot are updated.
+<description>When switched OFF the binding still fetches snapshots for requesting with the url ipcamera.jpg,  but it will not update the image channel which lowers CPU usage. When ON, the image channel is updated.
 </description>
 <default>true</default>
 </parameter>
@@ -224,7 +224,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
 <label>Update Image channel</label>
-<description>When switched OFF the binding fetches a snapshot that can be requested by url, but it will not update the Image channel. When on, both the image and the snapshot are updated.
+<description>When switched OFF the binding still fetches snapshots for requesting with the url ipcamera.jpg,  but it will not update the image channel which lowers CPU usage. When ON, the image channel is updated.
 </description>
 <default>true</default>
 </parameter>
@@ -504,7 +504,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
 <label>Update Image channel</label>
-<description>When switched OFF the binding fetches a snapshot that can be requested by url, but it will not update the Image channel. When on, both the image and the snapshot are updated.
+<description>When switched OFF the binding still fetches snapshots for requesting with the url ipcamera.jpg,  but it will not update the image channel which lowers CPU usage. When ON, the image channel is updated.
 </description>
 <default>true</default>
 </parameter>
@@ -730,7 +730,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
 <label>Update Image channel</label>
-<description>When switched OFF the binding fetches a snapshot that can be requested by url, but it will not update the Image channel. When on, both the image and the snapshot are updated.
+<description>When switched OFF the binding still fetches snapshots for requesting with the url ipcamera.jpg,  but it will not update the image channel which lowers CPU usage. When ON, the image channel is updated.
 </description>
 <default>true</default>
 </parameter>
@@ -933,7 +933,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
 <label>Update Image channel</label>
-<description>When switched OFF the binding fetches a snapshot that can be requested by url, but it will not update the Image channel. When on, both the image and the snapshot are updated.
+<description>When switched OFF the binding still fetches snapshots for requesting with the url ipcamera.jpg,  but it will not update the image channel which lowers CPU usage. When ON, the image channel is updated.
 </description>
 <default>true</default>
 </parameter>
@@ -1137,7 +1137,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
 <label>Update Image channel</label>
-<description>When switched OFF the binding fetches a snapshot that can be requested by url, but it will not update the Image channel. When on, both the image and the snapshot are updated.
+<description>When switched OFF the binding still fetches snapshots for requesting with the url ipcamera.jpg,  but it will not update the image channel which lowers CPU usage. When ON, the image channel is updated.
 </description>
 <default>true</default>
 </parameter>
@@ -1362,7 +1362,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
 <label>Update Image channel</label>
-<description>When switched OFF the binding fetches a snapshot that can be requested by url, but it will not update the Image channel. When on, both the image and the snapshot are updated.
+<description>When switched OFF the binding still fetches snapshots for requesting with the url ipcamera.jpg,  but it will not update the image channel which lowers CPU usage. When ON, the image channel is updated.
 </description>
 <default>true</default>
 </parameter>
@@ -1566,7 +1566,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 
 <parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
 <label>Update Image channel</label>
-<description>When switched OFF the binding fetches a snapshot that can be requested by url, but it will not update the Image channel. When on, both the image and the snapshot are updated.
+<description>When switched OFF the binding still fetches snapshots for requesting with the url ipcamera.jpg,  but it will not update the image channel which lowers CPU usage. When ON, the image channel is updated.
 </description>
 <default>true</default>
 </parameter>

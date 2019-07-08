@@ -121,7 +121,7 @@ public class Ffmpeg {
 			setKeepAlive();
 			streamRunning.start();
 			try {
-				Thread.sleep(4800);
+				Thread.sleep(4500);
 			} catch (InterruptedException e) {
 			}
 		}
