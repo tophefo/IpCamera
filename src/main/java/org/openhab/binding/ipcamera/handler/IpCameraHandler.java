@@ -1470,7 +1470,7 @@ public class IpCameraHandler extends BaseThingHandler {
 							"Finished with PTZ with no errors, now fetching the Video URL for RTSP from the camera.");
 					rtspUri = onvifCamera.getMedia().getRTSPStreamUri(profileToken);
 					if (rtspUri.contains(":80:")) {// fixes a possible bug in onvif lib that puts IP:80:554/foo
-						rtspUri.replace(":80:", ":");
+						rtspUri = rtspUri.replace(":80:", ":");
 					}
 
 				} catch (ConnectException e) {
