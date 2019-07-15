@@ -43,6 +43,7 @@ import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_PORT;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_SERVER_PORT;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_SNAPSHOT_URL_OVERRIDE;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_STREAM_URL_OVERRIDE;
+import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_UPDATE_IMAGE;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_USERNAME;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.THING_TYPE_AMCREST;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.THING_TYPE_DAHUA;
@@ -1656,6 +1657,8 @@ public class IpCameraHandler extends BaseThingHandler {
 		}
 
 		updateImageEvents = config.get(CONFIG_IMAGE_UPDATE_EVENTS).toString();
+
+		updateImage = (boolean) config.get(CONFIG_UPDATE_IMAGE);
 
 		snapshotUri = (config.get(CONFIG_SNAPSHOT_URL_OVERRIDE) == null) ? null
 				: config.get(CONFIG_SNAPSHOT_URL_OVERRIDE).toString();

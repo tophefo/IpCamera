@@ -49,6 +49,14 @@ The Image channel and JPG served on request can be set to update in a number of 
 </options>
 </parameter>
 
+<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">	
+<label>Default UPDATE_IMAGE setting</label>	
+<description>When switched OFF the image channel will NOT update unless you override this with the updateImageNow channel.	
+</description>	
+<default>true</default>
+<advanced>true</advanced>	
+</parameter>
+
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
 <context>network-address</context>
 <label>IP Address</label>
@@ -213,6 +221,14 @@ The Image channel and JPG served on request can be set to update in a number of 
 <option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
 <option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
 </options>
+</parameter>
+
+<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">	
+<label>Default UPDATE_IMAGE setting</label>	
+<description>When switched OFF the image channel will NOT update unless you override this with the updateImageNow channel.	
+</description>	
+<default>true</default>
+<advanced>true</advanced>	
 </parameter>
 
 <parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
@@ -488,6 +504,14 @@ The Image channel and JPG served on request can be set to update in a number of 
 </options>
 </parameter>
 
+<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">	
+<label>Default UPDATE_IMAGE setting</label>	
+<description>When switched OFF the image channel will NOT update unless you override this with the updateImageNow channel.	
+</description>	
+<default>true</default>
+<advanced>true</advanced>	
+</parameter>
+
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
 <context>network-address</context>
 <label>IP Address</label>
@@ -707,6 +731,14 @@ The Image channel and JPG served on request can be set to update in a number of 
 </options>
 </parameter>
 
+<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">	
+<label>Default UPDATE_IMAGE setting</label>	
+<description>When switched OFF the image channel will NOT update unless you override this with the updateImageNow channel.	
+</description>	
+<default>true</default>
+<advanced>true</advanced>	
+</parameter>
+
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
 <context>network-address</context>
 <label>IP Address</label>
@@ -901,6 +933,14 @@ The Image channel and JPG served on request can be set to update in a number of 
 <option value="2">Start Motion Alarm (2)</option>
 <option value="4">During Motion Alarm (4)</option>
 </options>
+</parameter>
+
+<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">	
+<label>Default UPDATE_IMAGE setting</label>	
+<description>When switched OFF the image channel will NOT update unless you override this with the updateImageNow channel.	
+</description>	
+<default>true</default>
+<advanced>true</advanced>	
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
@@ -1098,6 +1138,14 @@ The Image channel and JPG served on request can be set to update in a number of 
 <option value="5">During Audio Alarm (5)</option>
 <option value="45">During Motion and Audio Alarms (45)</option>
 </options>
+</parameter>
+
+<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">	
+<label>Default UPDATE_IMAGE setting</label>	
+<description>When switched OFF the image channel will NOT update unless you override this with the updateImageNow channel.	
+</description>	
+<default>true</default>
+<advanced>true</advanced>	
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
@@ -1318,6 +1366,14 @@ The Image channel and JPG served on request can be set to update in a number of 
 </options>
 </parameter>
 
+<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">	
+<label>Default UPDATE_IMAGE setting</label>	
+<description>When switched OFF the image channel will NOT update unless you override this with the updateImageNow channel.	
+</description>	
+<default>true</default>
+<advanced>true</advanced>	
+</parameter>
+
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
 <context>network-address</context>
 <label>IP Address</label>
@@ -1513,6 +1569,14 @@ The Image channel and JPG served on request can be set to update in a number of 
 <option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
 <option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
 </options>
+</parameter>
+
+<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">	
+<label>Default UPDATE_IMAGE setting</label>	
+<description>When switched OFF the image channel will NOT update unless you override this with the updateImageNow channel.	
+</description>	
+<default>true</default>
+<advanced>true</advanced>	
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
