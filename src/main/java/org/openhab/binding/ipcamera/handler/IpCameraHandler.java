@@ -43,7 +43,6 @@ import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_PORT;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_SERVER_PORT;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_SNAPSHOT_URL_OVERRIDE;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_STREAM_URL_OVERRIDE;
-import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_UPDATE_IMAGE;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_USERNAME;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.THING_TYPE_AMCREST;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.THING_TYPE_DAHUA;
@@ -189,7 +188,7 @@ public class IpCameraHandler extends BaseThingHandler {
 	private String nvrChannel;
 	private CircularFifoBuffer fifoSnapshotBuffer;
 	private int preroll, postroll, snapCount = 0;
-	private boolean updateImage = false;
+	private boolean updateImage = true;
 
 	public ArrayList<String> listOfRequests = new ArrayList<String>(18);
 	public ArrayList<Channel> listOfChannels = new ArrayList<Channel>(18);
@@ -243,8 +242,11 @@ public class IpCameraHandler extends BaseThingHandler {
 	private Float currentTiltPercentage = 0.0f;
 	private Float currentZoomPercentage = 0.0f;
 
-	// false clears the stored hash of the user/pass
-	// true creates the hash
+	public IpCameraHandler(Thing thing) {
+		super(thing);
+	}
+
+	// false clears the stored user/pass hash, true creates the hash
 	public void setBasicAuth(boolean useBasic) {
 		if (useBasic == false) {
 			logger.debug("Removing BASIC auth now and making it NULL.");
@@ -291,7 +293,7 @@ public class IpCameraHandler extends BaseThingHandler {
 			switch (listOfChStatus.get(index)) {
 			case 2: // Open and OK to reuse
 			case 1: // Open
-			case 0: // Closing but still open Channel chan = listOfChannels.get(index);
+			case 0: // Closing but still open
 				Channel channel = listOfChannels.get(index);
 				if (channel.isOpen()) {
 					break;
@@ -317,7 +319,7 @@ public class IpCameraHandler extends BaseThingHandler {
 			for (byte index = 0; index < listOfRequests.size(); index++) {
 				if (listOfRequests.get(index).equals(url)) {
 					switch (listOfChStatus.get(index)) {
-					case 2: // Still open
+					case 2: // Still open and OK to reuse
 					case 1: // Still open
 					case 0: // Marked as closing but channel still needs to be closed.
 						Channel chan = listOfChannels.get(index);
@@ -336,13 +338,12 @@ public class IpCameraHandler extends BaseThingHandler {
 			for (byte index = 0; index < listOfRequests.size(); index++) {
 				logger.debug("Channel status is {} for URL:{}", listOfChStatus.get(index), listOfRequests.get(index));
 				switch (listOfChStatus.get(index)) {
-				case 2: // Still open
+				case 2: // Still open and ok to reuse
 				case 1: // Still open
 				case 0: // Marked as closing but channel still needs to be closed.
 					Channel chan = listOfChannels.get(index);
 					chan.close();
-					// Handlers may get shutdown by Openhab if total delay >5 secs so we can not
-					// wait.
+					// Handlers may get shutdown by Openhab if total delay >5 secs so no wait.
 					break;
 				}
 			}
@@ -408,175 +409,8 @@ public class IpCameraHandler extends BaseThingHandler {
 		sendHttpRequest("GET", httpRequestURL, null);
 	}
 
-	public void startStreamServer(boolean start) {
-
-		if (!start) {
-			serversLoopGroup.shutdownGracefully(8, 8, TimeUnit.SECONDS);
-			serverBootstrap = null;
-		} else {
-
-			if (serverBootstrap == null) {
-
-				InetAddress inet;
-				String ip = "0.0.0.0";
-
-				try {
-					inet = InetAddress.getLocalHost();
-					InetAddress[] ipConnections = InetAddress.getAllByName(inet.getCanonicalHostName());
-					if (ipConnections != null) {
-						for (int i = 0; i < ipConnections.length; i++) {
-							if (ipConnections[i].isSiteLocalAddress()) {
-								ip = ipConnections[i].getHostAddress();
-								// logger.debug("Stream Server is serving on IP:{}", ip);
-							}
-						}
-					}
-					ipConnections = null;
-				} catch (UnknownHostException e2) {
-					logger.error("Stream Server has an error finding an IP:{}", e2);
-				}
-				inet = null;
-
-				try {
-					serversLoopGroup = new NioEventLoopGroup();
-					serverBootstrap = new ServerBootstrap();
-					serverBootstrap.group(serversLoopGroup);
-					serverBootstrap.channel(NioServerSocketChannel.class);
-					// IP "0.0.0.0" will bind the server to all network connections//
-					serverBootstrap.localAddress(new InetSocketAddress(ip, serverPort));
-					serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
-						@Override
-						protected void initChannel(SocketChannel socketChannel) throws Exception {
-							socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(0, 10, 0));
-							socketChannel.pipeline().addLast("HttpServerCodec", new HttpServerCodec());
-							socketChannel.pipeline().addLast("ChunkedWriteHandler", new ChunkedWriteHandler());
-							socketChannel.pipeline()
-									.addLast(new StreamServerHandler((IpCameraHandler) thing.getHandler()));
-						}
-					});
-					serverFuture = serverBootstrap.bind().sync();
-					serverFuture.await(4000);
-					logger.info("IpCamera file server for camera {} has started on port {}", ipAddress, serverPort);
-					updateState(CHANNEL_STREAM_URL,
-							new StringType("http://" + ip + ":" + serverPort + "/ipcamera.mjpeg"));
-					updateState(CHANNEL_HLS_URL, new StringType("http://" + ip + ":" + serverPort + "/ipcamera.m3u8"));
-				} catch (Exception e) {
-					logger.error("Exception occured starting the new streaming server:{}", e);
-				}
-			}
-		}
-	}
-
-	// If start is true the CTX is added to the list to stream video to, false stops
-	// the stream.
-	public void setupMjpegStreaming(boolean start, ChannelHandlerContext ctx) {
-		if (start) {
-			mjpegChannelGroup.add(ctx.channel());
-			if (mjpegChannelGroup.size() == 1) {
-				sendHttpGET(mjpegUri);
-			} else if (firstStreamedMsg != null) {
-				ctx.channel().writeAndFlush(firstStreamedMsg);
-			}
-		} else {
-			mjpegChannelGroup.remove(ctx.channel());
-			if (mjpegChannelGroup.isEmpty()) {
-				logger.debug("All MJPEG streams have stopped, so closing the MJPEG source stream now.");
-				closeChannel(getCorrectUrlFormat(mjpegUri));
-			}
-		}
-	}
-
-	public void stream(Object msg) {
-		try {
-			ReferenceCountUtil.retain(msg, 1);
-			mjpegChannelGroup.writeAndFlush(msg);
-		} finally {
-			ReferenceCountUtil.release(msg);
-		}
-	}
-
-	private void storeSnapshots() {
-		int count = 0;
-		OutputStream fos = null;
-		for (Object lastSnapshot : fifoSnapshotBuffer) {
-			byte[] foo = (byte[]) lastSnapshot;
-			File file = new File(config.get(CONFIG_FFMPEG_OUTPUT).toString() + "snapshot" + count + ".jpg");
-			count++;
-			try {
-				fos = new FileOutputStream(file);
-				fos.write(foo);
-				fos.close();
-			} catch (FileNotFoundException e) {
-				logger.error("FileNotFoundException {}", e);
-			} catch (IOException e) {
-				logger.error("IOException {}", e);
-			}
-		}
-	}
-
-	public void setupFfmpegFormat(String format) {
-		// Make sure the folder exists, if not create it.
-		new File(config.get(CONFIG_FFMPEG_OUTPUT).toString()).mkdirs();
-
-		switch (format) {
-		case "HLS":
-			if (ffmpegHLS == null) {
-				String ffmpegInput = (config.get(CONFIG_FFMPEG_INPUT) == null) ? rtspUri
-						: config.get(CONFIG_FFMPEG_INPUT).toString();
-
-				if (ffmpegInput.contains(":554")) {
-					ffmpegHLS = new Ffmpeg((IpCameraHandler) thing.getHandler(),
-							config.get(CONFIG_FFMPEG_LOCATION).toString(), "-rtsp_transport tcp", ffmpegInput,
-							config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
-							config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8", username, password);
-				} else {
-					ffmpegHLS = new Ffmpeg((IpCameraHandler) thing.getHandler(),
-							config.get(CONFIG_FFMPEG_LOCATION).toString(), "", ffmpegInput,
-							config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
-							config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8", username, password);
-				}
-			}
-			ffmpegHLS.setFormat(format);
-			ffmpegHLS.startConverting();
-			break;
-		case "GIF":
-			if (ffmpegGIF == null) {
-				if (preroll > 0) {
-					ffmpegGIF = new Ffmpeg((IpCameraHandler) thing.getHandler(),
-							config.get(CONFIG_FFMPEG_LOCATION).toString(), "-y -f image2 -framerate 1",
-							config.get(CONFIG_FFMPEG_OUTPUT).toString() + "snapshot%d.jpg",
-							config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
-							config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.gif", null, null);
-				} else {
-
-					String ffmpegInput = (config.get(CONFIG_FFMPEG_INPUT) == null) ? rtspUri
-							: config.get(CONFIG_FFMPEG_INPUT).toString();
-
-					String inOptions = "-y -t " + postroll + " -rtsp_transport tcp";
-					if (!ffmpegInput.contains("rtsp")) {
-						inOptions = "-y -t " + postroll;
-					}
-
-					ffmpegGIF = new Ffmpeg((IpCameraHandler) thing.getHandler(),
-							config.get(CONFIG_FFMPEG_LOCATION).toString(), inOptions, ffmpegInput,
-							config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
-							config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.gif", username, password);
-
-				}
-			}
-
-			if (preroll > 0) {
-				storeSnapshots();
-			}
-
-			ffmpegGIF.setFormat(format);
-			ffmpegGIF.startConverting();
-			break;
-		}
-	}
-
 	// Always use this as sendHttpGET(GET/POST/PUT/DELETE, "/foo/bar",null,false)//
-	// The authHandler will use this method with a digest string as needed.
+	// The authHandler will use the url inside a digest string as needed.
 	public boolean sendHttpRequest(String httpMethod, String httpRequestFullURL, String digestString) {
 
 		Channel ch;
@@ -586,6 +420,7 @@ public class IpCameraHandler extends BaseThingHandler {
 		AmcrestHandler amcrestHandler;
 		String httpRequestURL = getCorrectUrlFormat(httpRequestFullURL);
 
+		// Esp32 cameras use port 80 for snapshot but 81 for streams.
 		URI uri;
 		int port = 80;
 		try {
@@ -611,7 +446,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
 				@Override
 				public void initChannel(SocketChannel socketChannel) throws Exception {
-					// HIK stream needs > 9sec idle to stop stream closing
+					// HIK Alarm stream needs > 9sec idle to stop stream closing
 					socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(18, 0, 0));
 					socketChannel.pipeline().addLast("HttpClientCodec", new HttpClientCodec());
 					socketChannel.pipeline().addLast("authHandler",
@@ -898,7 +733,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
 							if (content instanceof LastHttpContent) {
 								if (contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
-									if ("true".equalsIgnoreCase(config.get(CONFIG_UPDATE_IMAGE).toString())) {
+									if (updateImage) {
 										updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
 									}
 									if (preroll > 0) {
@@ -1070,8 +905,171 @@ public class IpCameraHandler extends BaseThingHandler {
 
 	}
 
-	public IpCameraHandler(Thing thing) {
-		super(thing);
+	public void startStreamServer(boolean start) {
+
+		if (!start) {
+			serversLoopGroup.shutdownGracefully(8, 8, TimeUnit.SECONDS);
+			serverBootstrap = null;
+		} else {
+
+			if (serverBootstrap == null) {
+
+				InetAddress inet;
+				String ip = "0.0.0.0";
+
+				try {
+					inet = InetAddress.getLocalHost();
+					InetAddress[] ipConnections = InetAddress.getAllByName(inet.getCanonicalHostName());
+					if (ipConnections != null) {
+						for (int i = 0; i < ipConnections.length; i++) {
+							if (ipConnections[i].isSiteLocalAddress()) {
+								ip = ipConnections[i].getHostAddress();
+								// logger.debug("Stream Server is serving on IP:{}", ip);
+							}
+						}
+					}
+					ipConnections = null;
+				} catch (UnknownHostException e2) {
+					logger.error("Stream Server has an error finding an IP:{}", e2);
+				}
+				inet = null;
+
+				try {
+					serversLoopGroup = new NioEventLoopGroup();
+					serverBootstrap = new ServerBootstrap();
+					serverBootstrap.group(serversLoopGroup);
+					serverBootstrap.channel(NioServerSocketChannel.class);
+					// IP "0.0.0.0" will bind the server to all network connections//
+					serverBootstrap.localAddress(new InetSocketAddress(ip, serverPort));
+					serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
+						@Override
+						protected void initChannel(SocketChannel socketChannel) throws Exception {
+							socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(0, 10, 0));
+							socketChannel.pipeline().addLast("HttpServerCodec", new HttpServerCodec());
+							socketChannel.pipeline().addLast("ChunkedWriteHandler", new ChunkedWriteHandler());
+							socketChannel.pipeline()
+									.addLast(new StreamServerHandler((IpCameraHandler) thing.getHandler()));
+						}
+					});
+					serverFuture = serverBootstrap.bind().sync();
+					serverFuture.await(4000);
+					logger.info("IpCamera file server for camera {} has started on port {}", ipAddress, serverPort);
+					updateState(CHANNEL_STREAM_URL,
+							new StringType("http://" + ip + ":" + serverPort + "/ipcamera.mjpeg"));
+					updateState(CHANNEL_HLS_URL, new StringType("http://" + ip + ":" + serverPort + "/ipcamera.m3u8"));
+				} catch (Exception e) {
+					logger.error("Exception occured starting the new streaming server:{}", e);
+				}
+			}
+		}
+	}
+
+	// If start is true the CTX is added to the list to stream video to, false stops
+	// the stream.
+	public void setupMjpegStreaming(boolean start, ChannelHandlerContext ctx) {
+		if (start) {
+			mjpegChannelGroup.add(ctx.channel());
+			if (mjpegChannelGroup.size() == 1) {
+				sendHttpGET(mjpegUri);
+			} else if (firstStreamedMsg != null) {
+				ctx.channel().writeAndFlush(firstStreamedMsg);
+			}
+		} else {
+			mjpegChannelGroup.remove(ctx.channel());
+			if (mjpegChannelGroup.isEmpty()) {
+				logger.debug("All MJPEG streams have stopped, so closing the MJPEG source stream now.");
+				closeChannel(getCorrectUrlFormat(mjpegUri));
+			}
+		}
+	}
+
+	public void stream(Object msg) {
+		try {
+			ReferenceCountUtil.retain(msg, 1);
+			mjpegChannelGroup.writeAndFlush(msg);
+		} finally {
+			ReferenceCountUtil.release(msg);
+		}
+	}
+
+	private void storeSnapshots() {
+		int count = 0;
+		OutputStream fos = null;
+		for (Object lastSnapshot : fifoSnapshotBuffer) {
+			byte[] foo = (byte[]) lastSnapshot;
+			File file = new File(config.get(CONFIG_FFMPEG_OUTPUT).toString() + "snapshot" + count + ".jpg");
+			count++;
+			try {
+				fos = new FileOutputStream(file);
+				fos.write(foo);
+				fos.close();
+			} catch (FileNotFoundException e) {
+				logger.error("FileNotFoundException {}", e);
+			} catch (IOException e) {
+				logger.error("IOException {}", e);
+			}
+		}
+	}
+
+	public void setupFfmpegFormat(String format) {
+		// Make sure the folder exists, if not create it.
+		new File(config.get(CONFIG_FFMPEG_OUTPUT).toString()).mkdirs();
+
+		switch (format) {
+		case "HLS":
+			if (ffmpegHLS == null) {
+				String ffmpegInput = (config.get(CONFIG_FFMPEG_INPUT) == null) ? rtspUri
+						: config.get(CONFIG_FFMPEG_INPUT).toString();
+
+				if (ffmpegInput.contains(":554")) {
+					ffmpegHLS = new Ffmpeg((IpCameraHandler) thing.getHandler(),
+							config.get(CONFIG_FFMPEG_LOCATION).toString(), "-rtsp_transport tcp", ffmpegInput,
+							config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
+							config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8", username, password);
+				} else {
+					ffmpegHLS = new Ffmpeg((IpCameraHandler) thing.getHandler(),
+							config.get(CONFIG_FFMPEG_LOCATION).toString(), "", ffmpegInput,
+							config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
+							config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8", username, password);
+				}
+			}
+			ffmpegHLS.setFormat(format);
+			ffmpegHLS.startConverting();
+			break;
+		case "GIF":
+			if (ffmpegGIF == null) {
+				if (preroll > 0) {
+					ffmpegGIF = new Ffmpeg((IpCameraHandler) thing.getHandler(),
+							config.get(CONFIG_FFMPEG_LOCATION).toString(), "-y -f image2 -framerate 1",
+							config.get(CONFIG_FFMPEG_OUTPUT).toString() + "snapshot%d.jpg",
+							config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
+							config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.gif", null, null);
+				} else {
+
+					String ffmpegInput = (config.get(CONFIG_FFMPEG_INPUT) == null) ? rtspUri
+							: config.get(CONFIG_FFMPEG_INPUT).toString();
+
+					String inOptions = "-y -t " + postroll + " -rtsp_transport tcp";
+					if (!ffmpegInput.contains("rtsp")) {
+						inOptions = "-y -t " + postroll;
+					}
+
+					ffmpegGIF = new Ffmpeg((IpCameraHandler) thing.getHandler(),
+							config.get(CONFIG_FFMPEG_LOCATION).toString(), inOptions, ffmpegInput,
+							config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
+							config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.gif", username, password);
+
+				}
+			}
+
+			if (preroll > 0) {
+				storeSnapshots();
+			}
+
+			ffmpegGIF.setFormat(format);
+			ffmpegGIF.startConverting();
+			break;
+		}
 	}
 
 	public void motionDetected(String thisAlarmsChannel) {
@@ -1555,7 +1553,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
 			// Snapshot should be first to keep consistent time between shots
 			if (snapshotUri != null) {
-				if (updateImageEvents.contains("1")) {
+				if (updateImageEvents.contains("1") || updateImage) {
 					sendHttpGET(getCorrectUrlFormat(snapshotUri));
 				} else if (audioAlarmUpdateSnapshot || shortAudioAlarm) {
 					sendHttpGET(getCorrectUrlFormat(snapshotUri));
@@ -1563,8 +1561,6 @@ public class IpCameraHandler extends BaseThingHandler {
 				} else if (motionAlarmUpdateSnapshot || shortMotionAlarm) {
 					sendHttpGET(getCorrectUrlFormat(snapshotUri));
 					shortMotionAlarm = false;
-				} else if (updateImage) {
-					sendHttpGET(getCorrectUrlFormat(snapshotUri));
 				}
 			}
 

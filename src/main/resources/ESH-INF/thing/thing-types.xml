@@ -36,24 +36,17 @@
 </parameter-group>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
-<label>Update the Snapshot/Image when:</label>
+<label>Update the JPG and Image when:</label>
 <description>
 <![CDATA[
-The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
+The Image channel and JPG served on request can be set to update in a number of ways to help reduce network traffic.</p>
 ]]>
 </description>
 <default>1</default>
 <options>
-<option value="0">Only when updateImageNow is ON (0)</option>
-<option value="1">Always update snapshot (1)</option>
+<option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
+<option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
 </options>
-</parameter>
-
-<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
-<label>Update Image channel</label>
-<description>When switched OFF the binding still fetches snapshots for requesting with the url ipcamera.jpg,  but it will not update the image channel which lowers CPU usage. When ON, the image channel is updated.
-</description>
-<default>true</default>
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
@@ -165,7 +158,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
-<label>Time in milliseconds between checking camera states and fetching an Image.</label>
+<label>Time in milliseconds between checking camera states and fetching a JPG/Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
 <default>2000</default>
@@ -209,24 +202,17 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter-group>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
-<label>Update the Snapshot/Image when:</label>
+<label>Update the JPG and Image when:</label>
 <description>
 <![CDATA[
-The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
+The Image channel and JPG served on request can be set to update in a number of ways to help reduce network traffic.</p>
 ]]>
 </description>
 <default>1</default>
 <options>
-<option value="0">Only when updateImageNow is ON (0)</option>
-<option value="1">Always update snapshot (1)</option>
+<option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
+<option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
 </options>
-</parameter>
-
-<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
-<label>Update Image channel</label>
-<description>When switched OFF the binding still fetches snapshots for requesting with the url ipcamera.jpg,  but it will not update the image channel which lowers CPU usage. When ON, the image channel is updated.
-</description>
-<default>true</default>
 </parameter>
 
 <parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
@@ -355,7 +341,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
-<label>Time in milliseconds between checking camera states and fetching an Image.</label>
+<label>Time in milliseconds between checking camera states and fetching a JPG/Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
 <default>2000</default>
@@ -484,15 +470,15 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
-<label>Update the Snapshot/Image when:</label>
+<label>Update the JPG and Image when:</label>
 <description><![CDATA[
-The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
+The Image channel and JPG served on request can be set to update in a number of ways to help reduce network traffic.</p>
 ]]>
 </description>
 <default>1</default>
 <options>
-<option value="0">Only when updateImageNow is ON (0)</option>
-<option value="1">Always update snapshot (1)</option>
+<option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
+<option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="3">Start Audio Alarm (3)</option>
 <option value="23">Start of Motion and Audio Alarms (23)</option>
@@ -500,13 +486,6 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <option value="5">During Audio Alarm (5)</option>
 <option value="45">During Motion and Audio Alarms (45)</option>
 </options>
-</parameter>
-
-<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
-<label>Update Image channel</label>
-<description>When switched OFF the binding still fetches snapshots for requesting with the url ipcamera.jpg,  but it will not update the image channel which lowers CPU usage. When ON, the image channel is updated.
-</description>
-<default>true</default>
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
@@ -567,7 +546,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="15000" groupName="Image Settings">
-<label>Time in milliseconds between checking camera states and fetching an Image.</label>
+<label>Time in milliseconds between checking camera states and fetching a JPG/Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
 <default>2000</default>
@@ -710,15 +689,15 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
-<label>Update the Snapshot/Image when:</label>
+<label>Update the JPG and Image when:</label>
 <description><![CDATA[
-The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
+The Image channel and JPG served on request can be set to update in a number of ways to help reduce network traffic.</p>
 ]]>
 </description>
 <default>1</default>
 <options>
-<option value="0">Only when updateImageNow is ON (0)</option>
-<option value="1">Always update snapshot (1)</option>
+<option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
+<option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="3">Start Audio Alarm (3)</option>
 <option value="23">Start of Motion and Audio Alarms (23)</option>
@@ -726,13 +705,6 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <option value="5">During Audio Alarm (5)</option>
 <option value="45">During Motion and Audio Alarms (45)</option>
 </options>
-</parameter>
-
-<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
-<label>Update Image channel</label>
-<description>When switched OFF the binding still fetches snapshots for requesting with the url ipcamera.jpg,  but it will not update the image channel which lowers CPU usage. When ON, the image channel is updated.
-</description>
-<default>true</default>
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
@@ -793,7 +765,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
-<label>Time in milliseconds between checking camera states and fetching an Image.</label>
+<label>Time in milliseconds between checking camera states and fetching a JPG/Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
 <default>2000</default>
@@ -917,25 +889,18 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
-<label>Update the Snapshot/Image when:</label>
+<label>Update the JPG and Image when:</label>
 <description><![CDATA[
-The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
+The Image channel and JPG served on request can be set to update in a number of ways to help reduce network traffic.</p>
 ]]>
 </description>
 <default>1</default>
 <options>
-<option value="0">Only when updateImageNow is ON (0)</option>
-<option value="1">Always update snapshot (1)</option>
+<option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
+<option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="4">During Motion Alarm (4)</option>
 </options>
-</parameter>
-
-<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
-<label>Update Image channel</label>
-<description>When switched OFF the binding still fetches snapshots for requesting with the url ipcamera.jpg,  but it will not update the image channel which lowers CPU usage. When ON, the image channel is updated.
-</description>
-<default>true</default>
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
@@ -988,7 +953,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="15000" groupName="Image Settings">
-<label>Time in milliseconds between checking camera states and fetching an Image.</label>
+<label>Time in milliseconds between checking camera states and fetching a JPG/Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
 <default>2000</default>
@@ -1117,15 +1082,15 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
-<label>Update the Snapshot/Image when:</label>
+<label>Update the JPG and Image when:</label>
 <description><![CDATA[
-The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
+The Image channel and JPG served on request can be set to update in a number of ways to help reduce network traffic.</p>
 ]]>
 </description>
 <default>1</default>
 <options>
-<option value="0">Only when updateImageNow is ON (0)</option>
-<option value="1">Always update snapshot (1)</option>
+<option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
+<option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="3">Start Audio Alarm (3)</option>
 <option value="23">Start of Motion and Audio Alarms (23)</option>
@@ -1133,13 +1098,6 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <option value="5">During Audio Alarm (5)</option>
 <option value="45">During Motion and Audio Alarms (45)</option>
 </options>
-</parameter>
-
-<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
-<label>Update Image channel</label>
-<description>When switched OFF the binding still fetches snapshots for requesting with the url ipcamera.jpg,  but it will not update the image channel which lowers CPU usage. When ON, the image channel is updated.
-</description>
-<default>true</default>
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
@@ -1206,7 +1164,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
-<label>Time in milliseconds between checking camera states and fetching an Image.</label>
+<label>Time in milliseconds between checking camera states and fetching a JPG/Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
 <default>2000</default>
@@ -1342,15 +1300,15 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
-<label>Update the Snapshot/Image when:</label>
+<label>Update the JPG and Image when:</label>
 <description><![CDATA[
-The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
+The Image channel and JPG served on request can be set to update in a number of ways to help reduce network traffic.</p>
 ]]>
 </description>
 <default>1</default>
 <options>
-<option value="0">Only when updateImageNow is ON (0)</option>
-<option value="1">Always update snapshot (1)</option>
+<option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
+<option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="3">Start Audio Alarm (3)</option>
 <option value="23">Start of Motion and Audio Alarms (23)</option>
@@ -1358,13 +1316,6 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 <option value="5">During Audio Alarm (5)</option>
 <option value="45">During Motion and Audio Alarms (45)</option>
 </options>
-</parameter>
-
-<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
-<label>Update Image channel</label>
-<description>When switched OFF the binding still fetches snapshots for requesting with the url ipcamera.jpg,  but it will not update the image channel which lowers CPU usage. When ON, the image channel is updated.
-</description>
-<default>true</default>
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
@@ -1425,7 +1376,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
-<label>Time in milliseconds between checking camera states and fetching an Image.</label>
+<label>Time in milliseconds between checking camera states and fetching a JPG/Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
 <default>2000</default>
@@ -1552,23 +1503,16 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
-<label>Update the Snapshot/Image when:</label>
+<label>Update the JPG and Image when:</label>
 <description><![CDATA[
-The Image channel can be set to Update in a number of ways to help reduce network traffic.</p>
+The Image channel and JPG served on request can be set to update in a number of ways to help reduce network traffic.</p>
 ]]>
 </description>
 <default>1</default>
 <options>
-<option value="0">Only when updateImageNow is ON (0)</option>
-<option value="1">Always update snapshot (1)</option>
+<option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
+<option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
 </options>
-</parameter>
-
-<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
-<label>Update Image channel</label>
-<description>When switched OFF the binding still fetches snapshots for requesting with the url ipcamera.jpg,  but it will not update the image channel which lowers CPU usage. When ON, the image channel is updated.
-</description>
-<default>true</default>
 </parameter>
 
 <parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
@@ -1621,7 +1565,7 @@ The Image channel can be set to Update in a number of ways to help reduce networ
 </parameter>
 
 <parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="15000" groupName="Image Settings">
-<label>Time in milliseconds between checking camera states and fetching an Image.</label>
+<label>Time in milliseconds between checking camera states and fetching a JPG/Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
 <default>2000</default>

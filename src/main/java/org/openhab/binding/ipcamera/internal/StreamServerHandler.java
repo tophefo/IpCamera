@@ -139,6 +139,8 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
 			logger.debug("An established connection was aborted by the software");
 		} else if (cause.toString().contains("An existing connection was forcibly closed by the remote host")) {
 			logger.debug("An existing connection was forcibly closed by the remote host");
+		} else if (cause.toString().contains("(No such file or directory)")) {
+			logger.info("(IpCamera file server could not find the requested file.");
 		} else {
 			logger.warn("Exception caught from stream server:{}", cause);
 		}

@@ -48,7 +48,6 @@ public class IpCameraBindingConstants {
 	public static final String CONFIG_POLL_CAMERA_MS = "POLL_CAMERA_MS";
 	public static final String CONFIG_SNAPSHOT_URL_OVERRIDE = "SNAPSHOT_URL_OVERRIDE";
 	public static final String CONFIG_IMAGE_UPDATE_EVENTS = "IMAGE_UPDATE_EVENTS";
-	public static final String CONFIG_UPDATE_IMAGE = "UPDATE_IMAGE";
 	public static final String CONFIG_NVR_CHANNEL = "NVR_CHANNEL";
 	public static final String CONFIG_MOTION_URL_OVERRIDE = "MOTION_URL_OVERRIDE";
 	public static final String CONFIG_AUDIO_URL_OVERRIDE = "AUDIO_URL_OVERRIDE";
