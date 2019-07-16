@@ -78,17 +78,17 @@ public class DoorBirdHandler extends ChannelDuplexHandler {
 			if ("ON".equals(command.toString())) {
 				ipCameraHandler.sendHttpGET("/bha-api/open-door.cgi");
 			}
-			break;
+			return;
 		case CHANNEL_ACTIVATE_ALARM_OUTPUT2:
 			if ("ON".equals(command.toString())) {
 				ipCameraHandler.sendHttpGET("/bha-api/open-door.cgi?r=2");
 			}
-			break;
+			return;
 		case CHANNEL_EXTERNAL_LIGHT:
 			if ("ON".equals(command.toString())) {
 				ipCameraHandler.sendHttpGET("/bha-api/light-on.cgi");
 			}
-			break;
+			return;
 		}
 	}
 }

@@ -125,15 +125,15 @@ public class FoscamHandler extends ChannelDuplexHandler {
 			case CHANNEL_THRESHOLD_AUDIO_ALARM:
 				ipCameraHandler.sendHttpGET(
 						"/cgi-bin/CGIProxy.fcgi?cmd=getAudioAlarmConfig&usr=" + username + "&pwd=" + password);
-				break;
+				return;
 			case CHANNEL_ENABLE_AUDIO_ALARM:
 				ipCameraHandler.sendHttpGET(
 						"/cgi-bin/CGIProxy.fcgi?cmd=getAudioAlarmConfig&usr=" + username + "&pwd=" + password);
-				break;
+				return;
 			case CHANNEL_ENABLE_MOTION_ALARM:
 				ipCameraHandler
 						.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username + "&pwd=" + password);
-				break;
+				return;
 			}
 			return; // Return as we have handled the refresh command above and don't need to
 					// continue further.
@@ -151,7 +151,7 @@ public class FoscamHandler extends ChannelDuplexHandler {
 				ipCameraHandler
 						.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=openInfraLed&usr=" + username + "&pwd=" + password);
 			}
-			break;
+			return;
 		case CHANNEL_AUTO_LED:
 			if ("ON".equals(command.toString())) {
 				ipCameraHandler.setChannelState(CHANNEL_ENABLE_LED, UnDefType.valueOf("UNDEF"));
@@ -161,7 +161,7 @@ public class FoscamHandler extends ChannelDuplexHandler {
 				ipCameraHandler.sendHttpGET(
 						"/cgi-bin/CGIProxy.fcgi?cmd=setInfraLedConfig&mode=1&usr=" + username + "&pwd=" + password);
 			}
-			break;
+			return;
 		case CHANNEL_THRESHOLD_AUDIO_ALARM:
 			int value = Math.round(Float.valueOf(command.toString()));
 			if (value == 0) {
@@ -180,7 +180,7 @@ public class FoscamHandler extends ChannelDuplexHandler {
 						.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=1&sensitivity=2&usr="
 								+ username + "&pwd=" + password);
 			}
-			break;
+			return;
 		case CHANNEL_ENABLE_AUDIO_ALARM:
 			if ("ON".equals(command.toString())) {
 				if (ipCameraHandler.config.get(CONFIG_AUDIO_URL_OVERRIDE) == null) {
@@ -193,7 +193,7 @@ public class FoscamHandler extends ChannelDuplexHandler {
 				ipCameraHandler.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setAudioAlarmConfig&isEnable=0&usr=" + username
 						+ "&pwd=" + password);
 			}
-			break;
+			return;
 		case CHANNEL_ENABLE_MOTION_ALARM:
 			if ("ON".equals(command.toString())) {
 				if (ipCameraHandler.config.get(CONFIG_MOTION_URL_OVERRIDE) == null) {
@@ -210,7 +210,7 @@ public class FoscamHandler extends ChannelDuplexHandler {
 				ipCameraHandler.sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=setMotionDetectConfig1&isEnable=0&usr="
 						+ username + "&pwd=" + password);
 			}
-			break;
+			return;
 		}
 	}
 }

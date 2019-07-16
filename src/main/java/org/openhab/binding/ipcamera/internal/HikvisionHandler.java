@@ -251,17 +251,17 @@ public class HikvisionHandler extends ChannelDuplexHandler {
 			switch (channelUID.getId()) {
 			case CHANNEL_ENABLE_AUDIO_ALARM:
 				ipCameraHandler.sendHttpGET("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01");
-				break;
+				return;
 			case CHANNEL_ENABLE_LINE_CROSSING_ALARM:
 				ipCameraHandler.sendHttpGET("/ISAPI/Smart/LineDetection/" + nvrChannel + "01");
-				break;
+				return;
 			case CHANNEL_ENABLE_FIELD_DETECTION_ALARM:
 				ipCameraHandler.logger.debug("FieldDetection command");
 				ipCameraHandler.sendHttpGET("/ISAPI/Smart/FieldDetection/" + nvrChannel + "01");
-				break;
+				return;
 			case CHANNEL_ENABLE_MOTION_ALARM:
 				ipCameraHandler.sendHttpGET("/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection");
-				break;
+				return;
 			}
 			return; // Return as we have handled the refresh command above and don't need to
 					// continue further.
@@ -275,7 +275,7 @@ public class HikvisionHandler extends ChannelDuplexHandler {
 				ipCameraHandler.hikChangeSetting("/ISAPI/Smart/AudioDetection/channels/" + nvrChannel + "01",
 						"<enabled>true</enabled>", "<enabled>false</enabled>");
 			}
-			break;
+			return;
 		case CHANNEL_ENABLE_LINE_CROSSING_ALARM:
 			if ("ON".equals(command.toString())) {
 				ipCameraHandler.hikChangeSetting("/ISAPI/Smart/LineDetection/" + nvrChannel + "01",
@@ -284,7 +284,7 @@ public class HikvisionHandler extends ChannelDuplexHandler {
 				ipCameraHandler.hikChangeSetting("/ISAPI/Smart/LineDetection/" + nvrChannel + "01",
 						"<enabled>true</enabled>", "<enabled>false</enabled>");
 			}
-			break;
+			return;
 		case CHANNEL_ENABLE_MOTION_ALARM:
 			if ("ON".equals(command.toString())) {
 
@@ -296,7 +296,7 @@ public class HikvisionHandler extends ChannelDuplexHandler {
 						"/ISAPI/System/Video/inputs/channels/" + nvrChannel + "01/motionDetection",
 						"<enabled>true</enabled>", "<enabled>false</enabled>");
 			}
-			break;
+			return;
 		case CHANNEL_ENABLE_FIELD_DETECTION_ALARM:
 			if ("ON".equals(command.toString())) {
 				ipCameraHandler.hikChangeSetting("/ISAPI/Smart/FieldDetection/" + nvrChannel + "01",
@@ -305,7 +305,7 @@ public class HikvisionHandler extends ChannelDuplexHandler {
 				ipCameraHandler.hikChangeSetting("/ISAPI/Smart/FieldDetection/" + nvrChannel + "01",
 						"<enabled>true</enabled>", "<enabled>false</enabled>");
 			}
-			break;
+			return;
 		case CHANNEL_ACTIVATE_ALARM_OUTPUT:
 			if ("ON".equals(command.toString())) {
 				ipCameraHandler.hikSendXml("/ISAPI/System/IO/outputs/" + nvrChannel + "/trigger",
@@ -314,7 +314,7 @@ public class HikvisionHandler extends ChannelDuplexHandler {
 				ipCameraHandler.hikSendXml("/ISAPI/System/IO/outputs/" + nvrChannel + "/trigger",
 						"<IOPortData version=\"1.0\" xmlns=\"http://www.hikvision.com/ver10/XMLSchema\">\r\n    <outputState>low</outputState>\r\n</IOPortData>\r\n");
 			}
-			break;
+			return;
 		}
 	}
 }

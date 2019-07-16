@@ -89,14 +89,14 @@ public class InstarHandler extends ChannelDuplexHandler {
 				ipCameraHandler.sendHttpGET(
 						"/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1&-aa_value=" + command.toString());
 			}
-			break;
+			return;
 		case CHANNEL_ENABLE_AUDIO_ALARM:
 			if ("ON".equals(command.toString())) {
 				ipCameraHandler.sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=1");
 			} else {
 				ipCameraHandler.sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=setaudioalarmattr&-aa_enable=0");
 			}
-			break;
+			return;
 		case CHANNEL_ENABLE_MOTION_ALARM:
 			if ("ON".equals(command.toString())) {
 				ipCameraHandler.sendHttpGET(
@@ -105,7 +105,7 @@ public class InstarHandler extends ChannelDuplexHandler {
 				ipCameraHandler.sendHttpGET(
 						"/cgi-bin/hi3510/param.cgi?cmd=setmdattr&-enable=0&-name=1&cmd=setmdattr&-enable=0&-name=2&cmd=setmdattr&-enable=0&-name=3&cmd=setmdattr&-enable=0&-name=4");
 			}
-			break;
+			return;
 		}
 	}
 }

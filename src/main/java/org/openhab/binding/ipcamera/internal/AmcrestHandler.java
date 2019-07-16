@@ -120,16 +120,16 @@ public class AmcrestHandler extends ChannelDuplexHandler {
 			switch (channelUID.getId()) {
 			case CHANNEL_THRESHOLD_AUDIO_ALARM:
 				ipCameraHandler.sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=AudioDetect[0]");
-				break;
+				return;
 			case CHANNEL_ENABLE_AUDIO_ALARM:
 				ipCameraHandler.sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=AudioDetect[0]");
-				break;
+				return;
 			case CHANNEL_ENABLE_LINE_CROSSING_ALARM:
 				ipCameraHandler.sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=CrossLineDetection[0]");
-				break;
+				return;
 			case CHANNEL_ENABLE_MOTION_ALARM:
 				ipCameraHandler.sendHttpGET("/cgi-bin/configManager.cgi?action=getConfig&name=MotionDetect[0]");
-				break;
+				return;
 			}
 			return; // Return as we have handled the refresh command above and don't need to
 					// continue further.
@@ -145,14 +145,14 @@ public class AmcrestHandler extends ChannelDuplexHandler {
 						"/cgi-bin/configManager.cgi?action=setConfig&VideoWidget[0].CustomTitle[1].EncodeBlend=true&VideoWidget[0].CustomTitle[1].Text="
 								+ text);
 			}
-			break;
+			return;
 		case CHANNEL_API_ACCESS:
 			if (command.toString() != null) {
 				ipCameraHandler.logger.info("API Access was sent this command :{}", command.toString());
 				ipCameraHandler.sendHttpGET(command.toString());
 				ipCameraHandler.setChannelState(CHANNEL_API_ACCESS, StringType.valueOf(""));
 			}
-			break;
+			return;
 		case CHANNEL_ENABLE_LED:
 			ipCameraHandler.setChannelState(CHANNEL_AUTO_LED, OnOffType.valueOf("OFF"));
 			if ("0".equals(command.toString()) || "OFF".equals(command.toString())) {
@@ -164,13 +164,13 @@ public class AmcrestHandler extends ChannelDuplexHandler {
 						"/cgi-bin/configManager.cgi?action=setConfig&Lighting[0][0].Mode=Manual&Lighting[0][0].MiddleLight[0].Light="
 								+ command.toString());
 			}
-			break;
+			return;
 		case CHANNEL_AUTO_LED:
 			if ("ON".equals(command.toString())) {
 				ipCameraHandler.setChannelState(CHANNEL_ENABLE_LED, UnDefType.valueOf("UNDEF"));
 				ipCameraHandler.sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&Lighting[0][0].Mode=Auto");
 			}
-			break;
+			return;
 		case CHANNEL_THRESHOLD_AUDIO_ALARM:
 			int threshold = Math.round(Float.valueOf(command.toString()));
 
@@ -181,7 +181,7 @@ public class AmcrestHandler extends ChannelDuplexHandler {
 				ipCameraHandler.sendHttpGET(
 						"/cgi-bin/configManager.cgi?action=setConfig&AudioDetect[0].MutationThreold=" + threshold);
 			}
-			break;
+			return;
 		case CHANNEL_ENABLE_AUDIO_ALARM:
 			if ("ON".equals(command.toString())) {
 				ipCameraHandler.sendHttpGET(
@@ -190,14 +190,14 @@ public class AmcrestHandler extends ChannelDuplexHandler {
 				ipCameraHandler
 						.sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AudioDetect[0].MutationDetect=false");
 			}
-			break;
+			return;
 		case CHANNEL_ENABLE_LINE_CROSSING_ALARM:
 			if ("ON".equals(command.toString())) {
 
 			} else {
 
 			}
-			break;
+			return;
 		case CHANNEL_ENABLE_MOTION_ALARM:
 			if ("ON".equals(command.toString())) {
 				ipCameraHandler.sendHttpGET(
@@ -205,21 +205,21 @@ public class AmcrestHandler extends ChannelDuplexHandler {
 			} else {
 				ipCameraHandler.sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&MotionDetect[0].Enable=false");
 			}
-			break;
+			return;
 		case CHANNEL_ACTIVATE_ALARM_OUTPUT:
 			if ("ON".equals(command.toString())) {
 				ipCameraHandler.sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AlarmOut[0].Mode=1");
 			} else {
 				ipCameraHandler.sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AlarmOut[0].Mode=0");
 			}
-			break;
+			return;
 		case CHANNEL_ACTIVATE_ALARM_OUTPUT2:
 			if ("ON".equals(command.toString())) {
 				ipCameraHandler.sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AlarmOut[1].Mode=1");
 			} else {
 				ipCameraHandler.sendHttpGET("/cgi-bin/configManager.cgi?action=setConfig&AlarmOut[1].Mode=0");
 			}
-			break;
+			return;
 		}
 	}
 }

@@ -1186,32 +1186,34 @@ public class IpCameraHandler extends BaseThingHandler {
 				return;
 			}
 		} // end of "REFRESH"
-		switch (channelUID.getId()) {
-		case CHANNEL_UPDATE_IMAGE_NOW:
-			if ("ON".equals(command.toString())) {
-				updateImage = true;
-			} else {
-				updateImage = false;
-			}
-			return;
-		case CHANNEL_UPDATE_GIF:
-			if ("ON".equals(command.toString())) {
-				if (preroll > 0) {
-					snapCount = postroll;
+		else {
+			switch (channelUID.getId()) {
+			case CHANNEL_UPDATE_IMAGE_NOW:
+				if ("ON".equals(command.toString())) {
+					updateImage = true;
 				} else {
-					setupFfmpegFormat("GIF");
+					updateImage = false;
 				}
+				return;
+			case CHANNEL_UPDATE_GIF:
+				if ("ON".equals(command.toString())) {
+					if (preroll > 0) {
+						snapCount = postroll;
+					} else {
+						setupFfmpegFormat("GIF");
+					}
+				}
+				return;
+			case CHANNEL_PAN:
+				setAbsolutePan(Float.valueOf(command.toString()));
+				return;
+			case CHANNEL_TILT:
+				setAbsoluteTilt(Float.valueOf(command.toString()));
+				return;
+			case CHANNEL_ZOOM:
+				setAbsoluteZoom(Float.valueOf(command.toString()));
+				return;
 			}
-			return;
-		case CHANNEL_PAN:
-			setAbsolutePan(Float.valueOf(command.toString()));
-			return;
-		case CHANNEL_TILT:
-			setAbsoluteTilt(Float.valueOf(command.toString()));
-			return;
-		case CHANNEL_ZOOM:
-			setAbsoluteZoom(Float.valueOf(command.toString()));
-			return;
 		}
 
 		switch (thing.getThingTypeUID().getId()) {
@@ -1669,7 +1671,6 @@ public class IpCameraHandler extends BaseThingHandler {
 		}
 
 		updateImageEvents = config.get(CONFIG_IMAGE_UPDATE_EVENTS).toString();
-
 		updateImage = (boolean) config.get(CONFIG_UPDATE_IMAGE);
 
 		snapshotUri = (config.get(CONFIG_SNAPSHOT_URL_OVERRIDE) == null) ? null
