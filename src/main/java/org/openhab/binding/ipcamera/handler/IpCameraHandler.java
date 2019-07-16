@@ -324,7 +324,7 @@ public class IpCameraHandler extends BaseThingHandler {
 					case 1: // Still open
 					case 0: // Marked as closing but channel still needs to be closed.
 						Channel chan = listOfChannels.get(index);
-						chan.close();
+						chan.close();// We can't wait as OH kills any handler that takes >5 seconds.
 					}
 				}
 			}
@@ -1245,6 +1245,10 @@ public class IpCameraHandler extends BaseThingHandler {
 		}
 	}
 
+	public void setChannelState(String channelToUpdate, State valueOf) {
+		updateState(channelToUpdate, valueOf);
+	}
+
 	void getAbsolutePan() {
 		if (ptzDevices != null) {
 			ptzLocation = getPtzPosition();
@@ -1327,13 +1331,13 @@ public class IpCameraHandler extends BaseThingHandler {
 	}
 
 	public String encodeSpecialChars(String text) {
-		String Processed = null;
+		String encodedString = null;
 		try {
-			Processed = URLEncoder.encode(text, "UTF-8").replace("+", "%20");
+			encodedString = URLEncoder.encode(text, "UTF-8").replace("+", "%20");
 		} catch (UnsupportedEncodingException e) {
-
+			logger.error("Failed to encode special characters for URL. {}", e);
 		}
-		return Processed;
+		return encodedString;
 	}
 
 	Runnable pollingCameraConnection = new Runnable() {
@@ -1351,6 +1355,10 @@ public class IpCameraHandler extends BaseThingHandler {
 								Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
 						sendHttpGET(getCorrectUrlFormat(snapshotUri));
 						updateState(CHANNEL_IMAGE_URL, new StringType(snapshotUri));
+
+						if (updateImage) {
+							updateState(CHANNEL_UPDATE_IMAGE_NOW, OnOffType.valueOf("ON"));
+						}
 
 						if (!"-1".contentEquals(config.get(CONFIG_SERVER_PORT).toString())) {
 							startStreamServer(true);
@@ -1501,6 +1509,10 @@ public class IpCameraHandler extends BaseThingHandler {
 					updateState(CHANNEL_IMAGE_URL, new StringType(snapshotUri));
 					if (rtspUri != null) {
 						updateState(CHANNEL_RTSP_URL, new StringType(rtspUri));
+					}
+
+					if (updateImage) {
+						updateState(CHANNEL_UPDATE_IMAGE_NOW, OnOffType.valueOf("ON"));
 					}
 
 					pollCameraJob = pollCamera.scheduleAtFixedRate(pollingCamera, 7000,
@@ -1724,6 +1736,7 @@ public class IpCameraHandler extends BaseThingHandler {
 		logger.debug("Camera binding restart().");
 
 		basicAuth = null; // clear out stored password hash
+		useDigestAuth = false;
 		startStreamServer(false);
 
 		if (pollCameraJob != null) {
@@ -1734,6 +1747,9 @@ public class IpCameraHandler extends BaseThingHandler {
 			cameraConnectionJob.cancel(false);
 			cameraConnectionJob = null;
 		}
+
+		closeAllChannels();
+
 		if (ffmpegHLS != null) {
 			ffmpegHLS.stopConverting();
 			ffmpegHLS = null;
@@ -1743,8 +1759,6 @@ public class IpCameraHandler extends BaseThingHandler {
 			ffmpegGIF = null;
 		}
 
-		useDigestAuth = false;
-		closeAllChannels();
 		lock.lock();
 		try {
 			listOfRequests.clear();
@@ -1761,9 +1775,5 @@ public class IpCameraHandler extends BaseThingHandler {
 		logger.debug("Dispose() called.");
 		onvifCamera = null; // needed in case user edits password.
 		restart();
-	}
-
-	public void setChannelState(String channelToUpdate, State valueOf) {
-		updateState(channelToUpdate, valueOf);
 	}
 }
