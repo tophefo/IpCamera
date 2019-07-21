@@ -89,44 +89,74 @@ The configuration parameters that can be used in textual configuration are in CA
 Create a file called `ipcamera.things` and save it to your things folder. Inside this file enter this in plain text and modify it to your needs.
 
 ```java
-//Defined a custom HLS setting to allow audio to be casted.
-//Uses Onvif to fetch the urls, hence why they are not defined here.
+// Defined a custom HLS setting to allow audio to be casted.
+// Uses Onvif to fetch the urls,
+hence why they are not defined here.
 Thing ipcamera:DAHUA:BabyCamera "Baby Monitor" @ "Cameras"
 [
-    IPADDRESS="192.168.1.5", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000, SERVER_PORT=50001,
-    IP_WHITELIST="DISABLE", IMAGE_UPDATE_EVENTS=1, UPDATE_IMAGE=false, GIF_PREROLL=0, GIF_POSTROLL=6,
+    IPADDRESS="192.168.1.5",
+    USERNAME="admin",
+    PASSWORD="suitcase123456",
+    POLL_CAMERA_MS=2000,
+    SERVER_PORT=50001,
+    IP_WHITELIST="DISABLE",
+    IMAGE_UPDATE_EVENTS=1,
+    UPDATE_IMAGE=false,
+    GIF_PREROLL=0,
+    GIF_POSTROLL=6,
     FFMPEG_OUTPUT="/tmpfs/babymonitor/",
     FFMPEG_HLS_OUT_ARGUMENTS="-acodec copy -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header"
 ]
 
-//Update JPG every second and dont update the image channel to save on CPU.
-//Uses 3rd stream of camera to feed openHAB with less data than 4k on mainstream.
+// Update JPG every second and dont update the image channel to save on CPU.
+// Uses 3rd stream of camera to feed openHAB with less data than 4k on mainstream.
 Thing ipcamera:HIKVISION:DrivewayCam "DrivewayCam" @ "Cameras"
 [
-    IPADDRESS="192.168.1.6", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=1000, SERVER_PORT=50002,
-    IP_WHITELIST="DISABLE", IMAGE_UPDATE_EVENTS=1, UPDATE_IMAGE=false, GIF_PREROLL=0, GIF_POSTROLL=6,
+    IPADDRESS="192.168.1.6",
+    PASSWORD="suitcase123456",
+    USERNAME="admin",
+    POLL_CAMERA_MS=1000,
+    SERVER_PORT=50002,
+    IP_WHITELIST="DISABLE",
+    IMAGE_UPDATE_EVENTS=1,
+    UPDATE_IMAGE=false,
+    GIF_PREROLL=0,
+    GIF_POSTROLL=6,
     FFMPEG_OUTPUT="/tmpfs/DrivewayCam/",
     FFMPEG_INPUT="rtsp://192.168.1.62:554/Streaming/Channels/103?transportmode=unicast&profile=Profile_1"
 ]
 
-//Will autofetch the urls from Onvif so they are not defined here.
-//Other settings will use the defaults if they are missing.
-//Example of the IP_WHITELIST is used here.
+// Will autofetch the urls from Onvif so they are not defined here.
+// Other settings will use the defaults if they are missing.
+// Example of the IP_WHITELIST is used here.
 Thing ipcamera:ONVIF:003
 [
-    IPADDRESS="192.168.1.21", PASSWORD="suitcase123456", USERNAME="admin",
-    ONVIF_PORT=80, PORT=80, SERVER_PORT=50003, POLL_CAMERA_MS=2000,     FFMPEG_OUTPUT="/tmpfs/camera3/",IP_WHITELIST="(192.168.2.8)(192.168.2.83)(192.168.2.99)"
+    IPADDRESS="192.168.1.21",
+    PASSWORD="suitcase123456",
+    USERNAME="admin",
+    ONVIF_PORT=80,
+    PORT=80,
+    SERVER_PORT=50003,
+    POLL_CAMERA_MS=2000,
+    FFMPEG_OUTPUT="/tmpfs/camera3/",IP_WHITELIST="(192.168.2.8)(192.168.2.83)(192.168.2.99)"
 ]
 
-//Esp32 Cameras have the stream on a different port 81 to snapshots, this can be setup easily.
-//Use JPG files as the source for animated Gifs as the camera has no rtsp stream.
+// ESP32 Cameras have the stream on a different port 81 to snapshots, this can be setup easily.
+// Use JPG files as the source for animated Gifs as the camera has no rtsp stream.
 Thing ipcamera:HTTPONLY:TTGoCamera "TTGo Camera" @ "Cameras"
 [
-    IPADDRESS="192.168.1.181", POLL_CAMERA_MS=1000, SERVER_PORT=54321,
-    IP_WHITELIST="DISABLE", IMAGE_UPDATE_EVENTS=1, UPDATE_IMAGE=true, GIF_PREROLL=1, GIF_POSTROLL=6,
+    IPADDRESS="192.168.1.181",
+    POLL_CAMERA_MS=1000,
+    SERVER_PORT=54321,
+    IP_WHITELIST="DISABLE",
+    IMAGE_UPDATE_EVENTS=1,
+    UPDATE_IMAGE=true,
+    GIF_PREROLL=1,
+    GIF_POSTROLL=6,
     SNAPSHOT_URL_OVERRIDE="http://192.168.1.181/capture",
     STREAM_URL_OVERRIDE="http://192.168.1.181:81/stream",
-    FFMPEG_OUTPUT="/tmpfs/TTGoCamera/", FFMPEG_INPUT="http://192.168.1.181:81/stream"
+    FFMPEG_OUTPUT="/tmpfs/TTGoCamera/",
+    FFMPEG_INPUT="http://192.168.1.181:81/stream"
 ]
 
 ```
