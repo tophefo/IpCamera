@@ -596,6 +596,8 @@ Now we can archive the old ones by renaming them with a timestamp:
 
 camera.rules:
 ```java
+var Timer timer = null // top of the file, optionally after imports
+
 rule "Rename GIF Anims when Saved"
     when
         Member of gCameraGif changed to ON
