@@ -1,6 +1,6 @@
 # IpCamera Binding
 
-This binding allows you to use IP cameras in Openhab 2 and has loads of features and ways to work around common issues that cameras present. Please take the time to read through this guide as it will show hidden features and different ways to work with cameras that you may not know about. I highly recommend purchasing a brand of camera that has an open API to give you easy access to alarms or any of the other advanced features that the binding has implemented. To see what each brand has implemented from the API, please see this post:
+This binding allows you to use IP cameras in Openhab 2 and has multiple features and ways to work around common issues that cameras present. Please take the time to read through this guide as it will show hidden features and different ways to work with cameras that you may not know about. I highly recommend purchasing a brand of camera that has an open API to give you easy access to alarms many of the other advanced features that the binding has implemented. To see what each brand has implemented from the API, please see this post:
 
 <https://community.openhab.org/t/ipcamera-new-ip-camera-binding/42771> 
 
@@ -44,9 +44,9 @@ If using Openhab's textual configuration or when needing to setup HABPANEL/sitem
 
 HTTPONLY: For any camera that is not ONVIF compatible, yet still has the ability to fetch a snapshot or stream with a url.
 
-ONVIF: Use for all ONVIF Cameras from any brand that do not have an API. You gain Pan Tilt and Zoom controls and auto discovery of the snapshot and rtsp urls over a httponly thing. If your camera does not have PTZ you may prefer to set it up as httponly due to the camera connecting faster.
+ONVIF: Use for all ONVIF Cameras from any brand that do not have an API. You gain Pan Tilt and Zoom controls and auto discovery of the snapshot and rtsp urls over a basic HTTPONLY thing. If your camera does not have PTZ you may prefer to set it up as HTTPONLY due to the camera connecting faster if it skips the extra Onvif functions.
 
-AMCREST: Use for all Amcrest Cameras that do not work as a Dahua thing as this uses an older polling method for alarm detection which is not as efficient as the newer method used in Dahua. Amcrest are made by Dahua and hence their cameras can be setup as a Dahua thing.
+AMCREST: Use for all Amcrest Cameras that do not work as a Dahua thing. This uses an older polling method for alarm detection which is not as efficient as the newer method used in Dahua. Amcrest are made by Dahua and hence their cameras can be setup as a Dahua thing.
 
 DAHUA: Use for all current Dahua and Amcrest cameras as they support an API as well as ONVIF.
 
@@ -61,7 +61,7 @@ INSTAR: Use for all current INSTAR Cameras as they support an API as well as ONV
 
 ## Discovery
 
-Auto discovery is not supported currently and I would love a PR if someone has experience finding cameras on a network. ONVIF documents a way to use UDP multicast to find cameras, however some cameras have this feature disabled by default for security reasons in their firmware hence why this is not high on the list to do. Currently you need to manually add the IP camera either via PaperUI or textual configuration which is covered below in more detail.
+Auto discovery is not supported currently and I would love a PR if someone has experience finding cameras on a network. ONVIF documents a way to use UDP multicast to find cameras, however some cameras have this feature disabled by default for security reasons in their firmware hence why this is not high on the list to do. Currently you need to manually add the IP camera either via PaperUI or textual configuration which both are covered below in more detail.
 
 ## Binding Configuration
 
@@ -69,7 +69,7 @@ The binding can be configured with PaperUI by clicking on the pencil icon of any
 
 Cameras can also be manually configured with text files by doing the following. DO NOT try and change a setting using PaperUI after using textual configuration as the two will conflict as the text file locks the settings preventing them from changing. Because the binding is changing so much at the moment I would recommend you use textual configuration, as each time Openhab restarts it removes and adds the camera so you automatically gain any extra channels or abilities that I add. If using PaperUI, each time I add a new channel you will need to remove and re-add the camera which then gives it a new UID number (Unique ID number), which in turn can break your sitemap and HABPanel setups. Textual configuration has its advantages and locks the camera to use a simple UID which can be a plain text name like "DrivewayCamera".
 
-The configuration parameters that can be used in textual configuration are:
+The configuration parameters that can be used in textual configuration are in CAPS, descriptions can be seen in PaperUI to help guide you on what each one does:
 
 ```
 
@@ -79,29 +79,31 @@ PORT
 
 ONVIF_PORT
 
-SERVER_PORT
+SERVER_PORT (If you ask the binding for a file or format it needs this port to serve the files out on.)
 
 USERNAME
 
 PASSWORD
 
-ONVIF_MEDIA_PROFILE
+ONVIF_MEDIA_PROFILE (0 is your cameras Mainstream and the numbers above 0 are the substreams if your camera has any.)
 
 POLL_CAMERA_MS
 
 IMAGE_UPDATE_EVENTS
 
-NVR_CHANNEL
+UPDATE_IMAGE (The startup default behavior of updating the image channel, until the channel updateImageNow overrides)
+
+NVR_CHANNEL (Hidden in PaperUI until you click on SHOW MORE at the bottom of the screen.)
 
 SNAPSHOT_URL_OVERRIDE
 
-MOTION_URL_OVERRIDE
+MOTION_URL_OVERRIDE (Foscam only, for custom enable motion alarm use. More info found in foscam setup below.)
 
-AUDIO_URL_OVERRIDE
+AUDIO_URL_OVERRIDE (Foscam only, for custom enable audio alarm use. More info found in foscam setup below.)
 
-STREAM_URL_OVERRIDE
+STREAM_URL_OVERRIDE (A http url for mjpeg format streams only, rtsp not supported.)
 
-FFMPEG_INPUT
+FFMPEG_INPUT (Best if this stream is in H264 format and can be RTSP or HTTP urls.)
 
 FFMPEG_LOCATION
 
@@ -121,17 +123,49 @@ IP_WHITELIST
 ```
 
 
-Create a file called 'ipcamera.things' and save it to your things folder. Inside this file enter this in plain text and modify it to your needs...
+Create a file called 'ipcamera.things' and save it to your things folder. Inside this file enter this in plain text and modify it to your needs.
 
 
 ```
-Thing ipcamera:DAHUA:001 [IPADDRESS="192.168.1.5", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000, SERVER_PORT=50001, FFMPEG_OUTPUT="/tmp/camera1/"]
+//Defined a custom HLS setting to allow audio to be casted.
+//Uses Onvif to fetch the urls, hence why they are not defined here.
+Thing ipcamera:DAHUA:BabyCamera "Baby Monitor" @ "Cameras"
+[
+	IPADDRESS="192.168.1.5", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000, SERVER_PORT=50001,
+	IP_WHITELIST="DISABLE", IMAGE_UPDATE_EVENTS=1, UPDATE_IMAGE=false, GIF_PREROLL=0, GIF_POSTROLL=6,
+	FFMPEG_OUTPUT="/tmpfs/babymonitor/",
+	FFMPEG_HLS_OUT_ARGUMENTS="-acodec copy -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header"
+]
 
-Thing ipcamera:HIKVISION:002 [IPADDRESS="192.168.1.6", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000, SERVER_PORT=50002, FFMPEG_OUTPUT="/tmp/camera2/"]
+//Update JPG every second and dont update the image channel to save on CPU.
+//Uses 3rd stream of camera to feed Openhab with less data than 4k on mainstream.
+Thing ipcamera:HIKVISION:DrivewayCam "DrivewayCam" @ "Cameras"
+[
+	IPADDRESS="192.168.1.6", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=1000, SERVER_PORT=50002,
+	IP_WHITELIST="DISABLE", IMAGE_UPDATE_EVENTS=1, UPDATE_IMAGE=false, GIF_PREROLL=0, GIF_POSTROLL=6,
+	FFMPEG_OUTPUT="/tmpfs/DrivewayCam/",
+	FFMPEG_INPUT="rtsp://192.168.1.62:554/Streaming/Channels/103?transportmode=unicast&profile=Profile_1"
+]
 
-Thing ipcamera:ONVIF:003 [ IPADDRESS="192.168.1.21", PASSWORD="suitcase123456", USERNAME="admin", ONVIF_PORT=80, PORT=80, SERVER_PORT=50003, POLL_CAMERA_MS=2000, FFMPEG_OUTPUT="/tmp/camera3/"]
+//Will autofetch the urls from Onvif so they are not defined here.
+//Other settings will use the defaults if they are missing.
+//Example of the IP_WHITELIST is used here.
+Thing ipcamera:ONVIF:003 
+[ 
+	IPADDRESS="192.168.1.21", PASSWORD="suitcase123456", USERNAME="admin", 
+	ONVIF_PORT=80, PORT=80, SERVER_PORT=50003, POLL_CAMERA_MS=2000, 	FFMPEG_OUTPUT="/tmpfs/camera3/",IP_WHITELIST="(192.168.2.8)(192.168.2.83)(192.168.2.99)"
+]
 
-Thing ipcamera:HTTPONLY:004 [ IPADDRESS="192.168.1.22", PASSWORD="suitcase123456", USERNAME="admin", SNAPSHOT_URL_OVERRIDE="http://192.168.1.22/cgi-bin/CGIProxy.fcgi?cmd=snapPicture2&usr=admin&pwd=suitcase123456", PORT=80, SERVER_PORT=50004, POLL_CAMERA_MS=2000, FFMPEG_INPUT="rtsp://192.168.1.22:554/cam/realmonitor?channel=1&subtype=0", FFMPEG_OUTPUT="/tmp/camera4/"]
+//Esp32 Cameras have the stream on a different port 81 to snapshots, this can be setup easily.
+//Use JPG files as the source for animated Gifs as the camera has no rtsp stream.
+Thing ipcamera:HTTPONLY:TTGoCamera "TTGo Camera" @ "Cameras"
+[
+	IPADDRESS="192.168.1.181", POLL_CAMERA_MS=1000, SERVER_PORT=54321,
+	IP_WHITELIST="DISABLE", IMAGE_UPDATE_EVENTS=1, UPDATE_IMAGE=true, GIF_PREROLL=1, GIF_POSTROLL=6,
+	SNAPSHOT_URL_OVERRIDE="http://192.168.1.181/capture",
+	STREAM_URL_OVERRIDE="http://192.168.1.181:81/stream",
+	FFMPEG_OUTPUT="/tmpfs/TTGoCamera/", FFMPEG_INPUT="http://192.168.1.181:81/stream"
+]
 
 ```
 
@@ -152,19 +186,24 @@ Not all the configuration controls will be explained here, only the ones which a
 
 **IMAGE_UPDATE_EVENTS**
 
-If you look in PaperUI you will notice that there are numbers in brackets after each option. These numbers represents the number for textual config that you can enter into the thing file which is described above. Cameras with supported alarms have more options compared to generic cameras. The channel updateImageNow can work with this setting to allow you to manually start and stop the image from updating.
+If you look in PaperUI you will notice that there are numbers in brackets after each option. These numbers represents the number for textual config that you can enter into the thing file which is described above. Cameras with supported alarms have more options compared to generic cameras. The channel updateImageNow can work with this setting to allow you to manually start and stop the image from updating. 
+
+**UPDATE_IMAGE**
+
+The config UPDATE_IMAGE sets the default value of the switch updateImageNow when Openhab restarts.
+
 
 ## Channels
 
-See PaperUI for a full list of channels and the descriptions as most are easy to understand, any which need further explainations will be added here. Each camera brand will have different channels depending on how much of the support for an API has been added. The channels are kept consistent as much as possible from brand to brand to make upgrading to a different branded camera easier and to help when sharing rules with other users.
+See PaperUI for a full list of channels and the descriptions as most are easy to understand. Any which need further explanations will be added here. Each camera brand will have different channels depending on how much of the support for an API has been added. The channels are kept consistent as much as possible from brand to brand to make upgrading to a different branded camera easier and to help when sharing rules with other users in the forum.
 
 **updateImageNow**
 
-This control can be used to start updating the image if the IMAGE_UPDATE_EVENTS config means the camera will not be updating unless an alarm is occurring. When ON the image will update at the POLL_CAMERA_MS rate. When OFF the image will update as is described by the IMAGE_UPDATE_EVENTS setting.
+This control can be used to manually start and stop updating the image if the IMAGE_UPDATE_EVENTS and UPDATE_IMAGE configs means the camera will not be updating. When ON the image will update at the POLL_CAMERA_MS rate. When OFF the image will update as is described by the IMAGE_UPDATE_EVENTS setting.
 
 **updateGif**
 
-When this control is turned ON it will trigger an animated Gif to be created by ffmpeg which will need to be installed on your server. Once the file is created the control will turn itself back OFF which can be used to trigger a rule to email or use Pushover/Telegram to send the file to your mobile phone. When GIF_PREROLL is set to a value higher than 0, the binding will create and use snapshots instead of using the RTSP feed from the camera which is the default behaviour when the GIF_PREROLL is set to 0. IMAGE_UPDATE_EVENTS must be set to always update the image and POLL_CAMERA_MS sets how often the snapshot is added to the FIFO buffer that creates the animated GIF. The snapshot files are not deleted and this can be used to create and email Jpeg files also giving you a number to choose from in case your camera has delayed footage. The files are placed into the folder specified by FFMPEG_OUTPUT.
+When this control is turned ON it will trigger an animated Gif to be created by ffmpeg, which you will need to install on your server manually. Once the file is created the control will auto turn itself back OFF which can be used to trigger a rule to email or use Pushover/Telegram to send the file to your mobile phone. When GIF_PREROLL is set to a value higher than 0, the binding will create and use snapshots (jpg) instead of using the RTSP feed from the camera which is the default behavior when the GIF_PREROLL is set to 0 or not defined. IMAGE_UPDATE_EVENTS must be set to always update the image and POLL_CAMERA_MS sets how often the snapshot is added to the FIFO buffer that creates the animated GIF. The snapshot files are not deleted and this can be used to create and email Jpeg files also giving you a number to choose from in case your camera has delayed footage. The files are placed into the folder specified by the config FFMPEG_OUTPUT.
 
 **lastMotionType**
 
@@ -191,7 +230,7 @@ end
 
 ## API Access Channel
 
-A special String channel has been added that allows you to send any GET request to Dahua cameras only. This is due to the HTTP binding currently not supporting the DIGEST method that these cameras must use in the latest firmwares. For other brands you can use the HTTP binding should a feature not have direct support in this binding. It is far better to add or request a feature so that it gets added to the binding so that all future users benefit.
+A special String channel has been added that allows you to send any GET request to Dahua cameras only. This is due to the HTTP binding currently not supporting the DIGEST method that these cameras must use in the latest firmwares. For other brands you can use the HTTP binding should a feature not have direct support in this binding. It is far better to add or request a feature so that it gets added to the binding so that all future users benefit. One goal of this binding is to save all users from needing to learn an API, instead they can use that time saved to automate with Openhab.
 
 The reply from the camera is not captured nor returned, so this is only a 1 way GET request.
 To use this feature you can simply use this command inside any rule at any time and with as many url Strings as you wish.
@@ -209,7 +248,7 @@ Command to use in rules:
 CamAPIAccess.sendCommand('/cgi-bin/configManager.cgi?action=setConfig&Lighting[0][0].Mode=Off')
 ```
 
-The URL must be in this format without the IP:Port info and the binding will handle the user and password for you making it far simpler to change a password on a camera without the need to update countless lines in your Openhab files.
+The URL must be in this format without the IP:Port info and the binding will handle the user and password for you making it far simpler to change a password on a camera without the need to update countless lines in your OpenHAB files.
 
 ## Full Example
 
@@ -225,9 +264,9 @@ NOTE: If you used paperUI to create the camera thing instead of textual config, 
 
 ```
 
-Thing ipcamera:DAHUA:001 [IPADDRESS="192.168.1.5", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000, SERVER_PORT=50001, FFMPEG_OUTPUT="/tmp/camera1/"]
+Thing ipcamera:DAHUA:001 [IPADDRESS="192.168.1.5", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000, SERVER_PORT=50001, FFMPEG_OUTPUT="/tmpfs/camera1/"]
 
-Thing ipcamera:HIKVISION:002 [IPADDRESS="192.168.1.6", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000, SERVER_PORT=50002, FFMPEG_OUTPUT="/tmp/camera2/"]
+Thing ipcamera:HIKVISION:002 [IPADDRESS="192.168.1.6", PASSWORD="suitcase123456", USERNAME="admin", POLL_CAMERA_MS=2000, SERVER_PORT=50002, FFMPEG_OUTPUT="/tmpfs/camera2/"]
 
 ```
 
@@ -253,6 +292,11 @@ Dimmer BabyCamLED "IR LED [%d]" { channel="ipcamera:DAHUA:001:enableLED" }
 Switch BabyCamAutoLED "Auto IR LED" { channel="ipcamera:DAHUA:001:autoLED" }
 String BabyCamTextOverlay "Text to overlay" { channel="ipcamera:DAHUA:001:textOverlay" }
 String BabyCamAPIAccess "Access the API" { channel="ipcamera:DAHUA:001:apiAccess" }
+String BabyCamStreamUrl "Mjpeg Stream" { channel="ipcamera:DAHUA:BabyCamera:streamUrl" }
+String BabyCamHlsStreamUrl "HLS Stream" { channel="ipcamera:DAHUA:BabyCamera:hlsUrl" }
+String BabyCamRTSPStreamUrl "RTSP Stream" { channel="ipcamera:DAHUA:BabyCamera:rtspUrl" }
+DateTime BabyCamLastMotionTime "Time motion was last detected [%1$ta %1$tR]"
+String BabyCamLastMotionType "Last Motion Type" { channel="ipcamera:DAHUA:BabyCamera:lastMotionType" }
 
 Image CamImage { channel="ipcamera:HIKVISION:002:image" }
 Switch CamUpdateImage "Get new picture" { channel="ipcamera:HIKVISION:002:updateImageNow" }
@@ -338,7 +382,7 @@ end
 
 ```
 
-For the above notifications to work you will need to setup multiple users with the same email address's at the Openhab cloud. 
+For the above notifications to work you will need to setup multiple users with the correct email address's at the Openhab cloud. 
 
 ## Snapshots
 
@@ -346,9 +390,11 @@ There are a number of ways to use snapshots with this binding, however the best 
 
 Ways to use snapshots are:
 
-+ Request a snapshot with the url ``http://192.168.xxx.xxx:54321/ipcamera.jpg`` for the current snapshot which only works if the binding is setup to fetch snapshots for the image channel. This file does not exist on disk and is served out of ram to keep disk writes to a minimum with this binding.
++ Use the cameras URL and fetch it directly so it passes from the camera to your end device ie Tablet without passing any data through the OpenHAB server. For cameras like Dahua that refuse to allow DIGEST to be turned off this is not an option, plus the binding has some advantages which are explained below... 
++ Request a snapshot with the url ``http://192.168.xxx.xxx:54321/ipcamera.jpg`` for the current snapshot which only works if the binding is setup to fetch snapshots. This file does not exist on disk and is served out of ram to keep disk writes to a minimum with this binding. It also means the binding can serve a jpg file much faster than a camera can directly as a camera usually waits for a keyframe and then compresses the data before it can be sent which all takes time.
 + Use the Create GIF feature (explained in more detail below) and use a preroll value >0. This creates a number of snapshots in the ffmpeg output folder called snapshotXXX.jpg where XXX starts at 0 and increases each poll amount of time. This means you can get a snapshot from an exact amount of time before, on or after triggering the GIF to be created. Handy for cameras which lag due to slow processors and buffering. These snapshots can be fetched either directly as they exist on disk, or via this url format. ``http://192.168.xxx.xxx:54321/snapshot0.jpg``
-+ You can also read the image data directly and use it in rules, there are some examples on the forum how to do this, however it is easier to use the above methods.
++ You can also read the image data directly and use it in rules, there are some examples on the forum how to do this, however it is far easier to use the above methods.
++ Also worth a mention is you can off load cameras to a software and hardware server. These have their advantages but can be overkill depending on what you plan to do with your cameras.
  
  
 
@@ -359,12 +405,12 @@ The bindings file server works by allowing access to the snapshot and video stre
 
 There are now multiple ways to get a moving picture:
 + Animated GIF.
-+ HLS (Http Live Streaming) which uses h264 that can be used to cast to Chromecast devices.
-+ MJPEG which uses multiple jpeg files to create what is called MOTION JPEG.
++ HLS (Http Live Streaming) which uses h264 that can be used to cast to Chromecast devices and works well in iOS/Apple devices.
++ MJPEG which uses multiple jpeg files one after another to create what is called MOTION JPEG. Whilst larger in size, it is more compatible.
 
 To get the first two video formats working, you need to install the ffmpeg program. Visit their site here to learn how <https://ffmpeg.org/>
 
-Under linux, Ffmpeg can be installed very easily with this command.
+Under Linux, Ffmpeg can be installed very easily with this command.
 
 ```
 sudo apt update && sudo apt install ffmpeg
@@ -372,7 +418,7 @@ sudo apt update && sudo apt install ffmpeg
 
 **MJPEG Streaming**
 
-Cameras that have MJPEG abilities and also an API can stream to Openhab with the MJPEG format. The main cameras that can do this are Amcrest, Dahua, Hikvision, Foscam HD and possibly Instar HD. For cameras that do not auto detect the url for mjpeg streams, you will need to enter a working url for ``STREAM_URL_OVERRIDE`` This can be skipped for Amcrest, Dahua, Doorbird, Hikvision and Foscam HD. If you can not find STREAM_URL_OVERRIDE you need to click on the pencil icon in PaperUI to edit the configuration and then scroll to the very bottom of the page and click on SHOW MORE link.
+Cameras that have MJPEG abilities and also an API can stream to Openhab with the MJPEG format. The main cameras that can do this are Amcrest, Dahua, Hikvision, Foscam HD and Instar HD. For cameras that do not auto detect the url for mjpeg streams, you will need to enter a working url for ``STREAM_URL_OVERRIDE`` This can be skipped for Amcrest, Dahua, Doorbird, Hikvision and Foscam HD. If you can not find STREAM_URL_OVERRIDE, you need to click on the pencil icon in PaperUI to edit the configuration and then scroll to the very bottom of the page and click on the SHOW MORE link.
 
 If your camera can not do MJPEG you can use this method to turn a h.264 stream into MJPEG steam.
 
@@ -384,11 +430,11 @@ Alternatively you can use 3rd party software running on a server to do the conve
 
 **HLS Http Live Streaming**
 
-Cameras with h264 format streams can have this copied into the HLS format which can be used to stream to Chromecasts and also display in browsers that support this format using the webview or Habpanel items. Apple devices have excellent support for HLS due to the standard being invented by Apple. Some browsers like Chrome require a plugin to be installed and before being able to display the video.
+Cameras with h264 format streams can have this copied into the HLS format which can be used to stream to Chromecasts and also display in browsers that support this format using the webview or Habpanel items. Apple devices have excellent support for HLS due to the standard being invented by Apple. Some browsers like Chrome require a plugin to be installed before being able to display the video.
 
 
-To use the new steaming features, you need to:
-1. Set a valid ``SERVER_PORT`` as the default value of -1 will turn the features off.
+To use the HLS steaming features, you need to:
+1. Set a valid ``SERVER_PORT`` as the default value of -1 will turn the feature off.
 2. Add any IPs that need access to the ``IP_WHITELIST`` surrounding each one in brackets (see below example). Internal IPs will trigger a warning in the logs if they are not in the whitelist, however external IPs or localhost will not trigger a warning in the logs as they are completely ignored and the binding will refuse to connect to them. This is a security feature.
 3. Ensure ffmpeg is installed.
 4. For cameras that do not auto detect the H264 stream which is done for ONVIF cameras, you will need to use the ``FFMPEG_INPUT`` and provide a http or rtsp link. This is used for both the HLS and animated GIF features.
@@ -396,7 +442,7 @@ To use the new steaming features, you need to:
 6. Consider using a SSD, HDD or a tmpfs (ram drive) if using SD/flash cards as the HLS streams are written to the FFMPEG_OUTPUT folder. Only a small amount of storage is needed.
 
 
-To create a tmpfs of 10mb at /cameratmpfs/ run this command to open the file for editing.
+To create a tmpfs of 20mb at /tmpfs/ run this command to open the file for editing. Recommend using 20Mb per camera that uses this location although it could use less than half that amount if carefully streamlined for less ram.
 
 ```
 nano /etc/fstab
@@ -405,7 +451,7 @@ nano /etc/fstab
 Enter and save this at the bottom of the file using ctrl X when done.
 
 ```
-tmpfs /cameratmpfs tmpfs defaults,nosuid,nodev,noatime,size=10m 0 0
+tmpfs /tmpfs tmpfs defaults,nosuid,nodev,noatime,size=20m 0 0
 ```
 
 
@@ -413,7 +459,7 @@ tmpfs /cameratmpfs tmpfs defaults,nosuid,nodev,noatime,size=10m 0 0
 Example thing file for a Dahua camera that turns off snapshots (not necessary as it can do both) and enables streaming instead.... 
 
 ```
-Thing ipcamera:DAHUA:001 [IPADDRESS="192.168.1.2", PASSWORD="password", USERNAME="foo", POLL_CAMERA_MS=2000, SERVER_PORT=54321, IP_WHITELIST="(192.168.1.120)(192.168.1.33)(192.168.1.74)", IMAGE_UPDATE_EVENTS=0, FFMPEG_OUTPUT="/tmp/camera1/", FFMPEG_INPUT="rtsp://192.168.1.22:554/cam/realmonitor?channel=1&subtype=0"]
+Thing ipcamera:DAHUA:001 [IPADDRESS="192.168.1.2", PASSWORD="password", USERNAME="admin", POLL_CAMERA_MS=2000, SERVER_PORT=54321, IP_WHITELIST="(192.168.1.120)(192.168.1.33)(192.168.1.74)", IMAGE_UPDATE_EVENTS=0, FFMPEG_OUTPUT="/tmpfs/camera1/", FFMPEG_INPUT="rtsp://192.168.1.22:554/cam/realmonitor?channel=1&subtype=0"]
 
 
 ```
@@ -456,12 +502,35 @@ Some browsers require larger segment sizes to prevent choppy playback, this can 
 
 **Animated GIF feature**
 
-The cameras have a channel called updateGif and when this switch is turned 'ON' (either by a rule or manually) the binding will create an animated GIF called ipcamera.gif in the ffmpeg output folder. Once the file is created the switch will turn 'OFF' and this can be used to trigger a rule to send the picture via email, pushover or telegram messages. This feature saves you from using sleep commands in your rules to ensure a file is created as the control only turns off when the file is created. The switch can be turned on with a rule triggered by an external zwave PIR sensor or the cameras own motion alarm, the choice and the logic can be created by yourself. The feature has two options called preroll and postroll to be aware of. When preroll is 0 (the default) the binding will use the RTSP stream to fetch the amount of seconds specified in the postroll config to create the GIF from. By changing to a preroll value above 0 the binding will change to using snapshots as the source and this requires the image channel to be updating and the time between the snapshots is the Polling time of the camera which is 2 seconds by default and can be raised or lowered to 1 second if you desire. The snapshots are saved to disk and can be used as a feature that is described in the snapshot section above in more detail.
+The cameras have a channel called updateGif and when this switch is turned 'ON' (either by a rule or manually) the binding will create an animated GIF called ipcamera.gif in the ffmpeg output folder. Once the file is created the switch will turn 'OFF' and this can be used to trigger a rule to send the picture via email, pushover or telegram messages. This feature saves you from using sleep commands in your rules to ensure a file is created as the control only turns off when the file is actually created. The switch can be turned on with a rule triggered by an external zwave PIR sensor or the cameras own motion alarm, the choice and the logic can be created by yourself. The feature has two options called preroll and postroll to be aware of. When preroll is 0 (the default) the binding will use the RTSP stream to fetch the amount of seconds specified in the postroll config to create the GIF from. By changing to a preroll value above 0 the binding will change to using snapshots as the source and this requires the image channel to be updating and the time between the snapshots is the Polling time of the camera which is 2 seconds by default and can be raised or lowered to 1 second if you desire. The snapshots are saved to disk and can be used as a feature that is described in the snapshot section above in more detail.
 
+
+.items
 
 ```
 Switch DoorCamCreateGif "Create animated GIF" { channel="ipcamera:DAHUA:DoorCam:updateGif" }
 
+```
+
+.rules
+
+```
+rule "Create front door camera GIF when front doorbell button pushed"
+when
+    Item FrontDoorbellButton changed to ON
+then
+	//Start creating the GIF
+    DoorCamCreateGif.sendCommand(ON)
+    //Cast a doorbell sound using the Chromecast binding.
+    KitchenHomeHubPlayURI.sendCommand("http://192.168.1.8:8080/static/doorbell.mp3")
+end
+
+rule "Send doorbell GIF via Pushover"
+when
+	Item DoorCamCreateGif changed to OFF
+then
+	sendPushoverMessage(pushoverBuilder("Sending GIF from backyard").withApiKey("dsfhghj6546fghfg").withUser("qwerty54657").withDevice("Phone1").withAttachment("/tmpfs/DoorCam/ipcamera.gif"))
+end
 ```
 
 
@@ -620,4 +689,4 @@ If this binding becomes popular, I can look at extending the frame work to suppo
 
 + 1 and 2 way audio.
 
-+ FTP/NAS features to save the images and delete old files.
++ FTP/NAS features to save the images and delete old files for camera that do not have this feature built in.

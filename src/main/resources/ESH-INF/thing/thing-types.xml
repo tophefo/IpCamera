@@ -45,7 +45,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <default>1</default>
 <options>
 <option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
-<option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
+<option value="1">Always update JPG, Image ch follows updateImageNow (1)</option>
 </options>
 </parameter>
 
@@ -219,7 +219,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <default>1</default>
 <options>
 <option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
-<option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
+<option value="1">Always update JPG, Image ch follows updateImageNow (1)</option>
 </options>
 </parameter>
 
@@ -494,7 +494,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <default>1</default>
 <options>
 <option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
-<option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
+<option value="1">Always update JPG, Image ch follows updateImageNow (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="3">Start Audio Alarm (3)</option>
 <option value="23">Start of Motion and Audio Alarms (23)</option>
@@ -721,7 +721,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <default>1</default>
 <options>
 <option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
-<option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
+<option value="1">Always update JPG, Image ch follows updateImageNow (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="3">Start Audio Alarm (3)</option>
 <option value="23">Start of Motion and Audio Alarms (23)</option>
@@ -929,7 +929,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <default>1</default>
 <options>
 <option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
-<option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
+<option value="1">Always update JPG, Image ch follows updateImageNow (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="4">During Motion Alarm (4)</option>
 </options>
@@ -1130,7 +1130,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <default>1</default>
 <options>
 <option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
-<option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
+<option value="1">Always update JPG, Image ch follows updateImageNow (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="3">Start Audio Alarm (3)</option>
 <option value="23">Start of Motion and Audio Alarms (23)</option>
@@ -1356,7 +1356,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <default>1</default>
 <options>
 <option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
-<option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
+<option value="1">Always update JPG, Image ch follows updateImageNow (1)</option>
 <option value="2">Start Motion Alarm (2)</option>
 <option value="3">Start Audio Alarm (3)</option>
 <option value="23">Start of Motion and Audio Alarms (23)</option>
@@ -1567,7 +1567,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <default>1</default>
 <options>
 <option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
-<option value="1">Always update snapshot, Image follows updateImageNow (1)</option>
+<option value="1">Always update JPG, Image ch follows updateImageNow (1)</option>
 </options>
 </parameter>
 
