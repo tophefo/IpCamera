@@ -134,13 +134,14 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
 		if (cause.toString().contains("Connection reset by peer")) {
-			logger.debug("Connection reset by peer");
+			logger.debug("Connection reset by peer.");
 		} else if (cause.toString().contains("An established connection was aborted by the software")) {
 			logger.debug("An established connection was aborted by the software");
 		} else if (cause.toString().contains("An existing connection was forcibly closed by the remote host")) {
 			logger.debug("An existing connection was forcibly closed by the remote host");
 		} else if (cause.toString().contains("(No such file or directory)")) {
-			logger.info("(IpCamera file server could not find the requested file.");
+			logger.info(
+					"IpCameras file server could not find the requested file. This may happen if ffmpeg is still creating the file.");
 		} else {
 			logger.warn("Exception caught from stream server:{}", cause);
 		}

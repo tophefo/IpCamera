@@ -753,13 +753,13 @@ openHAB.log This file displays the information from all bindings and can have th
 
 ```
 
-log:set WARN org.openHAB.binding.ipcamera
+log:set WARN org.openhab.binding.ipcamera
 
-log:set INFO org.openHAB.binding.ipcamera
+log:set INFO org.openhab.binding.ipcamera
 
-log:set DEBUG org.openHAB.binding.ipcamera
+log:set DEBUG org.openhab.binding.ipcamera
 
-log:set TRACE org.openHAB.binding.ipcamera
+log:set TRACE org.openhab.binding.ipcamera
 
 ```
 
