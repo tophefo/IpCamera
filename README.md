@@ -1,6 +1,6 @@
 # IP Camera Binding
 
-This binding allows you to use IP cameras in openHAB 2 and has multiple features and ways to work around common issues that cameras present. Please take the time to read through this guide as it will show hidden features and different ways to work with cameras that you may not know about. I highly recommend purchasing a brand of camera that has an open API to give you easy access to alarms many of the other advanced features that the binding has implemented. To see what each brand has implemented from the API, please see this post:
+This binding allows you to use IP cameras in openHAB 2 and has multiple features and ways to work around common issues that cameras present. Please take the time to read through this guide as it will show hidden features and different ways to work with cameras that you may not know about. I highly recommend purchasing a brand of camera that has an open API to give you easy access to alarms and many other advanced features that the binding has implemented. To see what each brand has implemented from the API, please see this post:
 
 <https://community.openhab.org/t/ipcamera-new-ip-camera-binding/42771>
 
@@ -41,7 +41,7 @@ If using openHAB's textual configuration or when needing to setup HABPANEL/sitem
 
 ## Discovery
 
-Auto discovery is not supported currently and I would love a PR if someone has experience finding cameras on a network. ONVIF documents a way to use UDP multicast to find cameras, however some cameras have this feature disabled by default for security reasons in their firmware hence why this is not high on the list to do. Currently you need to manually add the IP camera either via PaperUI or textual configuration which both are covered below in more detail.
+Auto discovery is not supported currently and I would love a PR if someone has experience finding cameras on a network. ONVIF documents a way to use UDP multicast to find cameras, however some cameras have this feature disabled by default for security reasons in their firmware or default settings hence why this is not high on the list to do. Currently you need to manually add the IP camera either via PaperUI or textual configuration which both are covered below in more detail.
 
 ## Binding Configuration
 
@@ -56,7 +56,7 @@ The configuration parameters that can be used in textual configuration are in CA
 | `IPADDRESS`| Local address of your camera or NVR |
 | `PORT`| This port will be used for HTTP calls for fetching the snapshot and alarm states. |
 | `ONVIF_PORT`| The port your camera uses for ONVIF connections. This is needed for PTZ movement and auto discovery of RTSP and snapshot URLs. Giving the wrong port will cause camera to connect faster if you manually provide the URLs. |
-| `SERVER_PORT`| The port that will serve the video streams and images back to openHAB without authentication. It must be unique and unused for each camera that you setup. Setting the port to -1 (default), will turn all mirroring off. |
+| `SERVER_PORT`| The port that will serve the video streams and images back to openHAB without authentication. It must be unique and unused for each camera that you setup. Setting the port to -1 (default), will turn all file serving off and some features may fail to work. |
 | `USERNAME`| Username used to connect to your camera via Basic auth. Leave blank if your camera does not use login details. |
 | `PASSWORD`| Leave blank if your camera does not use login details. |
 | `ONVIF_MEDIA_PROFILE`| 0 is your cameras Mainstream and the numbers above 0 are the substreams if your camera has any. |
@@ -138,7 +138,8 @@ Thing ipcamera:ONVIF:003
     PORT=80,
     SERVER_PORT=50003,
     POLL_CAMERA_MS=2000,
-    FFMPEG_OUTPUT="/tmpfs/camera3/",IP_WHITELIST="(192.168.2.8)(192.168.2.83)(192.168.2.99)"
+    FFMPEG_OUTPUT="/tmpfs/camera3/",
+    IP_WHITELIST="(192.168.2.8)(192.168.2.83)(192.168.2.99)"
 ]
 
 // ESP32 Cameras have the stream on a different port 81 to snapshots, this can be setup easily.
@@ -198,7 +199,7 @@ When this control is turned ON it will trigger an animated Gif to be created by 
 
 **lastMotionType**
 
-Cameras with multiple alarm types will update this with which alarm detected motion. You can use this to create a timestamp of when the last motion was detected by creating a rule when this channel is updated.
+Cameras with multiple alarm types will update this with which alarm detected motion.ie a lineCrossing, faceDetection or item stolen alarm. You can use this to create a timestamp of when the last motion was detected by creating a rule when this channel is updated.
 
 items:
 
@@ -242,9 +243,9 @@ The URL must be in this format without the IP:Port info and the binding will han
 
 ## Full Example
 
-Use the following examples to base your setup on to save some time. NOTE: If your camera is secured with a user and password the links will not work and you will have to use the IMAGE channel to see a picture. FOSCAM cameras are the exception to this as they use the user and pass in plain text in the URL. In the example below you need to leave a fake address in the "Image url=" line otherwise it does not work, the item= overrides the url. Feel free to let me know if this is wrong or if you find a better way.
+Use the following examples to base your setup on to save some time. In the example below I believe older versions of OpenHAB needed a fake address in the "Image url=" line, however Openhab 2.4 and newer do not need this to work but for backwards compatibility reasons it was left in the examples. The item= overrides the url. 
 
-NOTE: If you used PaperUI to create the camera thing instead of textual config, you will need to ensure the 001 is replaced with the cameras UID which may look like "0A78687F". Also replace AMCREST or HIKVISION with the name of the supported thing you are using from the list above.
+NNOTE: If you used PaperUI to create the camera thing instead of textual config, you will need to ensure the 001 is replaced with the cameras UID which may look like "0A78687F". Also replace AMCREST or HIKVISION with the name of the supported thing you are using from the list above.
 
 
 *.things
@@ -418,7 +419,7 @@ Cameras that have MJPEG abilities and also an API can stream to openHAB with the
 
 If your camera can not do MJPEG you can use this method to turn a h.264 stream into MJPEG steam.
 
-<https://community.openhab.org/t/how-to-display-rtsp-streams-from-ip-cameras-in-openHAB-and-habpanel-linux-only/69021>
+<https://community.openhab.org/t/how-to-display-rtsp-streams-from-ip-cameras-in-openhab-and-habpanel-linux-only/69021>
 
 Alternatively you can use 3rd party software running on a server to do the conversion. Converting from h264 to mjpeg takes a lot of CPU power to handle the conversion, so it is better to use HLS format as this will use h264 and not require a conversion that needs CPU grunt. You can run the opensource motion software on a raspberry Pi with this project.
 <https://github.com/ccrisan/motioneyeos/wiki>
@@ -463,7 +464,8 @@ Thing ipcamera:DAHUA:001 [
     SERVER_PORT=54321,
     IP_WHITELIST="(192.168.1.120)(192.168.1.33)(192.168.1.74)",
     IMAGE_UPDATE_EVENTS=0,
-    FFMPEG_OUTPUT="/tmpfs/camera1/", FFMPEG_INPUT="rtsp://192.168.1.22:554/cam/realmonitor?channel=1&subtype=0"
+    FFMPEG_OUTPUT="/tmpfs/camera1/", 
+    FFMPEG_INPUT="rtsp://192.168.1.22:554/cam/realmonitor?channel=1&subtype=0"
 ]
 
 
@@ -573,7 +575,7 @@ then
 end
 ```
 
-Note that this approach implies that you follow a specific namig convention for your items:
+NOTE: This approach implies that you follow a specific naming convention for your items:
 `[Room]_Camera_[Action]` where `Action` is either `MotionAlarm`, `UpdateGif` or `LastMotion`
 
 ### Auto renaming archived GIF files
@@ -778,7 +780,7 @@ To re-enable use the same command with INFO instead of WARN.
 To filter out the events do the following:
 
 ```
-sudo nano /var/lib/openHAB2/etc/org.ops4j.pax.logging.cfg
+sudo nano /var/lib/openhab2/etc/org.ops4j.pax.logging.cfg
 ```
 
 Inside that file paste the following, save and then reboot.
@@ -799,7 +801,7 @@ You can specify the item name in the filter to remove just 1 camera, or you can 
 
 ## Roadmap for further development
 
-Currently the focus is on stability and creating a good framework that allows multiple brands to be used in RULES in a consistent way. Hopefully the binding is less work to add a new functions to instead of creating stand alone scripts which are not easy for new openHAB users to find, setup or use. By consistent I mean if a camera breaks down and you wish to change brands, your rules with this binding should be easy to adapt to the new brand of camera with no/minimal changes. Sharing rules with others also becomes far easier if all brands are handled the same way.
+Currently the focus is on stability and creating a good framework that allows multiple brands to be used in RULES in a consistent way. Hopefully the binding is now less work to add a new function to instead of creating stand alone scripts which are not easy for new openHAB users to find, setup or use. By consistent I mean if a camera breaks down and you wish to change brands, your rules with this binding should be easy to adapt to the new brand of camera with minimal changes. Sharing rules with others also becomes far easier if all brands are handled the same way.
 
 If you need a feature added that is in an API and you can not program, please raise an issue ticket here at this Github project with a sample of what a browser shows when you enter in the URL and it is usually very quick to add these features.
 
@@ -808,12 +810,14 @@ If you wish to contribute then please create an issue ticket first to discuss ho
 
 If this binding becomes popular, I can look at extending the framework to support:
 
-+ Auto find and setup cameras on your network.
++ Auto find and setup cameras across your network.
 
-+ ONVIF alarms
++ ONVIF alarms (hopefully a Java Onvif library get released that makes this easy, a few are improving at the moment) 
 
-+ PTZ methods for continuous move.
++ PTZ methods for continuous move. Not a priority as the delay between a command sent and the camera moving makes this not desirable over absolute move commands.
 
-+ 1 and 2 way audio.
++ PTZ preset locations. May be a good idea for cameras that do not work with absolute move.
 
-+ FTP/NAS features to save the images and delete old files for camera that do not have this feature built in.
++ 1 and 2 way audio. Keen to add this at some point for talking with people at my front door.
+
++ FTP/NAS features to save the images and delete old files for camera that do not have this feature built in. Not a priority for me as all my cameras have these features built in.
