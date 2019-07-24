@@ -741,7 +741,7 @@ To watch the logs in realtime with Linux based setups you can use this linux com
 
 ```
 
-tail -f /var/log/openHAB2/openHAB.log -f /var/log/openHAB2/events.log
+tail -f /var/log/openhab2/openhab.log -f /var/log/openhab2/events.log
 
 ```
 

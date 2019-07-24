@@ -518,7 +518,7 @@ public class IpCameraHandler extends BaseThingHandler {
 			}
 		}
 
-		logger.debug("Sending camera {}: http://{}:{}{}", httpMethod, ipAddress, port, httpRequestURL);
+		logger.debug("Sending camera: {}: http://{}:{}{}", httpMethod, ipAddress, port, httpRequestURL);
 		lock.lock();
 
 		byte indexInLists = -1;
