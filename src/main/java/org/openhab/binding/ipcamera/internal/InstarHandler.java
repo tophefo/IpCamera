@@ -17,6 +17,8 @@ import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ENAB
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_ENABLE_MOTION_ALARM;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_THRESHOLD_AUDIO_ALARM;
 
+import java.util.ArrayList;
+
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.PercentType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
@@ -107,5 +109,16 @@ public class InstarHandler extends ChannelDuplexHandler {
 			}
 			return;
 		}
+	}
+
+	// If a camera does not need to poll a request as often as snapshots, it can be
+	// added here. Binding steps through the list.
+	public ArrayList<String> getLowPriorityRequests() {
+		ArrayList<String> lowPriorityRequests = new ArrayList<String>(2);
+		// Poll the audio alarm on/off/threshold/...
+		lowPriorityRequests.add("/cgi-bin/hi3510/param.cgi?cmd=getaudioalarmattr");
+		// Poll the motion alarm on/off/settings/...
+		lowPriorityRequests.add("/cgi-bin/hi3510/param.cgi?cmd=getmdattr");
+		return lowPriorityRequests;
 	}
 }

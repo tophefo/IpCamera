@@ -197,6 +197,7 @@ public class IpCameraHandler extends BaseThingHandler {
 	// channel), 1=open, 2=open and ok to reuse
 	public ArrayList<Byte> listOfChStatus = new ArrayList<Byte>(18);
 	public ArrayList<String> listOfReplies = new ArrayList<String>(18);
+	public ArrayList<String> lowPriorityRequests = null;
 	public ReentrantLock lock = new ReentrantLock();
 	// ChannelGroup is thread safe
 	final ChannelGroup mjpegChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
@@ -561,11 +562,8 @@ public class IpCameraHandler extends BaseThingHandler {
 		}
 
 		chFuture = mainBootstrap.connect(new InetSocketAddress(ipAddress, port));
-		chFuture.awaitUninterruptibly(); // ChannelOption.CONNECT_TIMEOUT_MILLIS
-											// means
-											// this will
-											// not hang
-											// here
+		// ChannelOption.CONNECT_TIMEOUT_MILLIS means this will not hang here.
+		chFuture.awaitUninterruptibly();
 
 		if (!chFuture.isSuccess()) {
 			updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
@@ -613,8 +611,6 @@ public class IpCameraHandler extends BaseThingHandler {
 			logger.debug("Have  opened  a  brand NEW channel:{} \t{}:{}", listOfRequests.size() - 1, httpMethod,
 					httpRequestURL);
 		}
-
-		// logger.trace("request to camera is :{}", request);
 
 		ch.writeAndFlush(request);
 		// Cleanup
@@ -1185,7 +1181,7 @@ public class IpCameraHandler extends BaseThingHandler {
 				getAbsoluteZoom();
 				return;
 			}
-		} // end of "REFRESH"
+		} // caution "REFRESH" can still progress to brand Handlers below the else.
 		else {
 			switch (channelUID.getId()) {
 			case CHANNEL_UPDATE_IMAGE_NOW:
@@ -1215,34 +1211,56 @@ public class IpCameraHandler extends BaseThingHandler {
 				return;
 			}
 		}
-
+		// commands and refresh now get passed to brand handlers
 		switch (thing.getThingTypeUID().getId()) {
 		case "AMCREST":
 			AmcrestHandler amcrestHandler = new AmcrestHandler(thing.getHandler());
 			amcrestHandler.handleCommand(channelUID, command);
+			if (lowPriorityRequests == null) {
+				lowPriorityRequests = amcrestHandler.getLowPriorityRequests();
+			}
+			break;
 		case "DAHUA":
 			DahuaHandler dahuaHandler = new DahuaHandler(thing.getHandler(), nvrChannel);
 			dahuaHandler.handleCommand(channelUID, command);
+			if (lowPriorityRequests == null) {
+				lowPriorityRequests = dahuaHandler.getLowPriorityRequests();
+			}
 			break;
 		case "DOORBIRD":
 			DoorBirdHandler doorBirdHandler = new DoorBirdHandler(thing.getHandler());
 			doorBirdHandler.handleCommand(channelUID, command);
+			if (lowPriorityRequests == null) {
+				lowPriorityRequests = doorBirdHandler.getLowPriorityRequests();
+			}
 			break;
 		case "HIKVISION":
 			HikvisionHandler hikvisionHandler = new HikvisionHandler(thing.getHandler(), nvrChannel);
 			hikvisionHandler.handleCommand(channelUID, command);
+			if (lowPriorityRequests == null) {
+				lowPriorityRequests = hikvisionHandler.getLowPriorityRequests();
+			}
 			break;
 		case "FOSCAM":
 			FoscamHandler foscamHandler = new FoscamHandler(thing.getHandler(), username, password);
 			foscamHandler.handleCommand(channelUID, command);
+			if (lowPriorityRequests == null) {
+				lowPriorityRequests = foscamHandler.getLowPriorityRequests();
+			}
 			break;
 		case "INSTAR":
 			InstarHandler instarHandler = new InstarHandler(thing.getHandler());
 			instarHandler.handleCommand(channelUID, command);
+			if (lowPriorityRequests == null) {
+				lowPriorityRequests = instarHandler.getLowPriorityRequests();
+			}
 			break;
 		default:
 			HikvisionHandler defaultHandler = new HikvisionHandler(thing.getHandler(), nvrChannel);
 			defaultHandler.handleCommand(channelUID, command);
+			if (lowPriorityRequests == null) {
+				lowPriorityRequests = new ArrayList<String>(1);
+			}
 			break;
 		}
 	}
@@ -1478,7 +1496,16 @@ public class IpCameraHandler extends BaseThingHandler {
 					logger.debug(
 							"Finished with PTZ with no errors, now fetching the Video URL for RTSP from the camera.");
 					rtspUri = onvifCamera.getMedia().getRTSPStreamUri(profileToken);
-					if (rtspUri.contains(":80:")) {// fixes a possible bug in onvif lib that puts IP:80:554/foo
+					if (rtspUri.contains(":80:")) {// fixes
+													// a
+													// possible
+													// bug
+													// in
+													// onvif
+													// lib
+													// that
+													// puts
+													// IP:80:554/foo
 						rtspUri = rtspUri.replace(":80:", ":");
 					}
 
@@ -1565,6 +1592,7 @@ public class IpCameraHandler extends BaseThingHandler {
 	Runnable pollingCamera = new Runnable() {
 		@Override
 		public void run() {
+			byte counter = 0;
 
 			// Snapshot should be first to keep consistent time between shots
 			if (snapshotUri != null) {
@@ -1585,22 +1613,13 @@ public class IpCameraHandler extends BaseThingHandler {
 				}
 			}
 
+			// NOTE: Use lowPriorityRequests if get request is not needed every poll.
 			switch (thing.getThingTypeUID().getId()) {
-			case "FOSCAM":
-				sendHttpGET("/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username + "&pwd=" + password);
-				break;
 			case "HIKVISION":
 				if (streamIsStopped("/ISAPI/Event/notification/alertStream")) {
 					logger.warn("The alarm stream was not running for camera {}, re-starting it now", ipAddress);
 					sendHttpGET("/ISAPI/Event/notification/alertStream");
 				}
-				sendHttpGET("/ISAPI/System/IO/inputs/" + nvrChannel + "/status");
-				break;
-			case "INSTAR":
-				// Poll the audio alarm on/off/threshold/...
-				sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=getaudioalarmattr");
-				// Poll the motion alarm on/off/settings/...
-				sendHttpGET("/cgi-bin/hi3510/param.cgi?cmd=getmdattr");
 				break;
 			case "AMCREST":
 				sendHttpGET("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion");
@@ -1620,6 +1639,13 @@ public class IpCameraHandler extends BaseThingHandler {
 					sendHttpGET("/bha-api/monitor.cgi?ring=doorbell,motionsensor");
 				}
 				break;
+			}
+
+			if (!lowPriorityRequests.isEmpty()) {
+				if (counter >= lowPriorityRequests.size()) {
+					counter = 0;
+				}
+				sendHttpGET(lowPriorityRequests.get(counter++));
 			}
 
 			if (ffmpegHLS != null) {
@@ -1664,12 +1690,6 @@ public class IpCameraHandler extends BaseThingHandler {
 		postroll = Integer.parseInt(config.get(CONFIG_GIF_POSTROLL).toString());
 		fifoSnapshotBuffer = new CircularFifoBuffer(preroll + postroll);
 
-		if ("FOSCAM".contentEquals(thing.getThingTypeUID().getId())) {
-			// Foscam needs any special char like spaces (%20) to be encoded for URLs.
-			username = encodeSpecialChars(username);
-			password = encodeSpecialChars(password);
-		}
-
 		updateImageEvents = config.get(CONFIG_IMAGE_UPDATE_EVENTS).toString();
 		updateImage = (boolean) config.get(CONFIG_UPDATE_IMAGE);
 
@@ -1691,44 +1711,49 @@ public class IpCameraHandler extends BaseThingHandler {
 		}
 
 		// Known cameras will connect quicker if we skip ONVIF questions.
-		if (snapshotUri == null) {
-			switch (thing.getThingTypeUID().getId()) {
-			case "AMCREST":
-			case "DAHUA":
+		switch (thing.getThingTypeUID().getId()) {
+		case "AMCREST":
+		case "DAHUA":
+			if (mjpegUri == null) {
+				mjpegUri = "/cgi-bin/mjpg/video.cgi?channel=" + nvrChannel + "&subtype=1";
+			}
+			if (snapshotUri == null) {
 				snapshotUri = "http://" + ipAddress + "/cgi-bin/snapshot.cgi?channel=" + nvrChannel;
-				break;
-			case "DOORBIRD":
+			}
+			break;
+		case "DOORBIRD":
+			if (mjpegUri == null) {
+				mjpegUri = "/bha-api/video.cgi";
+			}
+			if (snapshotUri == null) {
 				snapshotUri = "http://" + ipAddress + "/bha-api/image.cgi";
-				break;
-			case "HIKVISION":
-				snapshotUri = "http://" + ipAddress + "/Streaming/channels/" + nvrChannel + "01/picture";
-				break;
-			case "FOSCAM":
+			}
+			break;
+		case "FOSCAM":
+			// Foscam needs any special char like spaces (%20) to be encoded for URLs.
+			username = encodeSpecialChars(username);
+			password = encodeSpecialChars(password);
+			if (mjpegUri == null) {
+				mjpegUri = "/cgi-bin/CGIStream.cgi?cmd=GetMJStream&usr=" + username + "&pwd=" + password;
+			}
+			if (snapshotUri == null) {
 				snapshotUri = "http://" + ipAddress + "/cgi-bin/CGIProxy.fcgi?usr=" + username + "&pwd=" + password
 						+ "&cmd=snapPicture2";
-				break;
-			case "INSTAR":
+			}
+			break;
+		case "HIKVISION":// The 02 gives you the first sub stream which needs to be set to MJPEG
+			if (mjpegUri == null) {
+				mjpegUri = "/ISAPI/Streaming/channels/" + nvrChannel + "02" + "/httppreview";
+			}
+			if (snapshotUri == null) {
+				snapshotUri = "http://" + ipAddress + "/ISAPI/Streaming/channels/" + nvrChannel + "01/picture";
+			}
+			break;
+		case "INSTAR":
+			if (snapshotUri == null) {
 				snapshotUri = "http://" + ipAddress + "/tmpfs/auto.jpg";
-				break;
 			}
-		}
-
-		if (mjpegUri == null) {
-			switch (thing.getThingTypeUID().getId()) {
-			case "HIKVISION":
-				mjpegUri = "/Streaming/channels/" + nvrChannel + "02" + "/httppreview";
-				break;
-			case "AMCREST":
-			case "DAHUA":
-				mjpegUri = "/cgi-bin/mjpg/video.cgi?channel=" + nvrChannel + "&subtype=1";
-				break;
-			case "DOORBIRD":
-				mjpegUri = "/bha-api/video.cgi";
-				break;
-			case "FOSCAM":
-				mjpegUri = "/cgi-bin/CGIStream.cgi?cmd=GetMJStream&usr=" + username + "&pwd=" + password;
-				break;
-			}
+			break;
 		}
 		cameraConnectionJob = cameraConnection.schedule(pollingCameraConnection, 1, TimeUnit.SECONDS);
 	}

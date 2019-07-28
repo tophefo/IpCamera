@@ -23,6 +23,8 @@ import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_THRE
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_AUDIO_URL_OVERRIDE;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_MOTION_URL_OVERRIDE;
 
+import java.util.ArrayList;
+
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.PercentType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
@@ -212,5 +214,13 @@ public class FoscamHandler extends ChannelDuplexHandler {
 			}
 			return;
 		}
+	}
+
+	// If a camera does not need to poll a request as often as snapshots, it can be
+	// added here. Binding steps through the list.
+	public ArrayList<String> getLowPriorityRequests() {
+		ArrayList<String> lowPriorityRequests = new ArrayList<String>(1);
+		lowPriorityRequests.add("/cgi-bin/CGIProxy.fcgi?cmd=getDevState&usr=" + username + "&pwd=" + password);
+		return lowPriorityRequests;
 	}
 }

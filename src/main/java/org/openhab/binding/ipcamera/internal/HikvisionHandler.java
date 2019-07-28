@@ -26,6 +26,8 @@ import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_LINE
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_MOTION_ALARM;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CHANNEL_PIR_ALARM;
 
+import java.util.ArrayList;
+
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.binding.ThingHandler;
@@ -111,7 +113,7 @@ public class HikvisionHandler extends ChannelDuplexHandler {
 			}
 
 			// determine if the motion detection is turned on or off.
-			else if (content.contains("<MotionDetection version=\"2.0\" xmlns=\"http://www.")) {
+			else if (content.contains("<MotionDetection version=\"2.0\" xmlns=\"")) {
 				ipCameraHandler.lock.lock();
 				try {
 					byte indexInLists = (byte) ipCameraHandler.listOfRequests
@@ -150,7 +152,7 @@ public class HikvisionHandler extends ChannelDuplexHandler {
 				} else if (content.contains("<enabled>false</enabled>")) {
 					ipCameraHandler.setChannelState(CHANNEL_ENABLE_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
 				}
-			} else if (content.contains("<AudioDetection version=\"2.0\" xmlns=\"http://www.")) {
+			} else if (content.contains("<AudioDetection version=\"2.0\" xmlns=\"")) {
 				ipCameraHandler.lock.lock();
 				try {
 					byte indexInLists = (byte) ipCameraHandler.listOfRequests
@@ -166,14 +168,22 @@ public class HikvisionHandler extends ChannelDuplexHandler {
 				} else if (content.contains("<enabled>false</enabled>")) {
 					ipCameraHandler.setChannelState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
 				}
-			} ////////////////// External Alarm Input ///////////////
-			else if (content.contains("<IOPortStatus version=\"2.0\" xmlns=\"http://www.")) {
+			}
+			////////////////// External Alarm Input ///////////////
+			else if (content.contains("<requestURL>/ISAPI/System/IO/inputs/" + nvrChannel + "/status</requestURL>")) {
+				// Stops checking the external alarm if camera does not have feature.
+				if (content.contains("<statusString>Invalid Operation</statusString>")) {
+					ipCameraHandler.lowPriorityRequests.remove(0);
+					ipCameraHandler.logger
+							.debug("Stopping checks for alarm inputs as camera appears to be missing this feature.");
+				}
+			} else if (content.contains("<IOPortStatus version=\"2.0\" xmlns=\"")) {
 				if (content.contains("<ioState>active</ioState>")) {
 					ipCameraHandler.setChannelState(CHANNEL_EXTERNAL_ALARM_INPUT, OnOffType.valueOf("ON"));
 				} else if (content.contains("<ioState>inactive</ioState>")) {
 					ipCameraHandler.setChannelState(CHANNEL_EXTERNAL_ALARM_INPUT, OnOffType.valueOf("OFF"));
 				}
-			} else if (content.contains("<FieldDetection version=\"2.0\" xmlns=\"http://www.")) {
+			} else if (content.contains("<FieldDetection version=\"2.0\" xmlns=\"")) {
 				ipCameraHandler.lock.lock();
 				try {
 					byte indexInLists = (byte) ipCameraHandler.listOfRequests
@@ -316,5 +326,13 @@ public class HikvisionHandler extends ChannelDuplexHandler {
 			}
 			return;
 		}
+	}
+
+	// If a camera does not need to poll a request as often as snapshots, it can be
+	// added here. Binding steps through the list.
+	public ArrayList<String> getLowPriorityRequests() {
+		ArrayList<String> lowPriorityRequests = new ArrayList<String>(1);
+		lowPriorityRequests.add("/ISAPI/System/IO/inputs/" + nvrChannel + "/status"); // must stay in element 0.
+		return lowPriorityRequests;
 	}
 }
