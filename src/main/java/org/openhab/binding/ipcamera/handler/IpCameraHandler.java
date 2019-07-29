@@ -1606,13 +1606,6 @@ public class IpCameraHandler extends BaseThingHandler {
 					shortMotionAlarm = false;
 				}
 			}
-
-			if (snapCount > 0) {
-				if (--snapCount == 0) {
-					setupFfmpegFormat("GIF");
-				}
-			}
-
 			// NOTE: Use lowPriorityRequests if get request is not needed every poll.
 			switch (thing.getThingTypeUID().getId()) {
 			case "HIKVISION":
@@ -1640,18 +1633,15 @@ public class IpCameraHandler extends BaseThingHandler {
 				}
 				break;
 			}
-
 			if (!lowPriorityRequests.isEmpty()) {
 				if (counter >= lowPriorityRequests.size()) {
 					counter = 0;
 				}
 				sendHttpGET(lowPriorityRequests.get(counter++));
 			}
-
 			if (ffmpegHLS != null) {
 				ffmpegHLS.getKeepAlive();
 			}
-
 			// Delay movements so when a rule changes all 3, a single movement is made.
 			if (movePTZ) {
 				movePTZ = false;
@@ -1662,6 +1652,11 @@ public class IpCameraHandler extends BaseThingHandler {
 						"There are {} channels being tracked, cleaning out old channels now to try and reduce this to 12 or below.",
 						listOfRequests.size());
 				cleanChannels();
+			}
+			if (snapCount > 0) {
+				if (--snapCount == 0) {
+					setupFfmpegFormat("GIF");
+				}
 			}
 		}
 	};

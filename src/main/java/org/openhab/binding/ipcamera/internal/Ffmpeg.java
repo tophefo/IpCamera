@@ -107,8 +107,14 @@ public class Ffmpeg {
 				logger.error(e.toString());
 			} finally {
 				if ("GIF".contentEquals(format)) {
-					ipCameraHandler.setChannelState(CHANNEL_UPDATE_GIF, OnOffType.valueOf("OFF"));
 					logger.debug("Animated GIF has been created and is ready for use.");
+					try {
+						// Without a small delay, Pushover sends no file 10% of time.
+						Thread.sleep(500);
+					} catch (InterruptedException e) {
+
+					}
+					ipCameraHandler.setChannelState(CHANNEL_UPDATE_GIF, OnOffType.valueOf("OFF"));
 				}
 			}
 		}
