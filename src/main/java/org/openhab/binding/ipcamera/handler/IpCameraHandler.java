@@ -684,72 +684,52 @@ public class IpCameraHandler extends BaseThingHandler {
                             ReferenceCountUtil.retain(msg, 1);
                             stream(msg);
                         }
-                    } else {
-                        content = (HttpContent) msg;
-                        // Found a TP Link camera uses Content-Type: image/jpg instead of image/jpeg
-                        if (contentType.contains("image/jp")) {
-                            if (bytesToRecieve == 0) {
-                                bytesToRecieve = 768000; // 0.768 Mbyte when no Content-Length is sent
-                                logger.debug("Camera has no Content-Length header, we have to guess how much RAM.");
+                    }
+                    content = (HttpContent) msg;
+                    // Found a TP Link camera uses Content-Type: image/jpg instead of image/jpeg
+                    if (contentType.contains("image/jp")) {
+                        if (bytesToRecieve == 0) {
+                            bytesToRecieve = 768000; // 0.768 Mbyte when no Content-Length is sent
+                            logger.debug("Camera has no Content-Length header, we have to guess how much RAM.");
+                        }
+                        for (int i = 0; i < content.content().capacity(); i++) {
+                            if (lastSnapshot == null) {
+                                lastSnapshot = new byte[bytesToRecieve];
                             }
-                            for (int i = 0; i < content.content().capacity(); i++) {
-                                if (lastSnapshot == null) {
-                                    lastSnapshot = new byte[bytesToRecieve];
-                                }
-                                lastSnapshot[bytesAlreadyRecieved++] = content.content().getByte(i);
-                            }
-                            if (bytesAlreadyRecieved > bytesToRecieve) {
-                                logger.error("We got too much data from the camera, please report this.");
-                            }
+                            lastSnapshot[bytesAlreadyRecieved++] = content.content().getByte(i);
+                        }
+                        if (bytesAlreadyRecieved > bytesToRecieve) {
+                            logger.error("We got too much data from the camera, please report this.");
+                        }
 
-                            if (content instanceof LastHttpContent) {
-                                if (contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
-                                    if (updateImage) {
-                                        updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
-                                    }
-                                    if (preroll > 0) {
-                                        fifoSnapshotBuffer.add(lastSnapshot);
-                                    }
-                                    currentSnapshot = lastSnapshot;
-                                    lastSnapshot = null;
-                                    if (closeConnection) {
-                                        logger.debug("Snapshot recieved: Binding will now close the channel.");
-                                        ctx.close();
-                                    } else {
-                                        logger.debug("Snapshot recieved: Binding will now keep-alive the channel.");
-                                    }
+                        if (content instanceof LastHttpContent) {
+                            if (contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
+                                if (updateImage) {
+                                    updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
+                                }
+                                if (preroll > 0) {
+                                    fifoSnapshotBuffer.add(lastSnapshot);
+                                }
+                                currentSnapshot = lastSnapshot;
+                                lastSnapshot = null;
+                                if (closeConnection) {
+                                    logger.debug("Snapshot recieved: Binding will now close the channel.");
+                                    ctx.close();
+                                } else {
+                                    logger.debug("Snapshot recieved: Binding will now keep-alive the channel.");
                                 }
                             }
-                        } else { // incomingMessage that is not an IMAGE
-                            if (incomingMessage == null) {
-                                incomingMessage = content.content().toString(CharsetUtil.UTF_8);
-                            } else {
-                                incomingMessage += content.content().toString(CharsetUtil.UTF_8);
-                            }
-                            bytesAlreadyRecieved = incomingMessage.length();
-                            if (content instanceof LastHttpContent) {
-                                // If it is not an image send it on to the next handler//
-                                if (bytesAlreadyRecieved != 0) {
-                                    reply = incomingMessage;
-                                    incomingMessage = null;
-                                    bytesToRecieve = 0;
-                                    bytesAlreadyRecieved = 0;
-                                    super.channelRead(ctx, reply);
-                                }
-                            }
-
-                            // HIKVISION alertStream never has a LastHttpContent as it always stays open//
-                            if (contentType.contains("multipart")) {
-                                if (!contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
-                                    reply = incomingMessage;
-                                    incomingMessage = null;
-                                    bytesToRecieve = 0;
-                                    bytesAlreadyRecieved = 0;
-                                    super.channelRead(ctx, reply);
-                                }
-                            }
-                            // Foscam needs this as will other cameras with chunks//
-                            if (isChunked && bytesAlreadyRecieved != 0) {
+                        }
+                    } else { // incomingMessage that is not an IMAGE
+                        if (incomingMessage == null) {
+                            incomingMessage = content.content().toString(CharsetUtil.UTF_8);
+                        } else {
+                            incomingMessage += content.content().toString(CharsetUtil.UTF_8);
+                        }
+                        bytesAlreadyRecieved = incomingMessage.length();
+                        if (content instanceof LastHttpContent) {
+                            // If it is not an image send it on to the next handler//
+                            if (bytesAlreadyRecieved != 0) {
                                 reply = incomingMessage;
                                 incomingMessage = null;
                                 bytesToRecieve = 0;
@@ -757,7 +737,27 @@ public class IpCameraHandler extends BaseThingHandler {
                                 super.channelRead(ctx, reply);
                             }
                         }
+
+                        // HIKVISION alertStream never has a LastHttpContent as it always stays open//
+                        if (contentType.contains("multipart")) {
+                            if (!contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
+                                reply = incomingMessage;
+                                incomingMessage = null;
+                                bytesToRecieve = 0;
+                                bytesAlreadyRecieved = 0;
+                                super.channelRead(ctx, reply);
+                            }
+                        }
+                        // Foscam needs this as will other cameras with chunks//
+                        if (isChunked && bytesAlreadyRecieved != 0) {
+                            reply = incomingMessage;
+                            incomingMessage = null;
+                            bytesToRecieve = 0;
+                            bytesAlreadyRecieved = 0;
+                            super.channelRead(ctx, reply);
+                        }
                     }
+
                 } else { // msg is not HttpContent
                     // logger.debug("Packet back from camera is not matching HttpContent");
 
