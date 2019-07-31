@@ -1454,6 +1454,8 @@ The Image channel and JPG served on request can be set to update in a number of 
             <channel id="audioAlarm" typeId="audioAlarm"/>
             <channel id="pirAlarm" typeId="pirAlarm"/>
             <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm"/>
+            <channel id="textOverlay" typeId="textOverlay"/>
+            <channel id="autoLED" typeId="autoLED"/>                  
             <channel id="pan" typeId="pan"/>
             <channel id="tilt" typeId="tilt"/>
             <channel id="zoom" typeId="zoom"/>
