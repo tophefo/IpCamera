@@ -390,6 +390,14 @@ public class IpCameraHandler extends BaseThingHandler {
         return Integer.parseInt(config.get(CONFIG_PORT).toString());
     }
 
+    public String getTinyUrl(String httpRequestURL) {
+        if (httpRequestURL.startsWith(":")) {
+            int beginIndex = httpRequestURL.indexOf("/");
+            return httpRequestURL.substring(beginIndex);
+        }
+        return httpRequestURL;
+    }
+
     // Always use this as sendHttpGET(GET/POST/PUT/DELETE, "/foo/bar",null,false)//
     // The authHandler will use the url inside a digest string as needed.
     public boolean sendHttpRequest(String httpMethod, String httpRequestURLFull, String digestString) {
@@ -401,8 +409,7 @@ public class IpCameraHandler extends BaseThingHandler {
         AmcrestHandler amcrestHandler;
 
         int port = getPortFromShortenedUrl(httpRequestURLFull);
-        int beginIndex = httpRequestURLFull.indexOf("/");
-        String httpRequestURL = httpRequestURLFull.substring(beginIndex);
+        String httpRequestURL = getTinyUrl(httpRequestURLFull);
 
         if (mainBootstrap == null) {
             mainBootstrap = new Bootstrap();
@@ -457,7 +464,6 @@ public class IpCameraHandler extends BaseThingHandler {
 
         FullHttpRequest request;
         if (httpMethod.contentEquals("PUT")) {
-
             if (useDigestAuth && digestString == null) {
                 request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, new HttpMethod(httpMethod), httpRequestURL);
                 request.headers().set(HttpHeaderNames.HOST, ipAddress);
@@ -465,7 +471,6 @@ public class IpCameraHandler extends BaseThingHandler {
             } else {
                 request = putRequestWithBody;
             }
-
         } else {
             request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, new HttpMethod(httpMethod), httpRequestURL);
             request.headers().set(HttpHeaderNames.HOST, ipAddress);
@@ -488,7 +493,7 @@ public class IpCameraHandler extends BaseThingHandler {
             }
         }
 
-        logger.debug("Sending camera: {}: http://{}:{}{}", httpMethod, ipAddress, port, httpRequestURL);
+        logger.debug("Sending camera: {}: http://{}{}", httpMethod, ipAddress, httpRequestURL);
         lock.lock();
 
         byte indexInLists = -1;
@@ -504,7 +509,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                 logger.debug("   Using the already open channel:{} \t{}:{}", index, httpMethod,
                                         httpRequestURL);
                                 commonHandler = (CommonCameraHandler) ch.pipeline().get("commonHandler");
-                                commonHandler.setURL(httpRequestURL);
+                                commonHandler.setURL(httpRequestURLFull);
                                 authHandler = (MyNettyAuthHandler) ch.pipeline().get("authHandler");
                                 authHandler.setURL(httpMethod, httpRequestURL);
                                 ch.writeAndFlush(request);
@@ -566,11 +571,11 @@ public class IpCameraHandler extends BaseThingHandler {
             } finally {
                 lock.unlock();
             }
-            logger.debug("Have re-opened  the closed channel:{} \t{}:{}", indexInLists, httpMethod, httpRequestURLFull);
+            logger.debug("Have re-opened  the closed channel:{} \t{}:{}", indexInLists, httpMethod, httpRequestURL);
         } else {
             lock.lock();
             try {
-                listOfRequests.add(httpRequestURLFull);
+                listOfRequests.add(httpRequestURL);
                 listOfChannels.add(ch);
                 listOfChStatus.add((byte) 1);
                 listOfReplies.add(null);
@@ -578,7 +583,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 lock.unlock();
             }
             logger.debug("Have  opened  a  brand NEW channel:{} \t{}:{}", listOfRequests.size() - 1, httpMethod,
-                    httpRequestURLFull);
+                    httpRequestURL);
         }
 
         ch.writeAndFlush(request);
@@ -645,19 +650,16 @@ public class IpCameraHandler extends BaseThingHandler {
                             }
                             if (contentType.contains("multipart")) {
                                 closeConnection = false;
-                                if (mjpegUri != null) {
-                                    if (mjpegUri.equalsIgnoreCase(requestUrl)) {
-                                        if (msg instanceof HttpMessage) {
-                                            // logger.debug("First stream packet back from camera is HttpMessage:{}",
-                                            // msg);
-                                            ReferenceCountUtil.retain(msg, 2);
-                                            // very start of stream only
-                                            firstStreamedMsg = msg;
-                                            stream(msg);
-                                        }
+                                if (mjpegUri.contains(requestUrl)) {
+                                    if (msg instanceof HttpMessage) {
+                                        // logger.debug("First stream packet back from camera is HttpMessage:{}",
+                                        // msg);
+                                        ReferenceCountUtil.retain(msg, 2);
+                                        // very start of stream only
+                                        firstStreamedMsg = msg;
+                                        stream(msg);
                                     }
                                 }
-
                             } else if (closeConnection) {
                                 lock.lock();
                                 try {
@@ -677,59 +679,76 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
 
                 if (msg instanceof HttpContent) {
-                    if (mjpegUri != null) {
-                        if (mjpegUri.equalsIgnoreCase(requestUrl)) {
-                            // multiple MJPEG stream packets come back as this.
-                            // logger.trace("Stream packets back from camera is :{}", msg);
-                            ReferenceCountUtil.retain(msg, 1);
-                            stream(msg);
-                        }
-                    }
-                    content = (HttpContent) msg;
-                    // Found a TP Link camera uses Content-Type: image/jpg instead of image/jpeg
-                    if (contentType.contains("image/jp")) {
-                        if (bytesToRecieve == 0) {
-                            bytesToRecieve = 768000; // 0.768 Mbyte when no Content-Length is sent
-                            logger.debug("Camera has no Content-Length header, we have to guess how much RAM.");
-                        }
-                        for (int i = 0; i < content.content().capacity(); i++) {
-                            if (lastSnapshot == null) {
-                                lastSnapshot = new byte[bytesToRecieve];
+                    if (mjpegUri.contains(requestUrl)) {
+                        // multiple MJPEG stream packets come back as this.
+                        // logger.trace("Stream packets back from camera is :{}", msg);
+                        ReferenceCountUtil.retain(msg, 1);
+                        stream(msg);
+                    } else {
+                        content = (HttpContent) msg;
+                        // Found a TP Link camera uses Content-Type: image/jpg instead of image/jpeg
+                        if (contentType.contains("image/jp")) {
+                            if (bytesToRecieve == 0) {
+                                bytesToRecieve = 768000; // 0.768 Mbyte when no Content-Length is sent
+                                logger.debug("Camera has no Content-Length header, we have to guess how much RAM.");
                             }
-                            lastSnapshot[bytesAlreadyRecieved++] = content.content().getByte(i);
-                        }
-                        if (bytesAlreadyRecieved > bytesToRecieve) {
-                            logger.error("We got too much data from the camera, please report this.");
-                        }
+                            for (int i = 0; i < content.content().capacity(); i++) {
+                                if (lastSnapshot == null) {
+                                    lastSnapshot = new byte[bytesToRecieve];
+                                }
+                                lastSnapshot[bytesAlreadyRecieved++] = content.content().getByte(i);
+                            }
+                            if (bytesAlreadyRecieved > bytesToRecieve) {
+                                logger.error("We got too much data from the camera, please report this.");
+                            }
 
-                        if (content instanceof LastHttpContent) {
-                            if (contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
-                                if (updateImage) {
-                                    updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
-                                }
-                                if (preroll > 0) {
-                                    fifoSnapshotBuffer.add(lastSnapshot);
-                                }
-                                currentSnapshot = lastSnapshot;
-                                lastSnapshot = null;
-                                if (closeConnection) {
-                                    logger.debug("Snapshot recieved: Binding will now close the channel.");
-                                    ctx.close();
-                                } else {
-                                    logger.debug("Snapshot recieved: Binding will now keep-alive the channel.");
+                            if (content instanceof LastHttpContent) {
+                                if (contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
+                                    if (updateImage) {
+                                        updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
+                                    }
+                                    if (preroll > 0) {
+                                        fifoSnapshotBuffer.add(lastSnapshot);
+                                    }
+                                    currentSnapshot = lastSnapshot;
+                                    lastSnapshot = null;
+                                    if (closeConnection) {
+                                        logger.debug("Snapshot recieved: Binding will now close the channel.");
+                                        ctx.close();
+                                    } else {
+                                        logger.debug("Snapshot recieved: Binding will now keep-alive the channel.");
+                                    }
                                 }
                             }
-                        }
-                    } else { // incomingMessage that is not an IMAGE
-                        if (incomingMessage == null) {
-                            incomingMessage = content.content().toString(CharsetUtil.UTF_8);
-                        } else {
-                            incomingMessage += content.content().toString(CharsetUtil.UTF_8);
-                        }
-                        bytesAlreadyRecieved = incomingMessage.length();
-                        if (content instanceof LastHttpContent) {
-                            // If it is not an image send it on to the next handler//
-                            if (bytesAlreadyRecieved != 0) {
+                        } else { // incomingMessage that is not an IMAGE
+                            if (incomingMessage == null) {
+                                incomingMessage = content.content().toString(CharsetUtil.UTF_8);
+                            } else {
+                                incomingMessage += content.content().toString(CharsetUtil.UTF_8);
+                            }
+                            bytesAlreadyRecieved = incomingMessage.length();
+                            if (content instanceof LastHttpContent) {
+                                // If it is not an image send it on to the next handler//
+                                if (bytesAlreadyRecieved != 0) {
+                                    reply = incomingMessage;
+                                    incomingMessage = null;
+                                    bytesToRecieve = 0;
+                                    bytesAlreadyRecieved = 0;
+                                    super.channelRead(ctx, reply);
+                                }
+                            }
+                            // HIKVISION alertStream never has a LastHttpContent as it always stays open//
+                            if (contentType.contains("multipart")) {
+                                if (!contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
+                                    reply = incomingMessage;
+                                    incomingMessage = null;
+                                    bytesToRecieve = 0;
+                                    bytesAlreadyRecieved = 0;
+                                    super.channelRead(ctx, reply);
+                                }
+                            }
+                            // Foscam needs this as will other cameras with chunks//
+                            if (isChunked && bytesAlreadyRecieved != 0) {
                                 reply = incomingMessage;
                                 incomingMessage = null;
                                 bytesToRecieve = 0;
@@ -737,27 +756,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                 super.channelRead(ctx, reply);
                             }
                         }
-
-                        // HIKVISION alertStream never has a LastHttpContent as it always stays open//
-                        if (contentType.contains("multipart")) {
-                            if (!contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
-                                reply = incomingMessage;
-                                incomingMessage = null;
-                                bytesToRecieve = 0;
-                                bytesAlreadyRecieved = 0;
-                                super.channelRead(ctx, reply);
-                            }
-                        }
-                        // Foscam needs this as will other cameras with chunks//
-                        if (isChunked && bytesAlreadyRecieved != 0) {
-                            reply = incomingMessage;
-                            incomingMessage = null;
-                            bytesToRecieve = 0;
-                            bytesAlreadyRecieved = 0;
-                            super.channelRead(ctx, reply);
-                        }
                     }
-
                 } else { // msg is not HttpContent
                     // logger.debug("Packet back from camera is not matching HttpContent");
 
@@ -950,7 +949,7 @@ public class IpCameraHandler extends BaseThingHandler {
             mjpegChannelGroup.remove(ctx.channel());
             if (mjpegChannelGroup.isEmpty()) {
                 logger.debug("All MJPEG streams have stopped, so closing the MJPEG source stream now.");
-                closeChannel(mjpegUri);
+                closeChannel(getTinyUrl(mjpegUri));
             }
         }
     }
@@ -1370,9 +1369,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 try {
                     logger.debug("About to connect to the IP Camera using the ONVIF PORT at IP:{}:{}", ipAddress,
                             config.get(CONFIG_ONVIF_PORT).toString());
-
                     if (username != null && password != null) {
-
                         if ("FOSCAM".contentEquals(thing.getThingTypeUID().getId())) {
                             // Foscam user/pass has been changed to remove special chars for URL format.
                             onvifCamera = new OnvifDevice(ipAddress + ":" + config.get(CONFIG_ONVIF_PORT).toString(),
@@ -1385,20 +1382,17 @@ public class IpCameraHandler extends BaseThingHandler {
                         onvifCamera = new OnvifDevice(ipAddress + ":" + config.get(CONFIG_ONVIF_PORT).toString());
                     }
 
-                    /*
-                     * logger.debug("Fetching the number of Media Profiles this camera supports.");
-                     * profiles = onvifCamera.getDevices().getProfiles();
-                     * if (profiles == null) {
-                     * logger.error("Camera replied with NULL when trying to get a list of the media profiles");
-                     * }
-                     * logger.debug("Checking the selected Media Profile is a valid number.");
-                     * if (selectedMediaProfile > profiles.size()) {
-                     * logger.warn(
-                     * "The selected Media Profile in the binding is higher than the max supported profiles. Changing to use Media Profile 0."
-                     * );
-                     * selectedMediaProfile = 0;
-                     * }
-                     */
+                    logger.debug("Fetching the number of Media Profiles this camera supports.");
+                    profiles = onvifCamera.getDevices().getProfiles();
+                    if (profiles.isEmpty()) {
+                        logger.error("Camera replied with NULL when trying to get a list of the media profiles");
+                    }
+                    logger.debug("Checking the selected Media Profile is a valid number.");
+                    if (selectedMediaProfile > profiles.size()) {
+                        logger.warn(
+                                "The selected Media Profile in the binding is higher than the max supported profiles. Changing to use Media Profile 0.");
+                        selectedMediaProfile = 0;
+                    }
 
                     logger.debug("Fetching a Token for the selected Media Profile.");
                     profileToken = profiles.get(selectedMediaProfile).getToken();
@@ -1407,7 +1401,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     }
                     if (snapshotUri == null) {
                         logger.debug("Auto fetching the snapshot URL for the selected Media Profile.");
-                        // snapshotUri = onvifCamera.getMedia().getSnapshotUri(profileToken);
+                        snapshotUri = onvifCamera.getMedia().getSnapshotUri(profileToken);
                     }
 
                     if (logger.isDebugEnabled()) {
@@ -1474,14 +1468,14 @@ public class IpCameraHandler extends BaseThingHandler {
                             ptzDevices = null;
                         }
                     }
-                    /*
-                     * logger.debug(
-                     * "Finished with PTZ with no errors, now fetching the Video URL for RTSP from the camera.");
-                     * rtspUri = onvifCamera.getMedia().getRTSPStreamUri(profileToken);
-                     * if (rtspUri.contains(":80:")) {
-                     * rtspUri = rtspUri.replace(":80:", ":");
-                     * }
-                     */
+
+                    logger.debug(
+                            "Finished with PTZ with no errors, now fetching the Video URL for RTSP from the camera.");
+                    rtspUri = onvifCamera.getMedia().getRTSPStreamUri(profileToken);
+                    if (rtspUri.contains(":80:")) {
+                        rtspUri = rtspUri.replace(":80:", ":");
+                    }
+
                 } catch (ConnectException e) {
                     logger.debug(
                             "Can not connect with ONVIF to the camera at {}, check the ONVIF_PORT is correct. Fault was {}",
@@ -1665,7 +1659,7 @@ public class IpCameraHandler extends BaseThingHandler {
         snapshotUri = (config.get(CONFIG_SNAPSHOT_URL_OVERRIDE) == null) ? null
                 : getCorrectUrlFormat(config.get(CONFIG_SNAPSHOT_URL_OVERRIDE).toString());
 
-        mjpegUri = (config.get(CONFIG_STREAM_URL_OVERRIDE) == null) ? null
+        mjpegUri = (config.get(CONFIG_STREAM_URL_OVERRIDE) == null) ? "noUrlGiven"
                 : getCorrectUrlFormat(config.get(CONFIG_STREAM_URL_OVERRIDE).toString());
 
         nvrChannel = (config.get(CONFIG_NVR_CHANNEL) == null) ? null : config.get(CONFIG_NVR_CHANNEL).toString();
@@ -1683,7 +1677,7 @@ public class IpCameraHandler extends BaseThingHandler {
         switch (thing.getThingTypeUID().getId()) {
             case "AMCREST":
             case "DAHUA":
-                if (mjpegUri == null) {
+                if (mjpegUri == "noUrlGiven") {
                     mjpegUri = "/cgi-bin/mjpg/video.cgi?channel=" + nvrChannel + "&subtype=1";
                 }
                 if (snapshotUri == null) {
@@ -1691,7 +1685,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
                 break;
             case "DOORBIRD":
-                if (mjpegUri == null) {
+                if (mjpegUri == "noUrlGiven") {
                     mjpegUri = "/bha-api/video.cgi";
                 }
                 if (snapshotUri == null) {
@@ -1702,7 +1696,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 // Foscam needs any special char like spaces (%20) to be encoded for URLs.
                 username = encodeSpecialChars(username);
                 password = encodeSpecialChars(password);
-                if (mjpegUri == null) {
+                if (mjpegUri == "noUrlGiven") {
                     mjpegUri = "/cgi-bin/CGIStream.cgi?cmd=GetMJStream&usr=" + username + "&pwd=" + password;
                 }
                 if (snapshotUri == null) {
@@ -1710,7 +1704,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
                 break;
             case "HIKVISION":// The 02 gives you the first sub stream which needs to be set to MJPEG
-                if (mjpegUri == null) {
+                if (mjpegUri == "noUrlGiven") {
                     mjpegUri = "/ISAPI/Streaming/channels/" + nvrChannel + "02" + "/httppreview";
                 }
                 if (snapshotUri == null) {
@@ -1721,7 +1715,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 if (snapshotUri == null) {
                     snapshotUri = "/tmpfs/snap.jpg";
                 }
-                if (mjpegUri == null) {
+                if (mjpegUri == "noUrlGiven") {
                     mjpegUri = "/mjpegstream.cgi?-chn=12";
                 }
                 break;
