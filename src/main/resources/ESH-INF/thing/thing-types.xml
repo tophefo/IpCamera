@@ -1449,11 +1449,12 @@ The Image channel and JPG served on request can be set to update in a number of 
             <channel id="updateGif" typeId="updateGif"/>          
             <channel id="image" typeId="image"/>            
             <channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>
-            <channel id="motionAlarm" typeId="motionAlarm"/>   
+            <channel id="enablePirAlarm" typeId="enablePirAlarm"/>
             <channel id="enableAudioAlarm" typeId="enableAudioAlarm"/>
-            <channel id="audioAlarm" typeId="audioAlarm"/>
-            <channel id="pirAlarm" typeId="pirAlarm"/>
             <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm"/>
+            <channel id="motionAlarm" typeId="motionAlarm"/>
+            <channel id="pirAlarm" typeId="pirAlarm"/>               
+            <channel id="audioAlarm" typeId="audioAlarm"/>                        
             <channel id="textOverlay" typeId="textOverlay"/>
             <channel id="autoLED" typeId="autoLED"/>                  
             <channel id="pan" typeId="pan"/>
@@ -1738,6 +1739,13 @@ The Image channel and JPG served on request can be set to update in a number of 
         <item-type>Switch</item-type>
         <label>Enable/Disable the Intrusion  Alarm</label>
         <description>By using this feature you can stop the camera from sending emails when you are actually home.</description>
+        </channel-type>
+        
+        <channel-type id="enablePirAlarm">
+        <item-type>Switch</item-type>
+        <label>Enable/Disable the PIR Alarm</label>
+        <description>Enable/Disable the PIR Alarm.</description>
+        <category>Motion</category>
         </channel-type>
         
         <channel-type id="pirAlarm">

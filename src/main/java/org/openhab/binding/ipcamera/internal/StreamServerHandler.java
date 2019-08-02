@@ -92,7 +92,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                         }
                     } else if (httpRequest.uri().contains("/instar")) {
                         InstarHandler instar = new InstarHandler(ipCameraHandler);
-                        instar.alarmTriggers(httpRequest.uri().toString());
+                        instar.alarmTriggered(httpRequest.uri().toString());
                     }
                 }
             }

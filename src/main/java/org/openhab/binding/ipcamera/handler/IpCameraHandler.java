@@ -151,6 +151,7 @@ public class IpCameraHandler extends BaseThingHandler {
     private CircularFifoBuffer fifoSnapshotBuffer;
     private int preroll, postroll, snapCount = 0;
     private boolean updateImage = true;
+    private byte lowPriorityCounter = 0;
 
     public ArrayList<String> listOfRequests = new ArrayList<String>(18);
     public ArrayList<Channel> listOfChannels = new ArrayList<Channel>(18);
@@ -407,6 +408,7 @@ public class IpCameraHandler extends BaseThingHandler {
         CommonCameraHandler commonHandler;
         MyNettyAuthHandler authHandler;
         AmcrestHandler amcrestHandler;
+        InstarHandler instarHandler;
 
         int port = getPortFromShortenedUrl(httpRequestURLFull);
         String httpRequestURL = getTinyUrl(httpRequestURLFull);
@@ -451,7 +453,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                     new HikvisionHandler(thing.getHandler(), nvrChannel));
                             break;
                         case "INSTAR":
-                            socketChannel.pipeline().addLast("brandHandler", new InstarHandler(thing.getHandler()));
+                            socketChannel.pipeline().addLast("instarHandler", new InstarHandler(thing.getHandler()));
                             break;
                         default:
                             socketChannel.pipeline().addLast("brandHandler",
@@ -559,9 +561,16 @@ public class IpCameraHandler extends BaseThingHandler {
         authHandler = (MyNettyAuthHandler) ch.pipeline().get("authHandler");
         commonHandler.setURL(httpRequestURL);
         authHandler.setURL(httpMethod, httpRequestURL);
-        if ("AMCREST".contentEquals(thing.getThingTypeUID().getId())) {
-            amcrestHandler = (AmcrestHandler) ch.pipeline().get("amcrestHandler");
-            amcrestHandler.setURL(httpRequestURL);
+
+        switch (thing.getThingTypeUID().getId()) {
+            case "AMCREST":
+                amcrestHandler = (AmcrestHandler) ch.pipeline().get("amcrestHandler");
+                amcrestHandler.setURL(httpRequestURL);
+                break;
+            case "INSTAR":
+                instarHandler = (InstarHandler) ch.pipeline().get("instarHandler");
+                instarHandler.setURL(httpRequestURL);
+                break;
         }
 
         if (indexInLists >= 0) {
@@ -1559,8 +1568,6 @@ public class IpCameraHandler extends BaseThingHandler {
     Runnable pollingCamera = new Runnable() {
         @Override
         public void run() {
-            byte counter = 0;
-
             // Snapshot should be first to keep consistent time between shots
             if (snapshotUri != null) {
                 if (updateImageEvents.contains("1") || updateImage) {
@@ -1602,10 +1609,10 @@ public class IpCameraHandler extends BaseThingHandler {
             }
 
             if (!lowPriorityRequests.isEmpty()) {
-                if (counter >= lowPriorityRequests.size()) {
-                    counter = 0;
+                if (lowPriorityCounter >= lowPriorityRequests.size()) {
+                    lowPriorityCounter = 0;
                 }
-                sendHttpGET(lowPriorityRequests.get(counter++));
+                sendHttpGET(lowPriorityRequests.get(lowPriorityCounter++));
             }
 
             if (ffmpegHLS != null) {

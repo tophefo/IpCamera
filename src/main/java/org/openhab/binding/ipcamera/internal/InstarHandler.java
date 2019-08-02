@@ -21,6 +21,7 @@ import java.util.ArrayList;
 
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.PercentType;
+import org.eclipse.smarthome.core.library.types.StringType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.binding.ThingHandler;
 import org.eclipse.smarthome.core.types.Command;
@@ -32,47 +33,78 @@ import io.netty.util.ReferenceCountUtil;
 
 public class InstarHandler extends ChannelDuplexHandler {
     IpCameraHandler ipCameraHandler;
+    private String requestUrl = "Empty";
 
     public InstarHandler(ThingHandler thingHandler) {
         ipCameraHandler = (IpCameraHandler) thingHandler;
+    }
+
+    public void setURL(String url) {
+        requestUrl = url;
     }
 
     // This handles the incoming http replies back from the camera.
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         String content = null;
+        String value1 = null;
+
         try {
             content = msg.toString();
-
-            if (!content.isEmpty()) {
-                ipCameraHandler.logger.trace("HTTP Result back from camera is \t:{}:", content);
+            if (content.isEmpty()) {
+                return;
             }
+            ipCameraHandler.logger.trace("HTTP Result back from camera is \t:{}:", content);
 
-            // Audio Alarm
-            String aa_enable = ipCameraHandler.searchString(content, "var aa_enable = \"");
-            if ("1".equals(aa_enable)) {
-                ipCameraHandler.setChannelState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
-                String aa_value = ipCameraHandler.searchString(content, "var aa_value = \"");
-                // String aa_time = searchString(content, "var aa_time = \"");
-                if (!aa_value.isEmpty()) {
-                    ipCameraHandler.logger.debug("Threshold is changing to {}", aa_value);
-                    ipCameraHandler.setChannelState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf(aa_value));
-                }
-            } else if ("0".equals(aa_enable)) {
-                ipCameraHandler.setChannelState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+            switch (requestUrl) {
+                case "/param.cgi?cmd=getinfrared":
+                    if (content.contains("var infraredstat=\"auto")) {
+                        ipCameraHandler.setChannelState(CHANNEL_AUTO_LED, OnOffType.valueOf("ON"));
+                    } else {
+                        ipCameraHandler.setChannelState(CHANNEL_AUTO_LED, OnOffType.valueOf("OFF"));
+                    }
+                    break;
+                case "/param.cgi?cmd=getoverlayattr&-region=1":// Text Overlays
+                    if (content.contains("var show_1=\"0\"")) {
+                        ipCameraHandler.setChannelState(CHANNEL_TEXT_OVERLAY, StringType.valueOf(""));
+                    } else {
+                        value1 = ipCameraHandler.searchString(content, "var name_1=\"");
+                        if (value1 != null) {
+                            ipCameraHandler.setChannelState(CHANNEL_TEXT_OVERLAY, StringType.valueOf(value1));
+                        }
+                    }
+                    break;
+                case "/cgi-bin/hi3510/param.cgi?cmd=getmdattr":// Motion Alarm
+                    // Motion Alarm
+                    if (content.contains("var m1_enable=\"1\"")) {
+                        ipCameraHandler.setChannelState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
+                    } else {
+                        ipCameraHandler.setChannelState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                    }
+                    break;
+                case "/cgi-bin/hi3510/param.cgi?cmd=getaudioalarmattr":// Audio Alarm
+                    if (content.contains("var aa_enable=\"1\"")) {
+                        ipCameraHandler.setChannelState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("ON"));
+                        value1 = ipCameraHandler.searchString(content, "var aa_value=\"");
+                        if (!value1.isEmpty()) {
+                            ipCameraHandler.logger.debug("Threshold is changing to {}", value1);
+                            ipCameraHandler.setChannelState(CHANNEL_THRESHOLD_AUDIO_ALARM, PercentType.valueOf(value1));
+                        }
+                    } else {
+                        ipCameraHandler.setChannelState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                    }
+                    break;
+                case "param.cgi?cmd=getpirattr":// PIR Alarm
+                    if (content.contains("var pir_enable=\"1\"")) {
+                        ipCameraHandler.setChannelState(CHANNEL_ENABLE_PIR_ALARM, OnOffType.valueOf("ON"));
+                    } else {
+                        ipCameraHandler.setChannelState(CHANNEL_ENABLE_PIR_ALARM, OnOffType.valueOf("OFF"));
+                    }
+                    break;
             }
-
-            // Motion Alarm
-            String m1_enable = ipCameraHandler.searchString(content, "var m1_enable=\"");
-            if ("1".equals(m1_enable)) {
-                ipCameraHandler.setChannelState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
-            } else if ("0".equals(m1_enable)) {
-                ipCameraHandler.setChannelState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
-            }
-
         } finally {
             ReferenceCountUtil.release(msg);
-            content = null;
+            content = value1 = null;
         }
     }
 
@@ -134,11 +166,43 @@ public class InstarHandler extends ChannelDuplexHandler {
                     ipCameraHandler.sendHttpGET("/param.cgi?cmd=setinfrared&-infraredstat=close");
                 }
                 return;
+            case CHANNEL_ENABLE_PIR_ALARM:
+                if ("ON".equals(command.toString())) {
+                    ipCameraHandler.sendHttpGET("/param.cgi?cmd=setpirattr&-pir_enable=1");
+                } else {
+                    ipCameraHandler.sendHttpGET("/param.cgi?cmd=setpirattr&-pir_enable=0");
+                }
+                return;
         }
     }
 
-    public void alarmTriggers(String alarm) {
+    public void alarmTriggered(String alarm) {
         ipCameraHandler.logger.info("Alarm has been triggered:{}", alarm);
+        switch (alarm) {
+            case "/instar?&active=1":
+                break;
+            case "/instar?&active=2":
+                break;
+            case "/instar?&active=3":
+                break;
+            case "/instar?&active=4":
+                break;
+            case "/instar?&active=5":// PIR
+                ipCameraHandler.motionDetected(CHANNEL_PIR_ALARM);
+                break;
+            case "/instar?&active=6":// Audio Alarm
+                ipCameraHandler.audioDetected();
+                break;
+            case "/instar?&active=7":// Motion Area 1
+                ipCameraHandler.motionDetected(CHANNEL_MOTION_ALARM);
+                break;
+            case "/instar?&active=8":// Motion Area 2
+                break;
+            case "/instar?&active=9":// Motion Area 3
+                break;
+            case "/instar?&active=10":// Motion Area 4
+                break;
+        }
     }
 
     // If a camera does not need to poll a request as often as snapshots, it can be
@@ -149,9 +213,11 @@ public class InstarHandler extends ChannelDuplexHandler {
         lowPriorityRequests.add("/cgi-bin/hi3510/param.cgi?cmd=getaudioalarmattr");
         // Poll the motion alarm on/off/settings/...
         lowPriorityRequests.add("/cgi-bin/hi3510/param.cgi?cmd=getmdattr");
+        lowPriorityRequests.add("/param.cgi?cmd=getinfrared");
+        lowPriorityRequests.add("/param.cgi?cmd=getoverlayattr&-region=1");
+        lowPriorityRequests.add("param.cgi?cmd=getpirattr");
 
-        // param.cgi?cmd=getinfrared
-        // param.cgi?cmd=getserverinfo
+        // lowPriorityRequests.add("/param.cgi?cmd=getserverinfo");
         // Setup alarm server, tested.
         // http://192.168.1.65/param.cgi?cmd=setalarmserverattr&-as_index=3&-as_server=192.168.1.80&-as_port=30065&-as_path=/instar&-as_activequery=1&-as_area=1&-as_io=1&-as_areaio=1&-as_audio=1
         return lowPriorityRequests;
