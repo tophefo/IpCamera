@@ -152,6 +152,7 @@ public class IpCameraHandler extends BaseThingHandler {
     private int preroll, postroll, snapCount = 0;
     private boolean updateImage = true;
     private byte lowPriorityCounter = 0;
+    public String hostIp = "0.0.0.0";
 
     public ArrayList<String> listOfRequests = new ArrayList<String>(18);
     public ArrayList<Channel> listOfChannels = new ArrayList<Channel>(18);
@@ -170,7 +171,7 @@ public class IpCameraHandler extends BaseThingHandler {
     private String snapshotUri = null;
     public String mjpegUri = null;
     ChannelFuture serverFuture = null;
-    int serverPort = 0;
+    public int serverPort = 0;
     Object firstStreamedMsg = null;
     public byte[] currentSnapshot;
     private String rtspUri = null;
@@ -891,19 +892,15 @@ public class IpCameraHandler extends BaseThingHandler {
             serversLoopGroup.shutdownGracefully(8, 8, TimeUnit.SECONDS);
             serverBootstrap = null;
         } else {
-
             if (serverBootstrap == null) {
-
                 InetAddress inet;
-                String ip = "0.0.0.0";
-
                 try {
                     inet = InetAddress.getLocalHost();
                     InetAddress[] ipConnections = InetAddress.getAllByName(inet.getCanonicalHostName());
                     if (ipConnections != null) {
                         for (int i = 0; i < ipConnections.length; i++) {
                             if (ipConnections[i].isSiteLocalAddress()) {
-                                ip = ipConnections[i].getHostAddress();
+                                hostIp = ipConnections[i].getHostAddress();
                                 // logger.debug("Stream Server is serving on IP:{}", ip);
                             }
                         }
@@ -920,7 +917,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     serverBootstrap.group(serversLoopGroup);
                     serverBootstrap.channel(NioServerSocketChannel.class);
                     // IP "0.0.0.0" will bind the server to all network connections//
-                    serverBootstrap.localAddress(new InetSocketAddress(ip, serverPort));
+                    serverBootstrap.localAddress(new InetSocketAddress(hostIp, serverPort));
                     serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
@@ -935,8 +932,9 @@ public class IpCameraHandler extends BaseThingHandler {
                     serverFuture.await(4000);
                     logger.info("IpCamera file server for camera {} has started on port {}", ipAddress, serverPort);
                     updateState(CHANNEL_STREAM_URL,
-                            new StringType("http://" + ip + ":" + serverPort + "/ipcamera.mjpeg"));
-                    updateState(CHANNEL_HLS_URL, new StringType("http://" + ip + ":" + serverPort + "/ipcamera.m3u8"));
+                            new StringType("http://" + hostIp + ":" + serverPort + "/ipcamera.mjpeg"));
+                    updateState(CHANNEL_HLS_URL,
+                            new StringType("http://" + hostIp + ":" + serverPort + "/ipcamera.m3u8"));
                 } catch (Exception e) {
                     logger.error("Exception occured starting the new streaming server:{}", e);
                 }
@@ -1510,30 +1508,24 @@ public class IpCameraHandler extends BaseThingHandler {
             // previously.
             if (snapshotUri != null) {
                 if (sendHttpRequest("GET", snapshotUri, null)) {
-
                     updateState(CHANNEL_IMAGE_URL, new StringType("http://" + ipAddress + snapshotUri));
                     if (rtspUri != null) {
                         updateState(CHANNEL_RTSP_URL, new StringType(rtspUri));
                     }
-
                     if (updateImage) {
                         updateState(CHANNEL_UPDATE_IMAGE_NOW, OnOffType.valueOf("ON"));
                     }
-
                     pollCameraJob = pollCamera.scheduleAtFixedRate(pollingCamera, 7000,
                             Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
-
-                    updateStatus(ThingStatus.ONLINE);
-                    isOnline = true;
-                    logger.info("IP Camera at {} is now online.", ipAddress);
-
+                    // Instar needs the host IP before thing comes online.
                     if (!"-1".contentEquals(config.get(CONFIG_SERVER_PORT).toString())) {
                         startStreamServer(true);
                     }
-
+                    updateStatus(ThingStatus.ONLINE);
+                    isOnline = true;
+                    logger.info("IP Camera at {} is now online.", ipAddress);
                     cameraConnectionJob.cancel(false);
                     cameraConnectionJob = null;
-
                 }
             } else {
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
@@ -1731,7 +1723,7 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     private void restart() {
-        logger.debug("Camera binding restart().");
+        logger.info("ipCamera restarting.");
 
         basicAuth = null; // clear out stored password hash
         useDigestAuth = false;
@@ -1770,7 +1762,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
     @Override
     public void dispose() {
-        logger.debug("Dispose() called.");
+        logger.info("ipCamera Dispose() called.");
         onvifCamera = null; // needed in case user edits password.
         restart();
     }

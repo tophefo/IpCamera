@@ -81,6 +81,10 @@ public class InstarHandler extends ChannelDuplexHandler {
                     } else {
                         ipCameraHandler.setChannelState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
                     }
+                    // Reset the Alarm, need to find better place to put this.
+                    ipCameraHandler.setChannelState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                    ipCameraHandler.firstMotionAlarm = false;
+                    ipCameraHandler.motionAlarmUpdateSnapshot = false;
                     break;
                 case "/cgi-bin/hi3510/param.cgi?cmd=getaudioalarmattr":// Audio Alarm
                     if (content.contains("var aa_enable=\"1\"")) {
@@ -93,6 +97,10 @@ public class InstarHandler extends ChannelDuplexHandler {
                     } else {
                         ipCameraHandler.setChannelState(CHANNEL_ENABLE_AUDIO_ALARM, OnOffType.valueOf("OFF"));
                     }
+                    // Reset the Alarm, need to find better place to put this.
+                    ipCameraHandler.setChannelState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                    ipCameraHandler.firstAudioAlarm = false;
+                    ipCameraHandler.audioAlarmUpdateSnapshot = false;
                     break;
                 case "param.cgi?cmd=getpirattr":// PIR Alarm
                     if (content.contains("var pir_enable=\"1\"")) {
@@ -100,6 +108,10 @@ public class InstarHandler extends ChannelDuplexHandler {
                     } else {
                         ipCameraHandler.setChannelState(CHANNEL_ENABLE_PIR_ALARM, OnOffType.valueOf("OFF"));
                     }
+                    // Reset the Alarm, need to find better place to put this.
+                    ipCameraHandler.setChannelState(CHANNEL_PIR_ALARM, OnOffType.valueOf("OFF"));
+                    ipCameraHandler.firstMotionAlarm = false;
+                    ipCameraHandler.motionAlarmUpdateSnapshot = false;
                     break;
             }
         } finally {
@@ -121,6 +133,17 @@ public class InstarHandler extends ChannelDuplexHandler {
     // This handles the commands that come from the Openhab event bus.
     public void handleCommand(ChannelUID channelUID, Command command) {
         if (command.toString() == "REFRESH") {
+            switch (channelUID.getId()) {
+                case CHANNEL_MOTION_ALARM:
+                    if (ipCameraHandler.serverPort > 0) {
+                        ipCameraHandler.logger.info("Setting up the Alarm Server settings in the camera now");
+                        ipCameraHandler.sendHttpGET(
+                                "/param.cgi?cmd=setmdalarm&-aname=server2&-switch=on&cmd=setalarmserverattr&-as_index=3&-as_server="
+                                        + ipCameraHandler.hostIp + "&-as_port=" + ipCameraHandler.serverPort
+                                        + "&-as_path=/instar&-as_queryattr1=&-as_queryval1=&-as_queryattr2=&-as_queryval2=&-as_queryattr3=&-as_queryval3=&-as_activequery=1&-as_auth=0&-as_query1=0&-as_query2=0&-as_query3=0");
+                        return;
+                    }
+            }
             return;
         } // end of "REFRESH"
         switch (channelUID.getId()) {
@@ -177,7 +200,7 @@ public class InstarHandler extends ChannelDuplexHandler {
     }
 
     public void alarmTriggered(String alarm) {
-        ipCameraHandler.logger.info("Alarm has been triggered:{}", alarm);
+        ipCameraHandler.logger.debug("Alarm has been triggered:{}", alarm);
         switch (alarm) {
             case "/instar?&active=1":
                 break;
@@ -215,11 +238,10 @@ public class InstarHandler extends ChannelDuplexHandler {
         lowPriorityRequests.add("/cgi-bin/hi3510/param.cgi?cmd=getmdattr");
         lowPriorityRequests.add("/param.cgi?cmd=getinfrared");
         lowPriorityRequests.add("/param.cgi?cmd=getoverlayattr&-region=1");
-        lowPriorityRequests.add("param.cgi?cmd=getpirattr");
+        lowPriorityRequests.add("/param.cgi?cmd=getpirattr");
 
         // lowPriorityRequests.add("/param.cgi?cmd=getserverinfo");
         // Setup alarm server, tested.
-        // http://192.168.1.65/param.cgi?cmd=setalarmserverattr&-as_index=3&-as_server=192.168.1.80&-as_port=30065&-as_path=/instar&-as_activequery=1&-as_area=1&-as_io=1&-as_areaio=1&-as_audio=1
         return lowPriorityRequests;
     }
 }
