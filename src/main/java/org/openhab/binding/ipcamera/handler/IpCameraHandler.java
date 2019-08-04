@@ -1141,7 +1141,7 @@ public class IpCameraHandler extends BaseThingHandler {
             logger.error("A Throwable occured when trying to fetch the cameras PTZ position. {}", t);
         }
         logger.warn(
-                "Camera did not give a good reply when asked what its position was, going to fake the position so PTZ still works.");
+                "Camera did not give a good reply when asked what its position was, possibly due to missing zoom features. Going to fake the position so PTZ still works.");
         pv = new PTZVector();
         pv.setPanTilt(new Vector2D());
         pv.setZoom(new Vector1D());

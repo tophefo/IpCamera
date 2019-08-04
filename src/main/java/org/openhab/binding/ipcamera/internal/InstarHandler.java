@@ -113,6 +113,13 @@ public class InstarHandler extends ChannelDuplexHandler {
                     ipCameraHandler.firstMotionAlarm = false;
                     ipCameraHandler.motionAlarmUpdateSnapshot = false;
                     break;
+                case "/param.cgi?cmd=getioattr":// External Alarm Input
+                    if (content.contains("var io_enable=\"1\"")) {
+                        ipCameraHandler.setChannelState(CHANNEL_ENABLE_EXTERNAL_ALARM_INPUT, OnOffType.valueOf("ON"));
+                    } else {
+                        ipCameraHandler.setChannelState(CHANNEL_ENABLE_EXTERNAL_ALARM_INPUT, OnOffType.valueOf("OFF"));
+                    }
+                    break;
             }
         } finally {
             ReferenceCountUtil.release(msg);
@@ -196,6 +203,13 @@ public class InstarHandler extends ChannelDuplexHandler {
                     ipCameraHandler.sendHttpGET("/param.cgi?cmd=setpirattr&-pir_enable=0");
                 }
                 return;
+            case CHANNEL_ENABLE_EXTERNAL_ALARM_INPUT:
+                if ("ON".equals(command.toString())) {
+                    ipCameraHandler.sendHttpGET("/param.cgi?cmd=setioattr&-io_enable=1");
+                } else {
+                    ipCameraHandler.sendHttpGET("/param.cgi?cmd=setioattr&-io_enable=0");
+                }
+                return;
         }
     }
 
@@ -220,10 +234,13 @@ public class InstarHandler extends ChannelDuplexHandler {
                 ipCameraHandler.motionDetected(CHANNEL_MOTION_ALARM);
                 break;
             case "/instar?&active=8":// Motion Area 2
+                ipCameraHandler.motionDetected(CHANNEL_MOTION_ALARM);
                 break;
             case "/instar?&active=9":// Motion Area 3
+                ipCameraHandler.motionDetected(CHANNEL_MOTION_ALARM);
                 break;
             case "/instar?&active=10":// Motion Area 4
+                ipCameraHandler.motionDetected(CHANNEL_MOTION_ALARM);
                 break;
         }
     }
@@ -232,16 +249,13 @@ public class InstarHandler extends ChannelDuplexHandler {
     // added here. Binding steps through the list.
     public ArrayList<String> getLowPriorityRequests() {
         ArrayList<String> lowPriorityRequests = new ArrayList<String>(2);
-        // Poll the audio alarm on/off/threshold/...
         lowPriorityRequests.add("/cgi-bin/hi3510/param.cgi?cmd=getaudioalarmattr");
-        // Poll the motion alarm on/off/settings/...
         lowPriorityRequests.add("/cgi-bin/hi3510/param.cgi?cmd=getmdattr");
         lowPriorityRequests.add("/param.cgi?cmd=getinfrared");
         lowPriorityRequests.add("/param.cgi?cmd=getoverlayattr&-region=1");
         lowPriorityRequests.add("/param.cgi?cmd=getpirattr");
-
+        lowPriorityRequests.add("/param.cgi?cmd=getioattr"); // ext alarm input on/off
         // lowPriorityRequests.add("/param.cgi?cmd=getserverinfo");
-        // Setup alarm server, tested.
         return lowPriorityRequests;
     }
 }

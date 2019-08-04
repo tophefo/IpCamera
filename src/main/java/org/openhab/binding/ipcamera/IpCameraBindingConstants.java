@@ -85,6 +85,7 @@ public class IpCameraBindingConstants {
     public static final String CHANNEL_THRESHOLD_AUDIO_ALARM = "thresholdAudioAlarm";
     public static final String CHANNEL_ACTIVATE_ALARM_OUTPUT = "activateAlarmOutput";
     public static final String CHANNEL_ACTIVATE_ALARM_OUTPUT2 = "activateAlarmOutput2";
+    public static final String CHANNEL_ENABLE_EXTERNAL_ALARM_INPUT = "enableExternalAlarmInput";
     public static final String CHANNEL_EXTERNAL_ALARM_INPUT = "externalAlarmInput";
     public static final String CHANNEL_EXTERNAL_ALARM_INPUT2 = "externalAlarmInput2";
     public static final String CHANNEL_AUTO_LED = "autoLED";
