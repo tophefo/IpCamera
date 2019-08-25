@@ -387,20 +387,21 @@ There are a number of ways to use snapshots with this binding, however the best 
 
 Ways to use snapshots are:
 
-+ Use the cameras URL and fetch it directly so it passes from the camera to your end device ie Tablet without passing any data through the openHAB server. For cameras like Dahua that refuse to allow DIGEST to be turned off this is not an option, plus the binding has some advantages which are explained below...
-+ Request a snapshot with the url ``http://192.168.xxx.xxx:54321/ipcamera.jpg`` for the current snapshot which only works if the binding is setup to fetch snapshots. This file does not exist on disk and is served out of ram to keep disk writes to a minimum with this binding. It also means the binding can serve a jpg file much faster than a camera can directly as a camera usually waits for a keyframe and then compresses the data before it can be sent which all takes time.
-+ Use the Create GIF feature (explained in more detail below) and use a preroll value >0. This creates a number of snapshots in the ffmpeg output folder called snapshotXXX.jpg where XXX starts at 0 and increases each poll amount of time. This means you can get a snapshot from an exact amount of time before, on or after triggering the GIF to be created. Handy for cameras which lag due to slow processors and buffering. These snapshots can be fetched either directly as they exist on disk, or via this url format. ``http://192.168.xxx.xxx:54321/snapshot0.jpg``
++ Use the cameras URL and fetch it directly so it passes from the camera to your end device ie Tablet without passing any data through the openHAB server. For cameras like Dahua that refuse to allow DIGEST to be turned off this is not an option, plus the binding has some advantages which are explained below so even if your camera can work directly you may not wish to do so.
++ Request a snapshot with the url ``http://192.168.xxx.xxx:54321/ipcamera.jpg`` this will return the current snapshot which only works if the binding is setup to fetch jpg snapshots. This file does not exist on disk and is served out of ram to keep disk writes to a minimum with this binding. It also means the binding can serve a jpg file much faster than a camera can directly as a camera usually waits for a keyframe, then compresses the data, before it can be sent which all takes time.
++ Use the Create GIF feature (explained in more detail below) and use a preroll value >0. This creates a number of snapshots in the ffmpeg output folder called snapshotXXX.jpg where XXX starts at 0 and increases each poll amount of time. This means you can get a snapshot from an exact amount of time before, on or after triggering the GIF to be created. Handy for cameras which lag due to slow processors and buffering. These snapshots can be fetched either directly as they exist on disk, or via this url format. ``http://192.168.xxx.xxx:54321/snapshot0.jpg`` Where the IP is your Openhab server and the port is what is setup in the binding as the SERVER_PORT.
 + You can also read the image data directly and use it in rules, there are some examples on the forum how to do this, however it is far easier to use the above methods.
-+ Also worth a mention is you can off load cameras to a software and hardware server. These have their advantages but can be overkill depending on what you plan to do with your cameras.
++ Also worth a mention is that you can off load cameras to a software and hardware server. These have their advantages but can be overkill depending on what you plan to do with your cameras.
 
 
 
 ## How to get working video streams
 
 IMPORTANT:
-The bindings file server works by allowing access to the snapshot and video streams with no user/password for requests that come from an IP located in the white list. Requests from outside IP's or internal requests not on the white list will fail to get any answer. If you prefer to use your own firewall instead, you can also choose to make the ip whitelist equal "DISABLE" to turn this feature off and then all internal IP's will have access. All external IP access is still blocked.
+The binding has its own file server that works by allowing access to the snapshot and video streams with no user/password for requests that come from an IP located in the white list. Requests from outside IP's or internal requests not on the white list will fail to get any answer. If you prefer to use your own firewall instead, you can also choose to make the ip whitelist equal "DISABLE" to turn this feature off and then all internal IP's will have access. All external IP access should still be blocked.
 
 There are now multiple ways to get a moving picture:
+
 + Animated GIF.
 + HLS (Http Live Streaming) which uses h264 that can be used to cast to Chromecast devices and works well in iOS/Apple devices.
 + MJPEG which uses multiple jpeg files one after another to create what is called MOTION JPEG. Whilst larger in size, it is more compatible.
@@ -415,13 +416,19 @@ sudo apt update && sudo apt install ffmpeg
 
 **MJPEG Streaming**
 
-Cameras that have MJPEG abilities and also an API can stream to openHAB with the MJPEG format. The main cameras that can do this are Amcrest, Dahua, Hikvision, Foscam HD and Instar HD. For cameras that do not auto detect the url for mjpeg streams, you will need to enter a working url for ``STREAM_URL_OVERRIDE`` This can be skipped for Amcrest, Dahua, Doorbird, Hikvision and Foscam HD. If you can not find STREAM_URL_OVERRIDE, you need to click on the pencil icon in PaperUI to edit the configuration and then scroll to the very bottom of the page and click on the SHOW MORE link.
+Cameras that have MJPEG abilities and also an API can stream to openHAB with the MJPEG format and Ffmpeg does not need to be installed. The main cameras that can do this are Amcrest, Dahua, Hikvision, Foscam HD and Instar HD. For cameras that do not auto detect the url for mjpeg streams, you will need to enter a working url for ``STREAM_URL_OVERRIDE`` This can be skipped for the already mentioned brands but check for any special setup steps for your brand in this readme. If you can not find STREAM_URL_OVERRIDE, you need to click on the pencil icon in PaperUI to edit the configuration and then scroll to the very bottom of the page and click on the SHOW MORE link.
 
-If your camera can not do MJPEG you can use this method to turn a h.264 stream into MJPEG steam.
+To request the mjpeg stream from the binding, all you need to do is use this link changing the IP to that of your Openhab server and the SERVER_PORT to match the settings in the bindings setup for that camera. ipcamera.mjpeg is not changed and stays the same for all of your cameras, it is the port that changes between multiple cameras, the rest stays the same. Also see the sitemap examples below.
+
+<http://OpenhabIP:ServerPort/ipcamera.mjpeg>
+
+
+If your camera can not do MJPEG you can use this method to turn a h.264 stream into MJPEG stream.
 
 <https://community.openhab.org/t/how-to-display-rtsp-streams-from-ip-cameras-in-openhab-and-habpanel-linux-only/69021>
 
-Alternatively you can use 3rd party software running on a server to do the conversion. Converting from h264 to mjpeg takes a lot of CPU power to handle the conversion, so it is better to use HLS format as this will use h264 and not require a conversion that needs CPU grunt. You can run the opensource motion software on a raspberry Pi with this project.
+Alternatively you can use 3rd party software running on a server to do the conversion. Converting from h264 to mjpeg takes a lot of CPU power to handle the conversion, so it is better to use HLS format as this will use h264 and not require a conversion that needs CPU grunt. You can run the open source motion software on a raspberry Pi with this project.
+
 <https://github.com/ccrisan/motioneyeos/wiki>
 
 
@@ -463,7 +470,8 @@ Thing ipcamera:DAHUA:001 [
     POLL_CAMERA_MS=2000,
     SERVER_PORT=54321,
     IP_WHITELIST="(192.168.1.120)(192.168.1.33)(192.168.1.74)",
-    IMAGE_UPDATE_EVENTS=0,
+    IMAGE_UPDATE_EVENTS=1,
+    UPDATE_IMAGE=false,
     FFMPEG_OUTPUT="/tmpfs/camera1/", 
     FFMPEG_INPUT="rtsp://192.168.1.22:554/cam/realmonitor?channel=1&subtype=0"
 ]
@@ -510,7 +518,12 @@ Some browsers require larger segment sizes to prevent choppy playback, this can 
 
 **Animated GIF feature**
 
-The cameras have a channel called `updateGif` and when this switch is turned 'ON' (either by a rule or manually) the binding will create an animated GIF called ipcamera.gif in the ffmpeg output folder. Once the file is created the switch will turn 'OFF' and this can be used to trigger a rule to send the picture via email, pushover or telegram messages. This feature saves you from using sleep commands in your rules to ensure a file is created as the control only turns off when the file is actually created. The switch can be turned on with a rule triggered by an external zwave PIR sensor or the cameras own motion alarm, the choice and the logic can be created by yourself. The feature has two options called preroll and postroll to be aware of. When preroll is 0 (the default) the binding will use the RTSP stream to fetch the amount of seconds specified in the postroll config to create the GIF from. By changing to a preroll value above 0 the binding will change to using snapshots as the source and this requires the image channel to be updating and the time between the snapshots is the Polling time of the camera which is 2 seconds by default and can be raised or lowered to 1 second if you desire. The snapshots are saved to disk and can be used as a feature that is described in the snapshot section above in more detail.
+The cameras have a channel called `updateGif` and when this switch is turned 'ON' (either by a rule or manually) the binding will create an animated GIF called ipcamera.gif in the ffmpeg output folder. Once the file is created the switch will turn 'OFF' and this can be used to trigger a rule to send the picture via email, pushover or telegram messages. This feature saves you from using sleep commands in your rules to ensure a file is created as the control only turns off when the file is actually created. The switch can be turned on with a rule triggered by an external zwave PIR sensor or the cameras own motion alarm, the choice and the logic can be created by yourself. The feature has two options called preroll and postroll to be aware of. When preroll is 0 (the default) the binding will use the RTSP stream to fetch the amount of seconds specified in the postroll config to create the GIF from. By changing to a preroll value above 0 the binding will change to using snapshots as the source and this requires the jpeg to be updating. The time between the snapshots is the polling time of the camera (2 seconds by default) and can be raised or lowered to 1 second if you desire. The snapshots are saved to disk and can be used as a feature that is described in the snapshot section above in more detail.
+
+You can request the gif by using this url, or by the path to where the file is stored:
+
+<http://OpenhabIP:ServerPort/ipcamera.gif>
+
 
 .items
 
