@@ -32,6 +32,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -42,7 +43,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import javax.xml.soap.SOAPException;
 
-import org.apache.commons.collections.buffer.CircularFifoBuffer;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.PercentType;
@@ -148,7 +148,7 @@ public class IpCameraHandler extends BaseThingHandler {
     private EventLoopGroup serversLoopGroup = new NioEventLoopGroup();
     private FullHttpRequest putRequestWithBody;
     private String nvrChannel;
-    private CircularFifoBuffer fifoSnapshotBuffer;
+    private LinkedList<byte[]> fifoSnapshotBuffer = new LinkedList<byte[]>();
     private int preroll, postroll, snapCount = 0;
     private boolean updateImage = true;
     private byte lowPriorityCounter = 0;
@@ -719,6 +719,9 @@ public class IpCameraHandler extends BaseThingHandler {
                                     }
                                     if (preroll > 0) {
                                         fifoSnapshotBuffer.add(lastSnapshot);
+                                        if (fifoSnapshotBuffer.size() > (preroll + postroll)) {
+                                            fifoSnapshotBuffer.removeFirst();
+                                        }
                                     }
                                     currentSnapshot = lastSnapshot;
                                     lastSnapshot = null;
@@ -1651,7 +1654,7 @@ public class IpCameraHandler extends BaseThingHandler {
         password = (config.get(CONFIG_PASSWORD) == null) ? null : config.get(CONFIG_PASSWORD).toString();
         preroll = Integer.parseInt(config.get(CONFIG_GIF_PREROLL).toString());
         postroll = Integer.parseInt(config.get(CONFIG_GIF_POSTROLL).toString());
-        fifoSnapshotBuffer = new CircularFifoBuffer(preroll + postroll);
+        // fifoSnapshotBuffer = new CircularFifoBuffer(preroll + postroll);
         updateImageEvents = config.get(CONFIG_IMAGE_UPDATE_EVENTS).toString();
         updateImage = (boolean) config.get(CONFIG_UPDATE_IMAGE);
 
@@ -1723,7 +1726,7 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     private void restart() {
-        logger.info("ipCamera restarting.");
+        logger.debug("ipCamera restart() called.");
 
         basicAuth = null; // clear out stored password hash
         useDigestAuth = false;
