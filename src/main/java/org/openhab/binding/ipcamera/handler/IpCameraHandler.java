@@ -1654,7 +1654,6 @@ public class IpCameraHandler extends BaseThingHandler {
         password = (config.get(CONFIG_PASSWORD) == null) ? null : config.get(CONFIG_PASSWORD).toString();
         preroll = Integer.parseInt(config.get(CONFIG_GIF_PREROLL).toString());
         postroll = Integer.parseInt(config.get(CONFIG_GIF_POSTROLL).toString());
-        // fifoSnapshotBuffer = new CircularFifoBuffer(preroll + postroll);
         updateImageEvents = config.get(CONFIG_IMAGE_UPDATE_EVENTS).toString();
         updateImage = (boolean) config.get(CONFIG_UPDATE_IMAGE);
 
