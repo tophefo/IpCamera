@@ -201,7 +201,7 @@ public class IpCameraHandler extends BaseThingHandler {
     public Float tiltRangeMax = 1.0f;
     public Float zoomMin = 0.0f;
     public Float zoomMax = 1.0f;
-    private Boolean ptzDevice = true;
+    private Boolean ptzDevice = false;
     // These hold the cameras PTZ position in the range that the camera uses, ie
     // mine is -1 to +1
     public Float currentPanCamValue = 0.0f;
@@ -1140,7 +1140,10 @@ public class IpCameraHandler extends BaseThingHandler {
         if (command.toString() == "REFRESH") {
             switch (channelUID.getId()) {
                 case CHANNEL_PAN:
-                    getAbsolutePan();
+                    if (ptzDevice == true) {
+                        onvifManager.sendOnvifRequest(onvifDevice,
+                                new PTZRequest("GetStatus", listOfMediaProfiles.get(selectedMediaProfile)));
+                    }
                     return;
                 case CHANNEL_TILT:
                     getAbsoluteTilt();
@@ -1240,17 +1243,12 @@ public class IpCameraHandler extends BaseThingHandler {
     void getAbsolutePan() {
 
         if (ptzDevice == true) {
+            currentPanPercentage = (((panRangeMin - currentPanCamValue) * -1) / ((panRangeMin - panRangeMax) * -1))
+                    * 100;
 
-            onvifManager.sendOnvifRequest(onvifDevice,
-                    new PTZRequest("GetStatus", listOfMediaProfiles.get(selectedMediaProfile)));
+            // currentPanCamValue = ((((panRangeMin - panRangeMax) * -1) / 100) * currentPanPercentage
 
-            currentPanPercentage = (((panRangeMin - currentPanCamValue) * -1)
-
-                    / ((panRangeMin - panRangeMax) * -1)) * 100;
-
-            currentPanCamValue = ((((panRangeMin - panRangeMax) * -1) / 100) * currentPanPercentage
-
-                    + panRangeMin);
+            // + panRangeMin);
 
             logger.debug("Pan is updating to:{} and the cam value is {}", Math.round(currentPanPercentage),
 
@@ -1266,9 +1264,9 @@ public class IpCameraHandler extends BaseThingHandler {
 
                     / ((tiltRangeMin - tiltRangeMax) * -1)) * 100;
 
-            currentTiltCamValue = ((((tiltRangeMin - tiltRangeMax) * -1) / 100) * currentTiltPercentage
+            // currentTiltCamValue = ((((tiltRangeMin - tiltRangeMax) * -1) / 100) * currentTiltPercentage
 
-                    + tiltRangeMin);
+            // + tiltRangeMin);
 
             logger.debug("Tilt is updating to:{} and the cam value is {}", Math.round(currentTiltPercentage),
 
@@ -1285,7 +1283,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
                     * 100;
 
-            currentZoomCamValue = ((((zoomMin - zoomMax) * -1) / 100) * currentZoomPercentage + zoomMin);
+            // currentZoomCamValue = ((((zoomMin - zoomMax) * -1) / 100) * currentZoomPercentage + zoomMin);
 
             logger.debug("Zoom is updating to:{} and the cam value is {}", Math.round(currentZoomPercentage),
 
@@ -1335,29 +1333,37 @@ public class IpCameraHandler extends BaseThingHandler {
 
     void processPTZLocation(String result) {
 
-        int beginIndex = result
-                .indexOf("PanTilt space=\"http://www.onvif.org/ver10/tptz/PanTiltSpaces/PositionGenericSpace\" x=\"");
-        int endIndex = result.indexOf("\"", beginIndex);
+        logger.debug("Process new PTZ location now");
+
+        int beginIndex = result.indexOf("PanTiltSpaces/PositionGenericSpace\" x=\"");
+        int endIndex = result.indexOf("\"", (beginIndex + 39));
         if (beginIndex >= 0 && endIndex >= 0) {
-            currentPanCamValue = Float.parseFloat(result.substring(beginIndex, endIndex));
+            logger.info("result is {}", result.substring(beginIndex + 39, endIndex));
+            currentPanCamValue = Float.parseFloat(result.substring(beginIndex + 39, endIndex));
+            logger.debug("Pan is now {}", currentPanCamValue);
+            getAbsolutePan();
         } else {
             logger.info("turning off PTZ functions as camera appears not to support GetStatus");
             ptzDevice = false;
         }
 
         beginIndex = result.indexOf("y=\"");
-        endIndex = result.indexOf("\"", beginIndex);
+        endIndex = result.indexOf("\"", (beginIndex + 3));
         if (beginIndex >= 0 && endIndex >= 0) {
-            currentTiltCamValue = Float.parseFloat(result.substring(beginIndex, endIndex));
+            currentTiltCamValue = Float.parseFloat(result.substring(beginIndex + 3, endIndex));
+            logger.debug("Tilt is now {}", currentTiltCamValue);
+            getAbsoluteTilt();
         } else {
             logger.info("turning off PTZ functions as camera appears not to support GetStatus");
             ptzDevice = false;
         }
-        beginIndex = result
-                .indexOf("Zoom space=\"http://www.onvif.org/ver10/tptz/ZoomSpaces/PositionGenericSpace\" x=\"");
-        endIndex = result.indexOf("\"", beginIndex);
+
+        beginIndex = result.indexOf("ZoomSpaces/PositionGenericSpace\" x=\"");
+        endIndex = result.indexOf("\"", (beginIndex + 36));
         if (beginIndex >= 0 && endIndex >= 0) {
-            currentZoomCamValue = Float.parseFloat(result.substring(beginIndex, endIndex));
+            currentZoomCamValue = Float.parseFloat(result.substring(beginIndex + 36, endIndex));
+            logger.debug("Zoom is now {}", currentZoomCamValue);
+            getAbsoluteZoom();
         } else {
             logger.info("turning off PTZ functions as camera appears not to support GetStatus");
             ptzDevice = false;
@@ -1417,6 +1423,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         snapshotUri = org.openhab.binding.ipcamera.onvif.GetSnapshotUri
                                 .getParsedResult(response.getXml());
                     } else if (response.getXml().contains("GetStatusResponse")) {
+                        logger.debug("Found a status response");
                         processPTZLocation(response.getXml());
                     }
                 }
@@ -1430,13 +1437,15 @@ public class IpCameraHandler extends BaseThingHandler {
             onvifManager.getServices(onvifDevice, new OnvifServicesListener() {
                 @Override
                 public void onServicesReceived(OnvifDevice onvifDevice, OnvifServices paths) {
-                    logger.debug("We got a ONVIF SERVICE:{}", paths);
+                    ptzDevice = true;
+                    logger.info("We sucessfully connected to a ONVIF SERVICE:{}", paths);
                 }
             });
 
             onvifManager.getDeviceInformation(onvifDevice, new OnvifDeviceInformationListener() {
                 @Override
                 public void onDeviceInformationReceived(OnvifDevice device, OnvifDeviceInformation deviceInformation) {
+                    ptzDevice = true;
                     logger.debug("We got ONVIF DEV INFO:{}", deviceInformation);
                 }
             });
@@ -1679,9 +1688,9 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
                 break;
         }
+
         /*
-         *
-         * //this works need to move the new class
+         * // this works need to move to a new discovery class
          * DiscoveryManager manager = new DiscoveryManager();
          * manager.setDiscoveryTimeout(10000);
          * manager.discover(new DiscoveryListener() {
@@ -1697,8 +1706,8 @@ public class IpCameraHandler extends BaseThingHandler {
          * logger.info("Devices found:{} ", device.getHostName());
          * }
          * }
-         *
          * });
+         *
          */
 
         cameraConnectionJob = cameraConnection.schedule(pollingCameraConnection, 1, TimeUnit.SECONDS);
