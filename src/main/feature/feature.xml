@@ -11,6 +11,6 @@
         <bundle dependency="true">mvn:io.netty/netty-codec/${netty.version}</bundle>
         <bundle dependency="true">mvn:io.netty/netty-resolver/${netty.version}</bundle>
         <bundle dependency="true">mvn:io.netty/netty-handler/${netty.version}</bundle>
-        <bundle start-level="99">mvn:org.openhab.addons.bundles/org.openhab.binding.ipcamera/${project.version}</bundle>
+        <bundle start-level="80">mvn:org.openhab.addons.bundles/org.openhab.binding.ipcamera/${project.version}</bundle>
     </feature>
 </features>
