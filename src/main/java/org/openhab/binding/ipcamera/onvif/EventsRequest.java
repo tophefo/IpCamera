@@ -14,7 +14,6 @@ package org.openhab.binding.ipcamera.onvif;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.openhab.binding.ipcamera.handler.IpCameraHandler;
 
 import be.teletask.onvif.models.OnvifMediaProfile;
 import be.teletask.onvif.models.OnvifType;
@@ -30,7 +29,7 @@ public class EventsRequest implements OnvifRequest {
 
     String profileToken = "1";
     String requestType = "GetConfigurations";
-    private IpCameraHandler thisCamera;
+    // private IpCameraHandler thisCamera;
 
     public EventsRequest(String requestType, OnvifMediaProfile onvifMediaProfile) {
         this.requestType = requestType;
@@ -39,14 +38,17 @@ public class EventsRequest implements OnvifRequest {
 
     public EventsRequest(String string, OnvifMediaProfile onvifMediaProfile, @Nullable ThingHandler handler) {
         this(string, onvifMediaProfile);
-        thisCamera = (IpCameraHandler) handler;
+        // thisCamera = (IpCameraHandler) handler;
     }
 
     @Override
     public String getXml() {
         switch (requestType) {
-            case "GetEventProperties": // Note: this is not yet tested it could be wrong.
+            case "GetEventProperties": // Note: this is not yet tested but it should be right.
                 return "<GetEventProperties xmlns=\"http://www.onvif.org/ver10/events/wsdl\"></GetEventProperties>";
+            // Need to implement the two below before onvif events can be polled and parsed.
+            // CreatePullPointSubscription
+            // PullMessagesRequest
         }
         return "notfound";
     }
@@ -57,13 +59,6 @@ public class EventsRequest implements OnvifRequest {
     }
 
     public String getParsedResult(String result) {
-        // to do, change below
-        int beginIndex = result.indexOf("<tt:Uri>");
-        int endIndex = result.indexOf("</tt:Uri>");
-        if (beginIndex >= 0 && endIndex >= 0) {
-            return result.substring(beginIndex, endIndex);
-        } else {
-            return "noUri";
-        }
+        return "notImplementedYet";
     }
 }

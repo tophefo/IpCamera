@@ -78,15 +78,4 @@ public class PTZRequest implements OnvifRequest {
     public OnvifType getType() {
         return OnvifType.CUSTOM;
     }
-
-    public String getParsedResult(String result) {
-        // to do, change below
-        int beginIndex = result.indexOf("<tt:Uri>");
-        int endIndex = result.indexOf("</tt:Uri>");
-        if (beginIndex >= 0 && endIndex >= 0) {
-            return result.substring(beginIndex, endIndex);
-        } else {
-            return "noUri";
-        }
-    }
 }

@@ -1,6 +1,6 @@
 # IP Camera Binding
 
-This binding allows you to use IP cameras in openHAB 2 and has multiple features and ways to work around common issues that cameras present. Please take the time to read through this guide as it will show hidden features and different ways to work with cameras that you may not know about. I highly recommend purchasing a brand of camera that has an open API to give you easy access to alarms and many other advanced features that the binding has implemented. To see what each brand has implemented from the API, please see this post:
+This binding allows you to use IP cameras in openHAB 2 and has multiple features and ways to work around common challenges that cameras present. Please take the time to read through this guide as it will show hidden features and different ways to work with cameras that you may not know about. I highly recommend purchasing a brand of camera that has an open API to give you easy access to alarms and many other advanced features that the binding has implemented. You will have a much more enjoyable time with these cameras. To see what each brand has implemented from the API, please see this post:
 
 <https://community.openhab.org/t/ipcamera-new-ip-camera-binding/42771>
 
@@ -36,12 +36,12 @@ If using openHAB's textual configuration or when needing to setup HABPANEL/sitem
 | `HIKVISION` | Use for all current HIKVISION Cameras as they support an API as well as ONVIF. |
 | `HTTPONLY` | For any camera that is not ONVIF compatible yet still has the ability to fetch a snapshot or stream with a url. |
 | `INSTAR` | Use for all current INSTAR Cameras as they support an API as well as ONVIF. |
-| `ONVIF` | Use for all ONVIF Cameras from any brand that do not have an API. You gain Pan Tilt and Zoom controls and auto discovery of the snapshot and rtsp urls over a basic HTTPONLY thing. If your camera does not have PTZ you may prefer to set it up as HTTPONLY due to the camera connecting faster if it skips the extra Onvif functions. |
+| `ONVIF` | Use for all ONVIF Cameras from any brand that does not have an API. You gain Pan Tilt and Zoom controls and auto discovery of the snapshot and rtsp urls over a basic HTTPONLY thing. If your camera does not have PTZ you may prefer to set it up as HTTPONLY due to the camera connecting faster if it skips the extra Onvif functions. |
 
 
 ## Discovery
 
-Auto discovery is not supported currently and I would love a PR if someone has experience finding cameras on a network. ONVIF documents a way to use UDP multicast to find cameras, however some cameras have this feature disabled by default for security reasons in their firmware or default settings hence why this is not high on the list to do. Currently you need to manually add the IP camera either via PaperUI or textual configuration which both are covered below in more detail.
+Auto discovery is not supported currently but 20% of the work is already done so would be very easy to add this. Currently you need to manually add the IP camera either via PaperUI, or by textual configuration which both are covered below in more detail. Textual config should be preferred whilst the binding is under going a lot of changes.
 
 ## Binding Configuration
 
@@ -56,7 +56,7 @@ The configuration parameters that can be used in textual configuration are in CA
 | `IPADDRESS`| Local address of your camera or NVR |
 | `PORT`| This port will be used for HTTP calls for fetching the snapshot and alarm states. |
 | `ONVIF_PORT`| The port your camera uses for ONVIF connections. This is needed for PTZ movement and auto discovery of RTSP and snapshot URLs. Giving the wrong port will cause camera to connect faster if you manually provide the URLs. |
-| `SERVER_PORT`| The port that will serve the video streams and images back to openHAB without authentication. It must be unique and unused for each camera that you setup. Setting the port to -1 (default), will turn all file serving off and some features may fail to work. |
+| `SERVER_PORT`| The port that will serve the video streams and images back to openHAB without authentication. It must be unique and unused for each camera that you setup. Setting the port to -1 (default), will turn all file serving off and some features will fail to work. |
 | `USERNAME`| Username used to connect to your camera via Basic auth. Leave blank if your camera does not use login details. |
 | `PASSWORD`| Leave blank if your camera does not use login details. |
 | `ONVIF_MEDIA_PROFILE`| 0 is your cameras Mainstream and the numbers above 0 are the substreams if your camera has any. |
@@ -123,7 +123,7 @@ Thing ipcamera:HIKVISION:DrivewayCam "DrivewayCam" @ "Cameras"
     GIF_PREROLL=0,
     GIF_POSTROLL=6,
     FFMPEG_OUTPUT="/tmpfs/DrivewayCam/",
-    FFMPEG_INPUT="rtsp://192.168.1.62:554/Streaming/Channels/103?transportmode=unicast&profile=Profile_1"
+  FFMPEG_INPUT="rtsp://192.168.1.62:554/Streaming/Channels/103?transportmode=unicast&profile=Profile_1"
 ]
 
 // Will autofetch the urls from Onvif so they are not defined here.
@@ -387,11 +387,11 @@ There are a number of ways to use snapshots with this binding, however the best 
 
 Ways to use snapshots are:
 
-+ Use the cameras URL and fetch it directly so it passes from the camera to your end device ie Tablet without passing any data through the openHAB server. For cameras like Dahua that refuse to allow DIGEST to be turned off this is not an option, plus the binding has some advantages which are explained below so even if your camera can work directly you may not wish to do so.
-+ Request a snapshot with the url ``http://192.168.xxx.xxx:54321/ipcamera.jpg`` this will return the current snapshot which only works if the binding is setup to fetch jpg snapshots. This file does not exist on disk and is served out of ram to keep disk writes to a minimum with this binding. It also means the binding can serve a jpg file much faster than a camera can directly as a camera usually waits for a keyframe, then compresses the data, before it can be sent which all takes time.
++ Use the cameras URL and fetch it directly so it passes from the camera to your end device ie Tablet without passing any data through the openHAB server. For cameras like Dahua that refuse to allow DIGEST to be turned off this is not an option, plus the binding has some advantages which are explained below so even if your camera can work directly, you may not wish to do so.
++ Request a snapshot with the url ``http://192.168.xxx.xxx:54321/ipcamera.jpg`` this will return the current snapshot which only works if the binding is setup to fetch jpg snapshots. Replace 54321 with your SERVER_PORT. This file does not exist on disk and is served out of ram to keep disk writes to a minimum with this binding. It also means the binding can serve a jpg file much faster than a camera can directly as a camera usually waits for a keyframe, then has to compresses the data, before it can be sent. All of this takes time giving you a delay compared to serving the file from Ram.
 + Use the Create GIF feature (explained in more detail below) and use a preroll value >0. This creates a number of snapshots in the ffmpeg output folder called snapshotXXX.jpg where XXX starts at 0 and increases each poll amount of time. This means you can get a snapshot from an exact amount of time before, on or after triggering the GIF to be created. Handy for cameras which lag due to slow processors and buffering. These snapshots can be fetched either directly as they exist on disk, or via this url format. ``http://192.168.xxx.xxx:54321/snapshot0.jpg`` Where the IP is your Openhab server and the port is what is setup in the binding as the SERVER_PORT.
 + You can also read the image data directly and use it in rules, there are some examples on the forum how to do this, however it is far easier to use the above methods.
-+ Also worth a mention is that you can off load cameras to a software and hardware server. These have their advantages but can be overkill depending on what you plan to do with your cameras.
++ Also worth a mention is that you can off load cameras to a software and hardware server. These have their advantages but can be overkill depending on what you plan to do with your cameras. The motion project is one example
 
 
 

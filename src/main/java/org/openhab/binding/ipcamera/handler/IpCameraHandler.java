@@ -173,7 +173,7 @@ public class IpCameraHandler extends BaseThingHandler {
     private String basicAuth = null;
     public boolean useDigestAuth = false;
 
-    private String snapshotUri = null;
+    public String snapshotUri = null;
     public String mjpegUri = null;
     ChannelFuture serverFuture = null;
     public int serverPort = 0;
@@ -183,7 +183,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
     public String ipAddress = "empty";
 
-    private String updateImageEvents;
+    public String updateImageEvents;
     public boolean audioAlarmUpdateSnapshot = false;
     public boolean motionAlarmUpdateSnapshot = false;
     boolean isOnline = false; // Used so only 1 error is logged when a network issue occurs.
@@ -910,6 +910,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     InetAddress[] ipConnections = InetAddress.getAllByName(inet.getCanonicalHostName());
                     if (ipConnections != null) {
                         for (int i = 0; i < ipConnections.length; i++) {
+                            logger.debug("Stream Server possible connections are:{}", ipConnections[i]);
                             if (ipConnections[i].isSiteLocalAddress()) {
                                 hostIp = ipConnections[i].getHostAddress();
                                 // logger.debug("Stream Server is serving on IP:{}", ip);
@@ -946,6 +947,8 @@ public class IpCameraHandler extends BaseThingHandler {
                             new StringType("http://" + hostIp + ":" + serverPort + "/ipcamera.mjpeg"));
                     updateState(CHANNEL_HLS_URL,
                             new StringType("http://" + hostIp + ":" + serverPort + "/ipcamera.m3u8"));
+                    updateState(CHANNEL_IMAGE_URL,
+                            new StringType("http://" + hostIp + ":" + serverPort + "/ipcamera.jpg"));
                 } catch (Exception e) {
                     logger.error("Exception occured starting the new streaming server:{}", e);
                 }
@@ -1003,13 +1006,11 @@ public class IpCameraHandler extends BaseThingHandler {
     public void setupFfmpegFormat(String format) {
         // Make sure the folder exists, if not create it.
         new File(config.get(CONFIG_FFMPEG_OUTPUT).toString()).mkdirs();
-
         switch (format) {
             case "HLS":
                 if (ffmpegHLS == null) {
                     String ffmpegInput = (config.get(CONFIG_FFMPEG_INPUT) == null) ? rtspUri
                             : config.get(CONFIG_FFMPEG_INPUT).toString();
-
                     if (ffmpegInput.contains(":554")) {
                         ffmpegHLS = new Ffmpeg((IpCameraHandler) thing.getHandler(),
                                 config.get(CONFIG_FFMPEG_LOCATION).toString(), "-rtsp_transport tcp", ffmpegInput,
@@ -1031,30 +1032,25 @@ public class IpCameraHandler extends BaseThingHandler {
                         ffmpegGIF = new Ffmpeg((IpCameraHandler) thing.getHandler(),
                                 config.get(CONFIG_FFMPEG_LOCATION).toString(), "-y -f image2 -framerate 1",
                                 config.get(CONFIG_FFMPEG_OUTPUT).toString() + "snapshot%d.jpg",
-                                config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
+                                "-frames:v " + (preroll + postroll) + " "
+                                        + config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
                                 config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.gif", null, null);
                     } else {
-
                         String ffmpegInput = (config.get(CONFIG_FFMPEG_INPUT) == null) ? rtspUri
                                 : config.get(CONFIG_FFMPEG_INPUT).toString();
-
                         String inOptions = "-y -t " + postroll + " -rtsp_transport tcp";
                         if (!ffmpegInput.contains("rtsp")) {
                             inOptions = "-y -t " + postroll;
                         }
-
                         ffmpegGIF = new Ffmpeg((IpCameraHandler) thing.getHandler(),
                                 config.get(CONFIG_FFMPEG_LOCATION).toString(), inOptions, ffmpegInput,
                                 config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
                                 config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.gif", username, password);
-
                     }
                 }
-
                 if (preroll > 0) {
                     storeSnapshots();
                 }
-
                 ffmpegGIF.setFormat(format);
                 ffmpegGIF.startConverting();
                 break;
@@ -1243,58 +1239,32 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     void getAbsolutePan() {
-
         if (ptzDevice == true) {
             currentPanPercentage = (((panRangeMin - currentPanCamValue) * -1) / ((panRangeMin - panRangeMax) * -1))
                     * 100;
-
-            // currentPanCamValue = ((((panRangeMin - panRangeMax) * -1) / 100) * currentPanPercentage
-
-            // + panRangeMin);
-
             logger.debug("Pan is updating to:{} and the cam value is {}", Math.round(currentPanPercentage),
-
                     currentPanCamValue);
-
             updateState(CHANNEL_PAN, new PercentType(Math.round(currentPanPercentage)));
         }
     }
 
     void getAbsoluteTilt() {
         if (ptzDevice == true) {
-            currentTiltPercentage = (((tiltRangeMin - currentTiltCamValue) * -1)
-
-                    / ((tiltRangeMin - tiltRangeMax) * -1)) * 100;
-
-            // currentTiltCamValue = ((((tiltRangeMin - tiltRangeMax) * -1) / 100) * currentTiltPercentage
-
-            // + tiltRangeMin);
-
+            currentTiltPercentage = (((tiltRangeMin - currentTiltCamValue) * -1) / ((tiltRangeMin - tiltRangeMax) * -1))
+                    * 100;
             logger.debug("Tilt is updating to:{} and the cam value is {}", Math.round(currentTiltPercentage),
-
                     currentTiltCamValue);
-
             updateState(CHANNEL_TILT, new PercentType(Math.round(currentTiltPercentage)));
         }
     }
 
     void getAbsoluteZoom() {
         if (ptzDevice == true) {
-
-            currentZoomPercentage = (((zoomMin - currentZoomCamValue) * -1) / ((zoomMin - zoomMax) * -1))
-
-                    * 100;
-
-            // currentZoomCamValue = ((((zoomMin - zoomMax) * -1) / 100) * currentZoomPercentage + zoomMin);
-
+            currentZoomPercentage = (((zoomMin - currentZoomCamValue) * -1) / ((zoomMin - zoomMax) * -1)) * 100;
             logger.debug("Zoom is updating to:{} and the cam value is {}", Math.round(currentZoomPercentage),
-
                     currentZoomCamValue);
-
             updateState(CHANNEL_ZOOM, new PercentType(Math.round(currentZoomPercentage)));
-
         }
-
     }
 
     void setAbsolutePan(Float panValue) {
@@ -1469,6 +1439,9 @@ public class IpCameraHandler extends BaseThingHandler {
                 @Override
                 public void onMediaProfilesReceived(OnvifDevice device, List<OnvifMediaProfile> mediaProfiles) {
                     listOfMediaProfiles = mediaProfiles;
+                    for (OnvifMediaProfile profile : mediaProfiles) {
+                        logger.debug("Media Profile found:{}", profile);
+                    }
 
                     logger.debug("Checking the selected Media Profile is a valid number.");
 

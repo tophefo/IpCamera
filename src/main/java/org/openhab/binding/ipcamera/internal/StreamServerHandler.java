@@ -85,6 +85,9 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                         sendFile(ctx, httpRequest.uri(), "image/gif");
                     } else if (httpRequest.uri().contains(".jpg")) {
                         if (httpRequest.uri().contains("ipcamera.jpg")) {
+                            if (!ipCameraHandler.updateImageEvents.contentEquals("1")) {
+                                ipCameraHandler.sendHttpGET(ipCameraHandler.snapshotUri);
+                            }
                             sendSnapshotImage(ctx, "image/jpeg");
                         } else {
                             // Allow access to the preroll and postroll jpg files
