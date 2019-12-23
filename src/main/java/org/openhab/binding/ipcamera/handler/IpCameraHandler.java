@@ -194,6 +194,8 @@ public class IpCameraHandler extends BaseThingHandler {
 
     private OnvifManager onvifManager = new OnvifManager();
     boolean movePTZ = false; // delay movements so all made at once
+    public String ptzNodeToken = "nonefoundyet";
+    public String ptzConfigToken = "nonefoundyet";
     // private PTZVector ptzLocation;
     public Float panRangeMin = -1.0f;
     public Float panRangeMax = 1.0f;
@@ -1335,15 +1337,15 @@ public class IpCameraHandler extends BaseThingHandler {
 
         logger.debug("Process new PTZ location now");
 
-        int beginIndex = result.indexOf("PanTiltSpaces/PositionGenericSpace\" x=\"");
-        int endIndex = result.indexOf("\"", (beginIndex + 39));
+        int beginIndex = result.indexOf("x=\"");
+        int endIndex = result.indexOf("\"", (beginIndex + 3));
         if (beginIndex >= 0 && endIndex >= 0) {
-            logger.info("result is {}", result.substring(beginIndex + 39, endIndex));
-            currentPanCamValue = Float.parseFloat(result.substring(beginIndex + 39, endIndex));
+            logger.info("result is {}", result.substring(beginIndex + 3, endIndex));
+            currentPanCamValue = Float.parseFloat(result.substring(beginIndex + 3, endIndex));
             logger.debug("Pan is now {}", currentPanCamValue);
             getAbsolutePan();
         } else {
-            logger.info("turning off PTZ functions as camera appears not to support GetStatus");
+            logger.warn("turning off PTZ functions as binding could not determin current PTZ locations.");
             ptzDevice = false;
         }
 
@@ -1354,18 +1356,18 @@ public class IpCameraHandler extends BaseThingHandler {
             logger.debug("Tilt is now {}", currentTiltCamValue);
             getAbsoluteTilt();
         } else {
-            logger.info("turning off PTZ functions as camera appears not to support GetStatus");
+            logger.warn("turning off PTZ functions as binding could not determin current PTZ locations.");
             ptzDevice = false;
         }
 
-        beginIndex = result.indexOf("ZoomSpaces/PositionGenericSpace\" x=\"");
-        endIndex = result.indexOf("\"", (beginIndex + 36));
+        beginIndex = result.lastIndexOf("x=\"");
+        endIndex = result.indexOf("\"", (beginIndex + 3));
         if (beginIndex >= 0 && endIndex >= 0) {
-            currentZoomCamValue = Float.parseFloat(result.substring(beginIndex + 36, endIndex));
+            currentZoomCamValue = Float.parseFloat(result.substring(beginIndex + 3, endIndex));
             logger.debug("Zoom is now {}", currentZoomCamValue);
             getAbsoluteZoom();
         } else {
-            logger.info("turning off PTZ functions as camera appears not to support GetStatus");
+            logger.warn("turning off PTZ functions as binding could not determin current PTZ locations.");
             ptzDevice = false;
         }
     }
@@ -1416,7 +1418,6 @@ public class IpCameraHandler extends BaseThingHandler {
             onvifManager.setOnvifResponseListener(new OnvifResponseListener() {
                 @Override
                 public void onResponse(OnvifDevice onvifDevice, OnvifResponse response) {
-                    logger.debug("We got a ONVIF !!!!!!!!!!! RESPONSE !!!!!!!!!!!!!!!!!!! {}", response);
                     logger.debug("We got a ONVIF !!!!!!!!!!! RESPONSE !!!!!!!!!!!!!!!!!!! {}", response.request());
                     logger.debug("We got a ONVIF !!!!!!!!!!! RESPONSE !!!!!!!!!!!!!!!!!!! {}", response.getXml());
                     if (response.request().toString().contains("org.openhab.binding.ipcamera.onvif.GetSnapshotUri")) {
@@ -1425,7 +1426,18 @@ public class IpCameraHandler extends BaseThingHandler {
                     } else if (response.getXml().contains("GetStatusResponse")) {
                         logger.debug("Found a status response");
                         processPTZLocation(response.getXml());
+                    } else if (response.getXml().contains("GetNodesResponse")) {
+                        logger.debug("Found a node response");
+                        ptzNodeToken = searchString(response.getXml(), "token=\"");
+
+                        onvifManager.sendOnvifRequest(onvifDevice, new PTZRequest("GetConfigurations",
+                                listOfMediaProfiles.get(selectedMediaProfile), thing.getHandler()));
+                    } else if (response.getXml().contains("GetConfigurationsResponse")) {
+                        ptzConfigToken = searchString(response.getXml(), "PTZConfiguration token=\"");
+                        onvifManager.sendOnvifRequest(onvifDevice, new PTZRequest("GetConfigurationOptions",
+                                listOfMediaProfiles.get(selectedMediaProfile), thing.getHandler()));
                     }
+
                 }
 
                 @Override
@@ -1460,7 +1472,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
                     if (selectedMediaProfile >= listOfMediaProfiles.size()) {
                         logger.warn(
-                                "The selected Media Profile in the binding is higher than the max supported profiles. Changing to use Media Profile 0.");
+                                "The selected Media Profile in the binding is higher than the max reported profiles. Changing to use Media Profile 0.");
                         selectedMediaProfile = 0;
                     }
 
@@ -1471,8 +1483,19 @@ public class IpCameraHandler extends BaseThingHandler {
                                 public void onMediaStreamURIReceived(OnvifDevice device, OnvifMediaProfile profile,
                                         String uri) {
                                     logger.debug("We got a ONVIF MEDIA URI:{}", uri);
+                                    if (rtspUri == null) {
+                                        rtspUri = uri;
+                                    }
                                 }
                             });
+
+                    if (snapshotUri == null) {
+                        onvifManager.sendOnvifRequest(onvifDevice,
+                                new GetSnapshotUri(listOfMediaProfiles.get(selectedMediaProfile)));
+                    }
+                    // needed for PTZ as we need the node profile
+                    onvifManager.sendOnvifRequest(onvifDevice,
+                            new PTZRequest("GetNodes", listOfMediaProfiles.get(selectedMediaProfile)));
 
                 }
             });
@@ -1499,9 +1522,6 @@ public class IpCameraHandler extends BaseThingHandler {
                     cameraConnectionJob = null;
                 }
             } else {
-                onvifManager.sendOnvifRequest(onvifDevice,
-                        new GetSnapshotUri(listOfMediaProfiles.get(selectedMediaProfile)));
-
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
                         "Camera failed to report a valid Snaphot URL, try over-riding the Snapshot URL auto detection by entering a known URL.");
                 logger.error(

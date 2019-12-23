@@ -47,8 +47,16 @@ public class PTZRequest implements OnvifRequest {
         switch (requestType) {
             case "GetConfigurations":
                 return "<GetConfigurations xmlns=\"http://www.onvif.org/ver20/ptz/wsdl\"></GetConfigurations>";
-            case "GetConfiguration":
-                return "<GetConfiguration xmlns=\"http://www.onvif.org/ver20/ptz/wsdl\"><PTZConfigurationToken>000</PTZConfigurationToken></GetConfiguration>";
+            case "GetConfigurationOptions":// needs handler in constructor!
+                return "<GetConfigurationOptions xmlns=\"http://www.onvif.org/ver20/ptz/wsdl\"><ConfigurationToken>"
+                        + thisCamera.ptzConfigToken + "</ConfigurationToken></GetConfigurationOptions>";
+            case "GetConfiguration":// needs handler in constructor!
+                return "<GetConfiguration xmlns=\"http://www.onvif.org/ver20/ptz/wsdl\"><PTZConfigurationToken>"
+                        + thisCamera.ptzConfigToken + "</PTZConfigurationToken></GetConfiguration>";
+            case "SetConfiguration":// needs handler in constructor!
+                return "<SetConfiguration xmlns=\"http://www.onvif.org/ver20/ptz/wsdl\"><PTZConfiguration><NodeToken>"
+                        + thisCamera.ptzNodeToken
+                        + "</NodeToken><DefaultAbsolutePantTiltPositionSpace><DefaultAbsolutePantTiltPositionSpace><DefaultAbsoluteZoomPositionSpace></DefaultAbsoluteZoomPositionSpace></PTZConfiguration></SetConfiguration>";
             case "AbsoluteMove": // needs handler in constructor!
                 return "<AbsoluteMove xmlns=\"http://www.onvif.org/ver20/ptz/wsdl\"><ProfileToken>" + profileToken
                         + "</ProfileToken><Position><PanTilt x=\"" + thisCamera.currentPanCamValue + "\" y=\""
