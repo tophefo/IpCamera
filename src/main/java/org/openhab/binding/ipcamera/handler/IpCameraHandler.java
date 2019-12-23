@@ -1423,6 +1423,8 @@ public class IpCameraHandler extends BaseThingHandler {
                     if (response.request().toString().contains("org.openhab.binding.ipcamera.onvif.GetSnapshotUri")) {
                         snapshotUri = org.openhab.binding.ipcamera.onvif.GetSnapshotUri
                                 .getParsedResult(response.getXml());
+
+                        cameraConnectionJob = cameraConnection.schedule(pollingCameraConnection, 2, TimeUnit.SECONDS);
                     } else if (response.getXml().contains("GetStatusResponse")) {
                         logger.debug("Found a status response");
                         processPTZLocation(response.getXml());
