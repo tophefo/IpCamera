@@ -24,12 +24,15 @@ import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -225,6 +228,8 @@ public class IpCameraHandler extends BaseThingHandler {
             logger.debug("Removing BASIC auth now and making it NULL.");
             basicAuth = null;
             return;
+        } else if (basicAuth != null) {
+            logger.error("Camera is reporting your username and/or password is wrong!");
         }
         if (username != null && password != null) {
             String authString = username + ":" + password;
@@ -897,6 +902,26 @@ public class IpCameraHandler extends BaseThingHandler {
 
     }
 
+    public String getLocalIpAddress() {
+        String ipAddress = null;
+        try {
+            for (Enumeration<NetworkInterface> enumNetworks = NetworkInterface.getNetworkInterfaces(); enumNetworks
+                    .hasMoreElements();) {
+                NetworkInterface networkInterface = enumNetworks.nextElement();
+                for (Enumeration<InetAddress> enumIpAddr = networkInterface.getInetAddresses(); enumIpAddr
+                        .hasMoreElements();) {
+                    InetAddress inetAddress = enumIpAddr.nextElement();
+                    ipAddress = new String(inetAddress.getHostAddress().toString());
+                    if (!inetAddress.isLoopbackAddress() && ipAddress.length() < 18) {
+                        return inetAddress.getHostAddress().toString();
+                    }
+                }
+            }
+        } catch (SocketException ex) {
+        }
+        return null;
+    }
+
     public void startStreamServer(boolean start) {
 
         if (!start) {
@@ -904,6 +929,14 @@ public class IpCameraHandler extends BaseThingHandler {
             serverBootstrap = null;
         } else {
             if (serverBootstrap == null) {
+
+                try {
+                    NetworkInterface.getNetworkInterfaces();
+                } catch (SocketException e1) {
+                    // TODO Auto-generated catch block
+                    e1.printStackTrace();
+                }
+
                 InetAddress inet;
                 try {
                     inet = InetAddress.getLocalHost();
@@ -913,7 +946,6 @@ public class IpCameraHandler extends BaseThingHandler {
                             logger.debug("Stream Server possible connections are:{}", ipConnections[i]);
                             if (ipConnections[i].isSiteLocalAddress()) {
                                 hostIp = ipConnections[i].getHostAddress();
-                                // logger.debug("Stream Server is serving on IP:{}", ip);
                             }
                         }
                     }
@@ -921,6 +953,12 @@ public class IpCameraHandler extends BaseThingHandler {
                 } catch (UnknownHostException e2) {
                     logger.error("Stream Server has an error finding an IP:{}", e2);
                 }
+
+                if (hostIp.contentEquals("0.0.0.0")) {
+                    hostIp = getLocalIpAddress();
+                    logger.debug("Alt Ip finder gives:{}", hostIp);
+                }
+
                 inet = null;
 
                 try {
@@ -1381,14 +1419,18 @@ public class IpCameraHandler extends BaseThingHandler {
 
             logger.debug("About to connect to the IP Camera using the ONVIF PORT at IP:{}:{}", ipAddress,
                     config.get(CONFIG_ONVIF_PORT).toString());
-
-            onvifDevice = new OnvifDevice(ipAddress + ":" + config.get(CONFIG_ONVIF_PORT).toString(), username,
-                    password);
+            /*
+             * if (thing.getThingTypeUID().getId().equals("INSTAR")) {
+             * onvifDevice = new OnvifDevice("http://" + ipAddress + ":" + config.get(CONFIG_ONVIF_PORT).toString(),
+             * "", "");
+             * }
+             */
+            onvifDevice = new OnvifDevice("http://" + ipAddress + ":" + config.get(CONFIG_ONVIF_PORT).toString(),
+                    username, password);
 
             onvifManager.setOnvifResponseListener(new OnvifResponseListener() {
                 @Override
                 public void onResponse(OnvifDevice onvifDevice, OnvifResponse response) {
-                    logger.debug("We got a ONVIF !!!!!!!!!!! RESPONSE !!!!!!!!!!!!!!!!!!! {}", response.request());
                     logger.debug("We got a ONVIF !!!!!!!!!!! RESPONSE !!!!!!!!!!!!!!!!!!! {}", response.getXml());
                     if (response.request().toString().contains("org.openhab.binding.ipcamera.onvif.GetSnapshotUri")) {
                         snapshotUri = org.openhab.binding.ipcamera.onvif.GetSnapshotUri
@@ -1422,55 +1464,57 @@ public class IpCameraHandler extends BaseThingHandler {
                 @Override
                 public void onServicesReceived(OnvifDevice onvifDevice, OnvifServices paths) {
                     ptzDevice = true;
-                    logger.info("We sucessfully connected to a ONVIF SERVICE:{}", paths);
-                }
-            });
+                    logger.debug("We sucessfully connected to a ONVIF SERVICE:{}", paths);
 
-            onvifManager.getDeviceInformation(onvifDevice, new OnvifDeviceInformationListener() {
-                @Override
-                public void onDeviceInformationReceived(OnvifDevice device, OnvifDeviceInformation deviceInformation) {
-                    ptzDevice = true;
-                    logger.debug("We got ONVIF DEV INFO:{}", deviceInformation);
-                }
-            });
+                    onvifManager.getDeviceInformation(onvifDevice, new OnvifDeviceInformationListener() {
+                        @Override
+                        public void onDeviceInformationReceived(OnvifDevice device,
+                                OnvifDeviceInformation deviceInformation) {
+                            ptzDevice = true;
+                            logger.debug("We got ONVIF DEV INFO:{}", deviceInformation);
+                            logger.debug("Camera serial found:{} ", deviceInformation.getSerialNumber());
+                        }
+                    });
 
-            logger.debug("Fetching the number of Media Profiles this camera supports.");
-            onvifManager.getMediaProfiles(onvifDevice, new OnvifMediaProfilesListener() {
-                @Override
-                public void onMediaProfilesReceived(OnvifDevice device, List<OnvifMediaProfile> mediaProfiles) {
-                    listOfMediaProfiles = mediaProfiles;
-                    for (OnvifMediaProfile profile : mediaProfiles) {
-                        logger.debug("Media Profile found:{}", profile);
-                    }
+                    logger.debug("Fetching the number of Media Profiles this camera supports.");
+                    onvifManager.getMediaProfiles(onvifDevice, new OnvifMediaProfilesListener() {
+                        @Override
+                        public void onMediaProfilesReceived(OnvifDevice device, List<OnvifMediaProfile> mediaProfiles) {
+                            listOfMediaProfiles = mediaProfiles;
+                            for (OnvifMediaProfile profile : mediaProfiles) {
+                                logger.debug("Media Profile found:{}", profile);
+                            }
 
-                    logger.debug("Checking the selected Media Profile is a valid number.");
+                            logger.debug("Checking the selected Media Profile is a valid number.");
 
-                    if (selectedMediaProfile >= listOfMediaProfiles.size()) {
-                        logger.warn(
-                                "The selected Media Profile in the binding is higher than the max reported profiles. Changing to use Media Profile 0.");
-                        selectedMediaProfile = 0;
-                    }
+                            if (selectedMediaProfile >= listOfMediaProfiles.size()) {
+                                logger.warn(
+                                        "The selected Media Profile in the binding is higher than the max reported profiles. Changing to use Media Profile 0.");
+                                selectedMediaProfile = 0;
+                            }
 
-                    onvifManager.getMediaStreamURI(onvifDevice, listOfMediaProfiles.get(selectedMediaProfile),
-                            new OnvifMediaStreamURIListener() {
+                            onvifManager.getMediaStreamURI(onvifDevice, listOfMediaProfiles.get(selectedMediaProfile),
+                                    new OnvifMediaStreamURIListener() {
 
-                                @Override
-                                public void onMediaStreamURIReceived(OnvifDevice device, OnvifMediaProfile profile,
-                                        String uri) {
-                                    logger.debug("We got a ONVIF MEDIA URI:{}", uri);
-                                    if (rtspUri == null) {
-                                        rtspUri = uri;
-                                    }
-                                }
-                            });
+                                        @Override
+                                        public void onMediaStreamURIReceived(OnvifDevice device,
+                                                OnvifMediaProfile profile, String uri) {
+                                            logger.debug("We got a ONVIF MEDIA URI:{}", uri);
+                                            if (rtspUri == null) {
+                                                rtspUri = uri;
+                                            }
+                                        }
+                                    });
 
-                    if (snapshotUri == null) {
-                        onvifManager.sendOnvifRequest(onvifDevice,
-                                new GetSnapshotUri(listOfMediaProfiles.get(selectedMediaProfile)));
-                    }
-                    // needed for PTZ as we need the node profile
-                    onvifManager.sendOnvifRequest(onvifDevice,
-                            new PTZRequest("GetNodes", listOfMediaProfiles.get(selectedMediaProfile)));
+                            if (snapshotUri == null) {
+                                onvifManager.sendOnvifRequest(onvifDevice,
+                                        new GetSnapshotUri(listOfMediaProfiles.get(selectedMediaProfile)));
+                            }
+                            // needed for PTZ as we need the node profile
+                            onvifManager.sendOnvifRequest(onvifDevice,
+                                    new PTZRequest("GetNodes", listOfMediaProfiles.get(selectedMediaProfile)));
+                        }
+                    });
 
                 }
             });
@@ -1499,7 +1543,7 @@ public class IpCameraHandler extends BaseThingHandler {
             } else {
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
                         "Camera failed to report a valid Snaphot URL, try over-riding the Snapshot URL auto detection by entering a known URL.");
-                logger.error(
+                logger.debug(
                         "Camera failed to report a valid Snaphot URL, try over-riding the Snapshot URL auto detection by entering a known URL.");
             }
         }
@@ -1686,26 +1730,28 @@ public class IpCameraHandler extends BaseThingHandler {
 
         /*
          * // this works need to move to a new discovery class
+         * // unless we have user/pass we can not get the manufacturer or serial to create a UID from
          * DiscoveryManager manager = new DiscoveryManager();
          * manager.setDiscoveryTimeout(10000);
          * manager.discover(new DiscoveryListener() {
-         *
+         * OnvifManager onvifManager2;
+         * 
          * @Override
          * public void onDiscoveryStarted() {
          * logger.info("Discovery started");
          * }
-         *
+         * 
          * @Override
          * public void onDevicesFound(List<Device> devices) {
+         * OnvifDeviceInformation onvifDeviceInformation;
          * for (Device device : devices) {
          * logger.info("Devices found:{} ", device.getHostName());
+         * logger.info("Devices found:{} ", device.getType());
          * }
          * }
          * });
-         *
          */
-
-        cameraConnectionJob = cameraConnection.schedule(pollingCameraConnection, 1, TimeUnit.SECONDS);
+        cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 1, 58, TimeUnit.SECONDS);
     }
 
     private void restart() {

@@ -48,10 +48,10 @@ public class GetSnapshotUri implements OnvifRequest {
     }
 
     public static String getParsedResult(String result) {
-        int beginIndex = result.indexOf("<tt:Uri>");
+        int beginIndex = result.indexOf("<tt:Uri>"); // 8 char long
         int endIndex = result.indexOf("</tt:Uri>");
         if (beginIndex >= 0 && endIndex >= 0) {
-            return result.substring(beginIndex, endIndex);
+            return result.substring(beginIndex + 8, endIndex);
         } else {
             return "noUri";
         }
