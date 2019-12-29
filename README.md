@@ -41,7 +41,7 @@ If using openHAB's textual configuration or when needing to setup HABPANEL/sitem
 
 ## Discovery
 
-Auto discovery is not supported currently but 20% of the work is already done so would be very easy to add this. Currently you need to manually add the IP camera either via PaperUI, or by textual configuration which both are covered below in more detail. Textual config should be preferred whilst the binding is under going a lot of changes.
+Auto discovery is now supported, however I would still recommend using textual configuration which is covered below in more detail. Textual config should be preferred whilst the binding is under going a lot of changes as the channels and config items appear to be stored in a database and are not checked to be correct by the Openhab framework. If you use auto discovery it may be required to delete the camera and re-add it for the DB to be refreshed with correct data.
 
 ## Binding Configuration
 
