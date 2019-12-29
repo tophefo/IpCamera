@@ -149,7 +149,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>IP_WHITELIST</label>
 <description>Enter any IP's inside (brackets) that you wish to allow to access the video stream. DISABLE will turn this feature off.
 </description>
-<default>(127.0.0.1)</default>        
+<default>DISABLE</default>        
 </parameter>
 
 <parameter name="USERNAME" type="text" required="false" groupName="Settings">
@@ -304,7 +304,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>IP_WHITELIST</label>
 <description>Enter any IP's inside (brackets) that you wish to allow to access the video stream. DISABLE will turn this feature off.
 </description>
-<default>(127.0.0.1)</default>        
+<default>DISABLE</default>        
 </parameter>
 
 <parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Image Settings">
@@ -482,7 +482,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>IP_WHITELIST</label>
 <description>Enter any IP's inside (brackets) that you wish to allow to access the video stream. DISABLE will turn this feature off.
 </description>
-<default>(127.0.0.1)</default>        
+<default>DISABLE</default>        
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
@@ -709,7 +709,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>IP_WHITELIST</label>
 <description>Enter any IP's inside (brackets) that you wish to allow to access the video stream. DISABLE will turn this feature off.
 </description>
-<default>(127.0.0.1)</default>        
+<default>DISABLE</default>        
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
@@ -917,7 +917,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>IP_WHITELIST</label>
 <description>Enter any IP's inside (brackets) that you wish to allow to access the video stream. DISABLE will turn this feature off.
 </description>
-<default>(127.0.0.1)</default>        
+<default>DISABLE</default>        
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
@@ -1118,7 +1118,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>IP_WHITELIST</label>
 <description>Enter any IP's inside (brackets) that you wish to allow to access the video stream. DISABLE will turn this feature off.
 </description>
-<default>(127.0.0.1)</default>        
+<default>DISABLE</default>        
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
@@ -1344,7 +1344,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>IP_WHITELIST</label>
 <description>Enter any IP's inside (brackets) that you wish to allow to access the video stream. DISABLE will turn this feature off.
 </description>
-<default>(127.0.0.1)</default>        
+<default>DISABLE</default>        
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
@@ -1559,7 +1559,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>IP_WHITELIST</label>
 <description>Enter any IP's inside (brackets) that you wish to allow to access the video stream. DISABLE will turn this feature off.
 </description>
-<default>(127.0.0.1)</default>        
+<default>DISABLE</default>        
 </parameter>
         
 <parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
