@@ -65,6 +65,7 @@ import org.openhab.binding.ipcamera.internal.HikvisionHandler;
 import org.openhab.binding.ipcamera.internal.InstarHandler;
 import org.openhab.binding.ipcamera.internal.MyNettyAuthHandler;
 import org.openhab.binding.ipcamera.internal.StreamServerHandler;
+import org.openhab.binding.ipcamera.onvif.EventsRequest;
 import org.openhab.binding.ipcamera.onvif.GetSnapshotUri;
 import org.openhab.binding.ipcamera.onvif.PTZRequest;
 import org.slf4j.Logger;
@@ -199,6 +200,7 @@ public class IpCameraHandler extends BaseThingHandler {
     boolean movePTZ = false; // delay movements so all made at once
     public String ptzNodeToken = "nonefoundyet";
     public String ptzConfigToken = "nonefoundyet";
+    public String eventAddress = "nonefoundyet";
     // private PTZVector ptzLocation;
     public Float panRangeMin = -1.0f;
     public Float panRangeMax = 1.0f;
@@ -1450,13 +1452,16 @@ public class IpCameraHandler extends BaseThingHandler {
                         ptzConfigToken = searchString(response.getXml(), "PTZConfiguration token=\"");
                         onvifManager.sendOnvifRequest(onvifDevice, new PTZRequest("GetConfigurationOptions",
                                 listOfMediaProfiles.get(selectedMediaProfile), thing.getHandler()));
+                    } else if (response.getXml().contains("CreatePullPointSubscriptionResponse")) {
+                        eventAddress = searchString(response.getXml(), "Address>");
+                        onvifManager.sendOnvifRequest(onvifDevice, new EventsRequest("PullMessagesRequest",
+                                listOfMediaProfiles.get(selectedMediaProfile)));
                     }
-
                 }
 
                 @Override
                 public void onError(OnvifDevice onvifDevice, int errorCode, String errorMessage) {
-                    logger.error("We got a ONVIF ERROR:{}", errorMessage);
+                    logger.warn("We got a ONVIF ERROR:{}", errorMessage);
                 }
             });
 
@@ -1513,9 +1518,12 @@ public class IpCameraHandler extends BaseThingHandler {
                             // needed for PTZ as we need the node profile
                             onvifManager.sendOnvifRequest(onvifDevice,
                                     new PTZRequest("GetNodes", listOfMediaProfiles.get(selectedMediaProfile)));
+                            // disable this in case it causes issues until proven.
+                            // onvifManager.sendOnvifRequest(onvifDevice, new
+                            // EventsRequest("CreatePullPointSubscription",
+                            // listOfMediaProfiles.get(selectedMediaProfile), thing.getHandler()));
                         }
                     });
-
                 }
             });
 
@@ -1728,29 +1736,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 break;
         }
 
-        /*
-         * // this works need to move to a new discovery class
-         * // unless we have user/pass we can not get the manufacturer or serial to create a UID from
-         * DiscoveryManager manager = new DiscoveryManager();
-         * manager.setDiscoveryTimeout(10000);
-         * manager.discover(new DiscoveryListener() {
-         * OnvifManager onvifManager2;
-         * 
-         * @Override
-         * public void onDiscoveryStarted() {
-         * logger.info("Discovery started");
-         * }
-         * 
-         * @Override
-         * public void onDevicesFound(List<Device> devices) {
-         * OnvifDeviceInformation onvifDeviceInformation;
-         * for (Device device : devices) {
-         * logger.info("Devices found:{} ", device.getHostName());
-         * logger.info("Devices found:{} ", device.getType());
-         * }
-         * }
-         * });
-         */
         cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 1, 58, TimeUnit.SECONDS);
     }
 
