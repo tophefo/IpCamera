@@ -243,7 +243,7 @@ public class PTZRequest implements OnvifRequest {
             case "GetConfiguration":
                 return "<GetConfiguration xmlns=\"http://www.onvif.org/ver20/ptz/wsdl\"><PTZConfigurationToken>"
                         + ptzConfigToken + "</PTZConfigurationToken></GetConfiguration>";
-            case "SetConfiguration":
+            case "SetConfiguration":// not tested to work yet
                 return "<SetConfiguration xmlns=\"http://www.onvif.org/ver20/ptz/wsdl\"><PTZConfiguration><NodeToken>"
                         + ptzNodeToken
                         + "</NodeToken><DefaultAbsolutePantTiltPositionSpace><DefaultAbsolutePantTiltPositionSpace><DefaultAbsoluteZoomPositionSpace></DefaultAbsoluteZoomPositionSpace></PTZConfiguration></SetConfiguration>";
@@ -260,11 +260,11 @@ public class PTZRequest implements OnvifRequest {
             case "GetStatus":
                 return "<GetStatus xmlns=\"http://www.onvif.org/ver20/ptz/wsdl\"><ProfileToken>" + mediaProfileToken
                         + "</ProfileToken></GetStatus>";
-            case "GotoPreset": // not tested to work yet
+            case "GotoPreset":
                 return "<GotoPreset xmlns=\"http://www.onvif.org/ver20/ptz/wsdl\"><ProfileToken>" + mediaProfileToken
                         + "</ProfileToken><PresetToken>" + presetTokens.get(presetTokenIndex)
                         + "</PresetToken><Speed><PanTilt x=\"0.0\" y=\"0.0\" space=\"\"></PanTilt><Zoom x=\"0.0\" space=\"\"></Zoom></Speed></GotoPreset>";
-            case "GetPresets": // not tested to work yet
+            case "GetPresets":
                 return "<GetPresets xmlns=\"http://www.onvif.org/ver20/ptz/wsdl\"><ProfileToken>" + mediaProfileToken
                         + "</ProfileToken></GetPresets>";
             case "GetProfiles":

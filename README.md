@@ -41,7 +41,7 @@ If using openHAB's textual configuration or when needing to setup HABPANEL/sitem
 
 ## Discovery
 
-Auto discovery is now supported, however I would still recommend using textual configuration which is covered below in more detail. Textual config should be preferred whilst the binding is under going a lot of changes as the channels and config items appear to be stored in a database and are not checked to be correct by the Openhab framework. If you use auto discovery it may be required to delete the camera and re-add it for the DB to be refreshed with correct data.
+Auto discovery is now working, however I would still recommend using textual configuration which is covered below in more detail. Textual config should be preferred whilst the binding is under going a lot of changes as the channels and config items appear to be stored in a database and are not checked to be correct by the Openhab framework. If you use auto discovery it may be required to delete the camera and re-add it for the DB to be refreshed with correct data.
 
 ## Binding Configuration
 
@@ -381,6 +381,37 @@ end
 
 For the above notifications to work you will need to setup multiple users with the correct email address's at the openHAB cloud.
 
+
+## Moving PTZ capable cameras
+
+Currently there are two ways to move the camera, 1 with Onvif Absolute move and the second with Onvif presets. The full example above shows how to use the Absolute move method which when a control is moved, it will wait until the next poll time has arrived and make all the movements at the same time. As not all cameras support Absolute movements the below is how to use the new Preset feature.
+
+item:
+
+```java
+
+Number TestCamGotoPreset "Goto Preset" { channel="ipcamera:INSTAR:TestCam:gotoPreset" }
+
+```
+
+sitemap:
+
+```java
+
+Selection item=TestCamGotoPreset 
+
+```
+
+Rules:
+
+```java
+TestCamGotoPreset.sendCommand(1)
+```
+
+The presets do not wait until the next poll time to arrive and are made right away, so this may make them more desirable if you set a high POLL_CAMERA_MS time.
+To create the preset locations, use a program like the free 'onvif device manager' program to create the presets and then you can create names using the mappings feature of the selection element. See docs here <https://www.openhab.org/docs/configuration/sitemaps.html#mappings>
+
+
 ## Image Snapshots
 
 There are a number of ways to use snapshots with this binding, however the best way is to always request the snapshot directly from the camera unless there is a reason why this does not work. The reason for this is to keep network traffic to a minimum and to prevent creating a bottleneck with loads of traffic in and out of your openHAB servers network port.
@@ -388,23 +419,23 @@ There are a number of ways to use snapshots with this binding, however the best 
 Ways to use snapshots are:
 
 + Use the cameras URL and fetch it directly so it passes from the camera to your end device ie Tablet without passing any data through the openHAB server. For cameras like Dahua that refuse to allow DIGEST to be turned off this is not an option, plus the binding has some advantages which are explained below so even if your camera can work directly, you may not wish to do so.
-+ Request a snapshot with the url ``http://192.168.xxx.xxx:54321/ipcamera.jpg`` this will return the current snapshot which only works if the binding is setup to fetch jpg snapshots. Replace 54321 with your SERVER_PORT. This file does not exist on disk and is served out of ram to keep disk writes to a minimum with this binding. It also means the binding can serve a jpg file much faster than a camera can directly as a camera usually waits for a keyframe, then has to compresses the data, before it can be sent. All of this takes time giving you a delay compared to serving the file from Ram.
++ Request a snapshot with the url ``http://192.168.xxx.xxx:54321/ipcamera.jpg`` (with 54321 being the server port number you specify) this will return the current snapshot which only works if the binding is setup to fetch jpg snapshots. Replace 54321 with your SERVER_PORT. This file does not exist on disk and is served out of ram to keep disk writes to a minimum with this binding. It also means the binding can serve a jpg file much faster than a camera can directly as a camera usually waits for a keyframe, then has to compresses the data, before it can be sent. All of this takes time giving you a delay compared to serving the file from Ram.
 + Use the Create GIF feature (explained in more detail below) and use a preroll value >0. This creates a number of snapshots in the ffmpeg output folder called snapshotXXX.jpg where XXX starts at 0 and increases each poll amount of time. This means you can get a snapshot from an exact amount of time before, on or after triggering the GIF to be created. Handy for cameras which lag due to slow processors and buffering. These snapshots can be fetched either directly as they exist on disk, or via this url format. ``http://192.168.xxx.xxx:54321/snapshot0.jpg`` Where the IP is your Openhab server and the port is what is setup in the binding as the SERVER_PORT.
-+ You can also read the image data directly and use it in rules, there are some examples on the forum how to do this, however it is far easier to use the above methods.
-+ Also worth a mention is that you can off load cameras to a software and hardware server. These have their advantages but can be overkill depending on what you plan to do with your cameras. The motion project is one example
++ You can also read the image data directly from the image channel and use it in rules, there are some examples on the forum how to do this, however it is far easier to use the above methods.
++ Also worth a mention is that you can off load cameras to a software and hardware server. These have their advantages, but can be overkill depending on what you plan to do with your cameras. The motion project is one example
 
 
 
 ## How to get working video streams
 
 IMPORTANT:
-The binding has its own file server that works by allowing access to the snapshot and video streams with no user/password for requests that come from an IP located in the white list. Requests from outside IP's or internal requests not on the white list will fail to get any answer. If you prefer to use your own firewall instead, you can also choose to make the ip whitelist equal "DISABLE" to turn this feature off and then all internal IP's will have access. All external IP access should still be blocked.
+The binding has its own file server that works by allowing access to the snapshot and video streams with no user/password for requests that come from an IP located in the white list. Requests from outside IP's or internal requests not on the white list will fail to get any answer. If you prefer to use your own firewall instead, you can also choose to make the ip whitelist equal "DISABLE" (now the default) to turn this feature off and then all internal IP's will have access.
 
 There are now multiple ways to get a moving picture:
 
 + Animated GIF.
-+ HLS (Http Live Streaming) which uses h264 that can be used to cast to Chromecast devices and works well in iOS/Apple devices.
-+ MJPEG which uses multiple jpeg files one after another to create what is called MOTION JPEG. Whilst larger in size, it is more compatible.
++ HLS (Http Live Streaming) which uses h264. This can be used to cast to Chromecast devices and works well in iOS/Apple devices.
++ MJPEG which uses multiple jpeg files one after another to create what is called MOTION JPEG. Whilst larger in size, it is more compatible. Most cameras limit the resolution in this format so for higher res, use HLS.
 
 To get the first two video formats working, you need to install the ffmpeg program. Visit their site here to learn how <https://ffmpeg.org/>
 
@@ -444,7 +475,7 @@ To use the HLS steaming features, you need to:
 4. For cameras that do not auto detect the H264 stream which is done for ONVIF cameras, you will need to use the ``FFMPEG_INPUT`` and provide a http or rtsp link. This is used for both the HLS and animated GIF features.
 5. For most brands the ``ONVIF_MEDIA_PROFILE`` needs to match the stream number you have setup for h264. This is usually 0 and is the main-stream, the higher numbers are the sub-streams if your camera has any. The DEBUG log output will help guide you with this in the openHAB.log if ONVIF is setup correctly.
 6. Consider using a SSD, HDD or a tmpfs (ram drive) if using SD/flash cards as the HLS streams are written to the FFMPEG_OUTPUT folder. Only a small amount of storage is needed.
-
+7. If streaming to a Chromecast that is not 4k capable, you need to ensure the stream is in a resolution that your Chromecast is capable of, ie 1080.
 
 To create a tmpfs of 20mb at /tmpfs/ run this command to open the file for editing. Recommend using 20Mb per camera that uses this location although it could use less than half that amount if carefully streamlined for less ram.
 
@@ -460,7 +491,7 @@ tmpfs /tmpfs tmpfs defaults,nosuid,nodev,noatime,size=20m 0 0
 
 
 
-Example thing file for a Dahua camera that turns off snapshots (not necessary as it can do both) and enables streaming instead....
+Example thing file for a Dahua camera that turns off image channel (not necessary as it can serve a jpg still) and enables streaming instead....
 
 ```
 Thing ipcamera:DAHUA:001 [
@@ -743,7 +774,8 @@ Another example is:
 
 **Instar**
 
-These cameras have the ability to call the openHAB REST API directly when an alarm occurs hence why the binding does not have the alarm switches as the camera can handle this directly. See the openHAB documentation regarding how to use the rest API and if you get this working please send me details how so I can include a more detailed setup guide here.
+These cameras have the ability to call the openHAB REST API directly when an alarm occurs, or you can use the built in Alarm Server that the binding auto sets up for you.
+For Onvif it may be required to disable the authentication in the cameras setup page if you experience issues using PTZ features. 
 
 ## Reducing log sizes
 
@@ -821,13 +853,15 @@ If you need a feature added that is in an API and you can not program, please ra
 If you wish to contribute then please create an issue ticket first to discuss how things will work before doing any coding. This is for multiple reasons due to needing to keep things CONSISTENT between brands and also easy to maintain. This list of areas that could be added are a great place to start helping with this binding if you wish to contribute. Any feedback, push requests and ideas are welcome.
 
 
-If this binding becomes popular, I can look at extending the framework to support:
+Areas this binding could be improved are:
 
-+ ONVIF alarms (hopefully a Java Onvif library get released that makes this easy, a few are improving at the moment) 
++ ONVIF alarms (hopefully a Java Onvif library get released that makes this easy, a few are improving at the moment) I just changed to a newer lib that allows easier custom calls, you can look at the PTZ functions for how to do this.
 
-+ PTZ methods for continuous move. Not a priority as the delay between a command sent and the camera moving makes this not desirable over absolute move commands.
-
-+ PTZ preset locations. May be a good idea for cameras that do not work with absolute move.
++ PTZ methods for continuous move so you can scan back and forth and wear the camera out faster.
 
 + 1 and 2 way audio. Keen to add this at some point for talking with people at my front door.
+
+
+Example Onvif SOAP contents can be found here for most requests and responses.
+<https://git.linuxmce.org/garagevibes/linuxmce/tree/08c52739954c0bfce7443eddc1ad4f6936a70fbe/src/Advanced_IP_Camera/onvif>
 
