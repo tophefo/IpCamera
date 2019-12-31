@@ -100,4 +100,5 @@ public class IpCameraBindingConstants {
     public static final String CHANNEL_EXTERNAL_LIGHT = "externalLight";
     public static final String CHANNEL_DOORBELL = "doorBell";
     public static final String CHANNEL_LAST_MOTION_TYPE = "lastMotionType";
+    public static final String CHANNEL_GOTO_PRESET = "gotoPreset";
 }

@@ -30,6 +30,7 @@ public class EventsRequest implements OnvifRequest {
 
     String profileToken = "1";
     String requestType = "GetConfigurations";
+    String eventAddress = "";// todo implement this again.
     private IpCameraHandler thisCamera;
 
     public EventsRequest(String requestType, OnvifMediaProfile onvifMediaProfile) {
@@ -49,7 +50,7 @@ public class EventsRequest implements OnvifRequest {
                 return "<CreatePullPointSubscription xmlns=\"http://www.onvif.org/ver10/events/wsdl\"></CreatePullPointSubscription>";
             case "PullMessagesRequest":// needs extra stuff added to work, below is only 120 seconds before timeout.
                 return "<Header><Action> http://www.onvif.org/ver10/events/wsdl/PullPointSubscription/PullMessagesRequest</Action><To>"
-                        + thisCamera.eventAddress
+                        + eventAddress
                         + "</To></Header><Body><PullMessagesRequest xmlns=\"http://www.onvif.org/ver10/events/wsdl\"><Timeout>PT120S</Timeout><MessageLimit>20</MessageLimit></PullMessagesRequest></Body>";
             case "GetEventProperties": // my cams report it is not supported.
                 return "<GetEventProperties xmlns=\"http://www.onvif.org/ver10/events/wsdl\"></GetEventProperties>";

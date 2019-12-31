@@ -823,8 +823,6 @@ If you wish to contribute then please create an issue ticket first to discuss ho
 
 If this binding becomes popular, I can look at extending the framework to support:
 
-+ Auto find and setup cameras across your network.
-
 + ONVIF alarms (hopefully a Java Onvif library get released that makes this easy, a few are improving at the moment) 
 
 + PTZ methods for continuous move. Not a priority as the delay between a command sent and the camera moving makes this not desirable over absolute move commands.
@@ -833,4 +831,3 @@ If this binding becomes popular, I can look at extending the framework to suppor
 
 + 1 and 2 way audio. Keen to add this at some point for talking with people at my front door.
 
-+ FTP/NAS features to save the images and delete old files for camera that do not have this feature built in. Not a priority for me as all my cameras have these features built in.

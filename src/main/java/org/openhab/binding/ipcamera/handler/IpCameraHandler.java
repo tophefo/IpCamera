@@ -65,7 +65,6 @@ import org.openhab.binding.ipcamera.internal.HikvisionHandler;
 import org.openhab.binding.ipcamera.internal.InstarHandler;
 import org.openhab.binding.ipcamera.internal.MyNettyAuthHandler;
 import org.openhab.binding.ipcamera.internal.StreamServerHandler;
-import org.openhab.binding.ipcamera.onvif.EventsRequest;
 import org.openhab.binding.ipcamera.onvif.GetSnapshotUri;
 import org.openhab.binding.ipcamera.onvif.PTZRequest;
 import org.slf4j.Logger;
@@ -142,10 +141,10 @@ public class IpCameraHandler extends BaseThingHandler {
 
     public Ffmpeg ffmpegHLS = null;
     public Ffmpeg ffmpegGIF = null;
-    private List<OnvifMediaProfile> listOfMediaProfiles;
+    // private List<OnvifMediaProfile> listOfMediaProfiles;
 
-    be.teletask.onvif.models.OnvifDevice onvifDevice;
-
+    private OnvifDevice thisOnvifCamera;
+    private String mediaProfileToken = "empty";
     private String username = "";
     private String password = "";
     private ScheduledFuture<?> cameraConnectionJob = null;
@@ -197,28 +196,10 @@ public class IpCameraHandler extends BaseThingHandler {
     boolean shortMotionAlarm = true; // used for when the alarm is less than the polling amount of time.
 
     private OnvifManager onvifManager = new OnvifManager();
+    private OnvifManager ptzManager = new OnvifManager(); // used so listener is in PTZ class.
     boolean movePTZ = false; // delay movements so all made at once
-    public String ptzNodeToken = "nonefoundyet";
-    public String ptzConfigToken = "nonefoundyet";
-    public String eventAddress = "nonefoundyet";
-    // private PTZVector ptzLocation;
-    public Float panRangeMin = -1.0f;
-    public Float panRangeMax = 1.0f;
-    public Float tiltRangeMin = -1.0f;
-    public Float tiltRangeMax = 1.0f;
-    public Float zoomMin = 0.0f;
-    public Float zoomMax = 1.0f;
-    private Boolean ptzDevice = false;
-    // These hold the cameras PTZ position in the range that the camera uses, ie
-    // mine is -1 to +1
-    public Float currentPanCamValue = 0.0f;
-    public Float currentTiltCamValue = 0.0f;
-    public Float currentZoomCamValue = 0.0f;
 
-    // These hold the PTZ values for updating Openhabs controls in 0-100 range
-    private Float currentPanPercentage = 0.0f;
-    private Float currentTiltPercentage = 0.0f;
-    private Float currentZoomPercentage = 0.0f;
+    PTZRequest ptzHandler = new PTZRequest("httponly");
 
     public IpCameraHandler(Thing thing) {
         super(thing);
@@ -1178,21 +1159,29 @@ public class IpCameraHandler extends BaseThingHandler {
         if (command.toString() == "REFRESH") {
             switch (channelUID.getId()) {
                 case CHANNEL_PAN:
-                    if (ptzDevice == true) {
-                        onvifManager.sendOnvifRequest(onvifDevice,
-                                new PTZRequest("GetStatus", listOfMediaProfiles.get(selectedMediaProfile)));
+                    if (ptzHandler.supportsPTZ()) {
+                        updateState(CHANNEL_PAN, new PercentType(Math.round(ptzHandler.getAbsolutePan())));
                     }
                     return;
                 case CHANNEL_TILT:
-                    getAbsoluteTilt();
+                    if (ptzHandler.supportsPTZ()) {
+                        updateState(CHANNEL_TILT, new PercentType(Math.round(ptzHandler.getAbsoluteTilt())));
+                    }
                     return;
                 case CHANNEL_ZOOM:
-                    getAbsoluteZoom();
+                    if (ptzHandler.supportsPTZ()) {
+                        updateState(CHANNEL_ZOOM, new PercentType(Math.round(ptzHandler.getAbsoluteZoom())));
+                    }
                     return;
             }
         } // caution "REFRESH" can still progress to brand Handlers below the else.
         else {
             switch (channelUID.getId()) {
+                case CHANNEL_GOTO_PRESET:
+                    if (ptzHandler.supportsPTZ()) {
+                        ptzHandler.gotoPreset(Integer.valueOf(command.toString()));
+                    }
+                    return;
                 case CHANNEL_UPDATE_IMAGE_NOW:
                     if ("ON".equals(command.toString())) {
                         updateImage = true;
@@ -1210,13 +1199,22 @@ public class IpCameraHandler extends BaseThingHandler {
                     }
                     return;
                 case CHANNEL_PAN:
-                    setAbsolutePan(Float.valueOf(command.toString()));
+                    if (ptzHandler.supportsPTZ()) {
+                        ptzHandler.setAbsolutePan(Float.valueOf(command.toString()));
+                        movePTZ = true;
+                    }
                     return;
                 case CHANNEL_TILT:
-                    setAbsoluteTilt(Float.valueOf(command.toString()));
+                    if (ptzHandler.supportsPTZ()) {
+                        ptzHandler.setAbsoluteTilt(Float.valueOf(command.toString()));
+                        movePTZ = true;
+                    }
                     return;
                 case CHANNEL_ZOOM:
-                    setAbsoluteZoom(Float.valueOf(command.toString()));
+                    if (ptzHandler.supportsPTZ()) {
+                        ptzHandler.setAbsoluteZoom(Float.valueOf(command.toString()));
+                        movePTZ = true;
+                    }
                     return;
             }
         }
@@ -1278,110 +1276,6 @@ public class IpCameraHandler extends BaseThingHandler {
         updateState(channelToUpdate, valueOf);
     }
 
-    void getAbsolutePan() {
-        if (ptzDevice == true) {
-            currentPanPercentage = (((panRangeMin - currentPanCamValue) * -1) / ((panRangeMin - panRangeMax) * -1))
-                    * 100;
-            logger.debug("Pan is updating to:{} and the cam value is {}", Math.round(currentPanPercentage),
-                    currentPanCamValue);
-            updateState(CHANNEL_PAN, new PercentType(Math.round(currentPanPercentage)));
-        }
-    }
-
-    void getAbsoluteTilt() {
-        if (ptzDevice == true) {
-            currentTiltPercentage = (((tiltRangeMin - currentTiltCamValue) * -1) / ((tiltRangeMin - tiltRangeMax) * -1))
-                    * 100;
-            logger.debug("Tilt is updating to:{} and the cam value is {}", Math.round(currentTiltPercentage),
-                    currentTiltCamValue);
-            updateState(CHANNEL_TILT, new PercentType(Math.round(currentTiltPercentage)));
-        }
-    }
-
-    void getAbsoluteZoom() {
-        if (ptzDevice == true) {
-            currentZoomPercentage = (((zoomMin - currentZoomCamValue) * -1) / ((zoomMin - zoomMax) * -1)) * 100;
-            logger.debug("Zoom is updating to:{} and the cam value is {}", Math.round(currentZoomPercentage),
-                    currentZoomCamValue);
-            updateState(CHANNEL_ZOOM, new PercentType(Math.round(currentZoomPercentage)));
-        }
-    }
-
-    void setAbsolutePan(Float panValue) {
-        if (ptzDevice == true) {
-            try {
-                currentPanCamValue = ((((panRangeMin - panRangeMax) * -1) / 100) * panValue + panRangeMin);
-                logger.debug("Cameras Pan  has changed to:{}", currentPanCamValue);
-                movePTZ = true;
-            } catch (NullPointerException e) {
-                logger.error("NPE occured when trying to move the cameras Pan with ONVIF");
-            }
-        }
-    }
-
-    void setAbsoluteTilt(Float tiltValue) {
-        if (ptzDevice == true) {
-            try {
-                currentTiltCamValue = ((((panRangeMin - panRangeMax) * -1) / 100) * tiltValue + tiltRangeMin);
-                logger.debug("Cameras Tilt has changed to:{}", currentTiltCamValue);
-                movePTZ = true;
-            } catch (NullPointerException e) {
-                logger.error("NPE occured when trying to move the cameras Tilt with ONVIF");
-            }
-        }
-    }
-
-    void setAbsoluteZoom(Float zoomValue) {
-        if (ptzDevice == true) {
-            try {
-                currentZoomCamValue = ((((zoomMin - zoomMax) * -1) / 100) * zoomValue + zoomMin);
-                logger.debug("Cameras Zoom has changed to:{}", currentZoomCamValue);
-                movePTZ = true;
-            } catch (NullPointerException e) {
-                logger.error("NPE occured when trying to move the cameras Zoom with ONVIF");
-            }
-        }
-    }
-
-    void processPTZLocation(String result) {
-
-        logger.debug("Process new PTZ location now");
-
-        int beginIndex = result.indexOf("x=\"");
-        int endIndex = result.indexOf("\"", (beginIndex + 3));
-        if (beginIndex >= 0 && endIndex >= 0) {
-            logger.info("result is {}", result.substring(beginIndex + 3, endIndex));
-            currentPanCamValue = Float.parseFloat(result.substring(beginIndex + 3, endIndex));
-            logger.debug("Pan is now {}", currentPanCamValue);
-            getAbsolutePan();
-        } else {
-            logger.warn("turning off PTZ functions as binding could not determin current PTZ locations.");
-            ptzDevice = false;
-        }
-
-        beginIndex = result.indexOf("y=\"");
-        endIndex = result.indexOf("\"", (beginIndex + 3));
-        if (beginIndex >= 0 && endIndex >= 0) {
-            currentTiltCamValue = Float.parseFloat(result.substring(beginIndex + 3, endIndex));
-            logger.debug("Tilt is now {}", currentTiltCamValue);
-            getAbsoluteTilt();
-        } else {
-            logger.warn("turning off PTZ functions as binding could not determin current PTZ locations.");
-            ptzDevice = false;
-        }
-
-        beginIndex = result.lastIndexOf("x=\"");
-        endIndex = result.indexOf("\"", (beginIndex + 3));
-        if (beginIndex >= 0 && endIndex >= 0) {
-            currentZoomCamValue = Float.parseFloat(result.substring(beginIndex + 3, endIndex));
-            logger.debug("Zoom is now {}", currentZoomCamValue);
-            getAbsoluteZoom();
-        } else {
-            logger.warn("turning off PTZ functions as binding could not determin current PTZ locations.");
-            ptzDevice = false;
-        }
-    }
-
     public String encodeSpecialChars(String text) {
         String encodedString = null;
         try {
@@ -1423,82 +1317,75 @@ public class IpCameraHandler extends BaseThingHandler {
                     config.get(CONFIG_ONVIF_PORT).toString());
             /*
              * if (thing.getThingTypeUID().getId().equals("INSTAR")) {
-             * onvifDevice = new OnvifDevice("http://" + ipAddress + ":" + config.get(CONFIG_ONVIF_PORT).toString(),
+             * thisOnvifCamera = new thisOnvifCamera("http://" + ipAddress + ":" +
+             * config.get(CONFIG_ONVIF_PORT).toString(),
              * "", "");
              * }
              */
-            onvifDevice = new OnvifDevice("http://" + ipAddress + ":" + config.get(CONFIG_ONVIF_PORT).toString(),
+            thisOnvifCamera = new OnvifDevice("http://" + ipAddress + ":" + config.get(CONFIG_ONVIF_PORT).toString(),
                     username, password);
 
             onvifManager.setOnvifResponseListener(new OnvifResponseListener() {
                 @Override
-                public void onResponse(OnvifDevice onvifDevice, OnvifResponse response) {
-                    logger.debug("We got a ONVIF !!!!!!!!!!! RESPONSE !!!!!!!!!!!!!!!!!!! {}", response.getXml());
+                public void onResponse(OnvifDevice thisOnvifCamera, OnvifResponse response) {
+                    logger.trace("We got an ONVIF response:{}", response.getXml());
                     if (response.request().toString().contains("org.openhab.binding.ipcamera.onvif.GetSnapshotUri")) {
                         snapshotUri = org.openhab.binding.ipcamera.onvif.GetSnapshotUri
                                 .getParsedResult(response.getXml());
-
                         cameraConnectionJob = cameraConnection.schedule(pollingCameraConnection, 2, TimeUnit.SECONDS);
-                    } else if (response.getXml().contains("GetStatusResponse")) {
-                        logger.debug("Found a status response");
-                        processPTZLocation(response.getXml());
-                    } else if (response.getXml().contains("GetNodesResponse")) {
-                        logger.debug("Found a node response");
-                        ptzNodeToken = searchString(response.getXml(), "token=\"");
-
-                        onvifManager.sendOnvifRequest(onvifDevice, new PTZRequest("GetConfigurations",
-                                listOfMediaProfiles.get(selectedMediaProfile), thing.getHandler()));
-                    } else if (response.getXml().contains("GetConfigurationsResponse")) {
-                        ptzConfigToken = searchString(response.getXml(), "PTZConfiguration token=\"");
-                        onvifManager.sendOnvifRequest(onvifDevice, new PTZRequest("GetConfigurationOptions",
-                                listOfMediaProfiles.get(selectedMediaProfile), thing.getHandler()));
-                    } else if (response.getXml().contains("CreatePullPointSubscriptionResponse")) {
-                        eventAddress = searchString(response.getXml(), "Address>");
-                        onvifManager.sendOnvifRequest(onvifDevice, new EventsRequest("PullMessagesRequest",
-                                listOfMediaProfiles.get(selectedMediaProfile)));
                     }
+
+                    /*
+                     * //TODO for onvif alarms
+                     * else if (response.getXml().contains("CreatePullPointSubscriptionResponse")) {
+                     * // eventAddress = searchString(response.getXml(), "Address>");
+                     * onvifManager.sendOnvifRequest(thisOnvifCamera, new EventsRequest("PullMessagesRequest",
+                     * listOfMediaProfiles.get(selectedMediaProfile)));
+                     * }
+                     */
                 }
 
                 @Override
-                public void onError(OnvifDevice onvifDevice, int errorCode, String errorMessage) {
-                    logger.warn("We got a ONVIF ERROR:{}", errorMessage);
+                public void onError(OnvifDevice thisOnvifCamera, int errorCode, String errorMessage) {
+                    logger.warn("We got an ONVIF error{}:{}", errorCode, errorMessage);
                 }
             });
 
-            onvifManager.getServices(onvifDevice, new OnvifServicesListener() {
+            onvifManager.getServices(thisOnvifCamera, new OnvifServicesListener() {
                 @Override
-                public void onServicesReceived(OnvifDevice onvifDevice, OnvifServices paths) {
-                    ptzDevice = true;
+                public void onServicesReceived(OnvifDevice thisOnvifCamera, OnvifServices paths) {
                     logger.debug("We sucessfully connected to a ONVIF SERVICE:{}", paths);
 
-                    onvifManager.getDeviceInformation(onvifDevice, new OnvifDeviceInformationListener() {
+                    onvifManager.getDeviceInformation(thisOnvifCamera, new OnvifDeviceInformationListener() {
+
                         @Override
                         public void onDeviceInformationReceived(OnvifDevice device,
                                 OnvifDeviceInformation deviceInformation) {
-                            ptzDevice = true;
+                            // ptzDevice = true;
                             logger.debug("We got ONVIF DEV INFO:{}", deviceInformation);
                             logger.debug("Camera serial found:{} ", deviceInformation.getSerialNumber());
                         }
                     });
 
                     logger.debug("Fetching the number of Media Profiles this camera supports.");
-                    onvifManager.getMediaProfiles(onvifDevice, new OnvifMediaProfilesListener() {
+                    onvifManager.getMediaProfiles(thisOnvifCamera, new OnvifMediaProfilesListener() {
                         @Override
                         public void onMediaProfilesReceived(OnvifDevice device, List<OnvifMediaProfile> mediaProfiles) {
-                            listOfMediaProfiles = mediaProfiles;
-                            for (OnvifMediaProfile profile : mediaProfiles) {
-                                logger.debug("Media Profile found:{}", profile);
-                            }
-
-                            logger.debug("Checking the selected Media Profile is a valid number.");
-
-                            if (selectedMediaProfile >= listOfMediaProfiles.size()) {
+                            if (selectedMediaProfile >= mediaProfiles.size()) {
                                 logger.warn(
                                         "The selected Media Profile in the binding is higher than the max reported profiles. Changing to use Media Profile 0.");
                                 selectedMediaProfile = 0;
                             }
 
-                            onvifManager.getMediaStreamURI(onvifDevice, listOfMediaProfiles.get(selectedMediaProfile),
+                            mediaProfileToken = mediaProfiles.get(selectedMediaProfile).getToken();
+                            ptzHandler = new PTZRequest(ptzManager, thisOnvifCamera, mediaProfileToken);
+                            ptzHandler.setMediaProfile(selectedMediaProfile);
+
+                            for (OnvifMediaProfile profile : mediaProfiles) {
+                                logger.debug("Media Profile found:{}", profile);
+                            }
+
+                            onvifManager.getMediaStreamURI(thisOnvifCamera, mediaProfiles.get(selectedMediaProfile),
                                     new OnvifMediaStreamURIListener() {
 
                                         @Override
@@ -1512,14 +1399,12 @@ public class IpCameraHandler extends BaseThingHandler {
                                     });
 
                             if (snapshotUri == null) {
-                                onvifManager.sendOnvifRequest(onvifDevice,
-                                        new GetSnapshotUri(listOfMediaProfiles.get(selectedMediaProfile)));
+                                onvifManager.sendOnvifRequest(thisOnvifCamera,
+                                        new GetSnapshotUri(mediaProfiles.get(selectedMediaProfile)));
                             }
-                            // needed for PTZ as we need the node profile
-                            onvifManager.sendOnvifRequest(onvifDevice,
-                                    new PTZRequest("GetNodes", listOfMediaProfiles.get(selectedMediaProfile)));
+
                             // disable this in case it causes issues until proven.
-                            // onvifManager.sendOnvifRequest(onvifDevice, new
+                            // onvifManager.sendOnvifRequest(thisOnvifCamera, new
                             // EventsRequest("CreatePullPointSubscription",
                             // listOfMediaProfiles.get(selectedMediaProfile), thing.getHandler()));
                         }
@@ -1654,8 +1539,7 @@ public class IpCameraHandler extends BaseThingHandler {
         @Override
         public void run() {
             logger.debug("Trying to move with new PTZ now");
-            onvifManager.sendOnvifRequest(onvifDevice,
-                    new PTZRequest("AbsoluteMove", listOfMediaProfiles.get(selectedMediaProfile), thing.getHandler()));
+            ptzHandler.sendRequest("AbsoluteMove");
         }
     };
 

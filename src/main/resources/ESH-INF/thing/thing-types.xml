@@ -184,6 +184,7 @@ The Image channel and JPG served on request can be set to update in a number of 
         <channel id="pan" typeId="pan"/>
         <channel id="tilt" typeId="tilt"/>
         <channel id="zoom" typeId="zoom"/>
+        <channel id="gotoPreset" typeId="gotoPreset"/>
         <channel id="streamUrl" typeId="streamUrl"/>   
         <channel id="rtspUrl" typeId="rtspUrl"/>
         <channel id="imageUrl" typeId="imageUrl"/>
@@ -383,6 +384,7 @@ The Image channel and JPG served on request can be set to update in a number of 
             <channel id="pan" typeId="pan"/>
             <channel id="tilt" typeId="tilt"/>
             <channel id="zoom" typeId="zoom"/>
+            <channel id="gotoPreset" typeId="gotoPreset"/>
             <channel id="streamUrl" typeId="streamUrl"/>
             <channel id="rtspUrl" typeId="rtspUrl"/>
             <channel id="imageUrl" typeId="imageUrl"/>
@@ -610,6 +612,7 @@ The Image channel and JPG served on request can be set to update in a number of 
             <channel id="pan" typeId="pan"/>
             <channel id="tilt" typeId="tilt"/>
             <channel id="zoom" typeId="zoom"/>
+            <channel id="gotoPreset" typeId="gotoPreset"/>
             <channel id="streamUrl" typeId="streamUrl"/>
             <channel id="rtspUrl" typeId="rtspUrl"/>
             <channel id="imageUrl" typeId="imageUrl"/>
@@ -1019,6 +1022,7 @@ The Image channel and JPG served on request can be set to update in a number of 
             <channel id="pan" typeId="pan"/>
             <channel id="tilt" typeId="tilt"/>
             <channel id="zoom" typeId="zoom"/>
+            <channel id="gotoPreset" typeId="gotoPreset"/>
             <channel id="streamUrl" typeId="streamUrl"/>
             <channel id="rtspUrl" typeId="rtspUrl"/>
             <channel id="imageUrl" typeId="imageUrl"/>
@@ -1245,6 +1249,7 @@ The Image channel and JPG served on request can be set to update in a number of 
             <channel id="pan" typeId="pan"/>
             <channel id="tilt" typeId="tilt"/>
             <channel id="zoom" typeId="zoom"/>
+            <channel id="gotoPreset" typeId="gotoPreset"/>
             <channel id="streamUrl" typeId="streamUrl"/>
             <channel id="rtspUrl" typeId="rtspUrl"/>        
             <channel id="imageUrl" typeId="imageUrl"/>
@@ -1461,6 +1466,7 @@ The Image channel and JPG served on request can be set to update in a number of 
             <channel id="pan" typeId="pan"/>
             <channel id="tilt" typeId="tilt"/>
             <channel id="zoom" typeId="zoom"/>
+            <channel id="gotoPreset" typeId="gotoPreset"/>
             <channel id="streamUrl" typeId="streamUrl"/>
             <channel id="rtspUrl" typeId="rtspUrl"/>
             <channel id="imageUrl" typeId="imageUrl"/>
@@ -1906,6 +1912,41 @@ The Image channel and JPG served on request can be set to update in a number of 
         <item-type>String</item-type>
         <label>Direct API access</label>
         <description>Change the string to the correct URL format and the binding will send the GET request to the camera.</description>
-        </channel-type>                    
+        </channel-type>
+        
+        <channel-type id="gotoPreset">
+<item-type>Number</item-type>
+<label>gotoPreset</label>
+<description>Move a ptz camera to this Onvif preset.</description>
+<state>
+<options>
+<option value="1">Preset 1</option>
+<option value="2">Preset 2</option>
+<option value="3">Preset 3</option>
+<option value="4">Preset 4</option>
+<option value="5">Preset 5</option>
+<option value="6">Preset 6</option>
+<option value="7">Preset 7</option>
+<option value="8">Preset 8</option>
+<option value="9">Preset 9</option>
+<option value="10">Preset 10</option>
+<option value="11">Preset 11</option>
+<option value="12">Preset 12</option>
+<option value="13">Preset 13</option>
+<option value="14">Preset 14</option>
+<option value="15">Preset 15</option>
+<option value="16">Preset 16</option>
+<option value="17">Preset 17</option>
+<option value="18">Preset 18</option>
+<option value="19">Preset 19</option>
+<option value="20">Preset 20</option>
+<option value="21">Preset 21</option>
+<option value="22">Preset 22</option>
+<option value="23">Preset 23</option>
+<option value="24">Preset 24</option>
+<option value="25">Preset 25</option>
+</options>
+</state>
+</channel-type>                    
                          
 </thing:thing-descriptions>
