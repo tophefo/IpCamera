@@ -71,13 +71,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import be.teletask.onvif.OnvifManager;
-import be.teletask.onvif.listeners.OnvifDeviceInformationListener;
 import be.teletask.onvif.listeners.OnvifMediaProfilesListener;
 import be.teletask.onvif.listeners.OnvifMediaStreamURIListener;
 import be.teletask.onvif.listeners.OnvifResponseListener;
 import be.teletask.onvif.listeners.OnvifServicesListener;
 import be.teletask.onvif.models.OnvifDevice;
-import be.teletask.onvif.models.OnvifDeviceInformation;
 import be.teletask.onvif.models.OnvifMediaProfile;
 import be.teletask.onvif.models.OnvifServices;
 import be.teletask.onvif.responses.OnvifResponse;
@@ -212,7 +210,7 @@ public class IpCameraHandler extends BaseThingHandler {
             basicAuth = null;
             return;
         } else if (basicAuth != null) {
-            logger.error("Camera is reporting your username and/or password is wrong!");
+            logger.warn("Camera is reporting your username and/or password is wrong!");
         }
         if (username != null && password != null) {
             String authString = username + ":" + password;
@@ -487,7 +485,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
         if (useDigestAuth) {
             if (digestString != null) {
-                logger.debug("Resending using a fresh DIGEST \tURL:{}", httpRequestURL);
+                // logger.debug("Resending using a fresh DIGEST \tURL:{}", httpRequestURL);
                 request.headers().set(HttpHeaderNames.AUTHORIZATION, "Digest " + digestString);
             }
         }
@@ -505,8 +503,8 @@ public class IpCameraHandler extends BaseThingHandler {
                         case 2: // Open and ok to reuse
                             ch = listOfChannels.get(index);
                             if (ch.isOpen()) {
-                                logger.debug("   Using the already open channel:{} \t{}:{}", index, httpMethod,
-                                        httpRequestURL);
+                                // logger.debug(" Using the already open channel:{} \t{}:{}", index, httpMethod,
+                                // httpRequestURL);
                                 commonHandler = (CommonCameraHandler) ch.pipeline().get("commonHandler");
                                 commonHandler.setURL(httpRequestURLFull);
                                 authHandler = (MyNettyAuthHandler) ch.pipeline().get("authHandler");
@@ -515,8 +513,8 @@ public class IpCameraHandler extends BaseThingHandler {
                                 request = null;
                                 return true;
                             } else {
-                                logger.debug("!!!! Closed Channel was marked as open, channel:{} \t{}:{}", index,
-                                        httpMethod, httpRequestURL);
+                                // logger.debug("!!!! Closed Channel was marked as open, channel:{} \t{}:{}", index,
+                                // httpMethod, httpRequestURL);
                             }
 
                         case -1: // Closed
@@ -577,7 +575,7 @@ public class IpCameraHandler extends BaseThingHandler {
             } finally {
                 lock.unlock();
             }
-            logger.debug("Have re-opened  the closed channel:{} \t{}:{}", indexInLists, httpMethod, httpRequestURL);
+            // logger.debug("Have re-opened the closed channel:{} \t{}:{}", indexInLists, httpMethod, httpRequestURL);
         } else {
             lock.lock();
             try {
@@ -588,8 +586,8 @@ public class IpCameraHandler extends BaseThingHandler {
             } finally {
                 lock.unlock();
             }
-            logger.debug("Have  opened  a  brand NEW channel:{} \t{}:{}", listOfRequests.size() - 1, httpMethod,
-                    httpRequestURL);
+            // logger.debug("Have opened a brand NEW channel:{} \t{}:{}", listOfRequests.size() - 1, httpMethod,
+            // httpRequestURL);
         }
 
         ch.writeAndFlush(request);
@@ -722,10 +720,10 @@ public class IpCameraHandler extends BaseThingHandler {
                                     currentSnapshot = lastSnapshot;
                                     lastSnapshot = null;
                                     if (closeConnection) {
-                                        logger.debug("Snapshot recieved: Binding will now close the channel.");
+                                        // logger.debug("Snapshot recieved: Binding will now close the channel.");
                                         ctx.close();
                                     } else {
-                                        logger.debug("Snapshot recieved: Binding will now keep-alive the channel.");
+                                        // logger.debug("Snapshot recieved: Binding will now keep-alive the channel.");
                                     }
                                 }
                             }
@@ -800,7 +798,7 @@ public class IpCameraHandler extends BaseThingHandler {
             try {
                 byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
                 if (indexInLists >= 0) {
-                    logger.debug("commonCameraHandler closed channel:{} \tURL:{}", indexInLists, requestUrl);
+                    // logger.debug("commonCameraHandler closed channel:{} \tURL:{}", indexInLists, requestUrl);
                     listOfChStatus.set(indexInLists, (byte) -1);
                 } else {
                     if (listOfChannels.size() > 0) {
@@ -882,7 +880,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
             }
         }
-
     }
 
     public String getLocalIpAddress() {
@@ -1296,9 +1293,8 @@ public class IpCameraHandler extends BaseThingHandler {
                         updateStatus(ThingStatus.ONLINE);
                         isOnline = true;
                         logger.info("IP Camera at {} is now online.", ipAddress);
-                        pollCameraJob = pollCamera.scheduleAtFixedRate(pollingCamera, 5000,
+                        pollCameraJob = pollCamera.scheduleAtFixedRate(pollingCamera, 4000,
                                 Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
-                        sendHttpGET(snapshotUri);
                         updateState(CHANNEL_IMAGE_URL, new StringType("http://" + ipAddress + snapshotUri));
                         if (updateImage) {
                             updateState(CHANNEL_UPDATE_IMAGE_NOW, OnOffType.valueOf("ON"));
@@ -1315,13 +1311,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
             logger.debug("About to connect to the IP Camera using the ONVIF PORT at IP:{}:{}", ipAddress,
                     config.get(CONFIG_ONVIF_PORT).toString());
-            /*
-             * if (thing.getThingTypeUID().getId().equals("INSTAR")) {
-             * thisOnvifCamera = new thisOnvifCamera("http://" + ipAddress + ":" +
-             * config.get(CONFIG_ONVIF_PORT).toString(),
-             * "", "");
-             * }
-             */
+
             thisOnvifCamera = new OnvifDevice("http://" + ipAddress + ":" + config.get(CONFIG_ONVIF_PORT).toString(),
                     username, password);
 
@@ -1355,18 +1345,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 @Override
                 public void onServicesReceived(OnvifDevice thisOnvifCamera, OnvifServices paths) {
                     logger.debug("We sucessfully connected to a ONVIF SERVICE:{}", paths);
-
-                    onvifManager.getDeviceInformation(thisOnvifCamera, new OnvifDeviceInformationListener() {
-
-                        @Override
-                        public void onDeviceInformationReceived(OnvifDevice device,
-                                OnvifDeviceInformation deviceInformation) {
-                            // ptzDevice = true;
-                            logger.debug("We got ONVIF DEV INFO:{}", deviceInformation);
-                            logger.debug("Camera serial found:{} ", deviceInformation.getSerialNumber());
-                        }
-                    });
-
                     logger.debug("Fetching the number of Media Profiles this camera supports.");
                     onvifManager.getMediaProfiles(thisOnvifCamera, new OnvifMediaProfilesListener() {
                         @Override
