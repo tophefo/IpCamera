@@ -86,7 +86,9 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                     } else if (httpRequest.uri().contains(".jpg")) {
                         if (httpRequest.uri().contains("ipcamera.jpg")) {
                             if (!ipCameraHandler.updateImageEvents.contentEquals("1")) {
-                                ipCameraHandler.sendHttpGET(ipCameraHandler.snapshotUri);
+                                if (ipCameraHandler.snapshotUri != null) {
+                                    ipCameraHandler.sendHttpGET(ipCameraHandler.snapshotUri);
+                                }
                             }
                             sendSnapshotImage(ctx, "image/jpeg");
                         } else {

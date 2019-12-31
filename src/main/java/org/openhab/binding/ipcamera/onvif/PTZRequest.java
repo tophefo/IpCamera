@@ -16,6 +16,7 @@ package org.openhab.binding.ipcamera.onvif;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +49,7 @@ public class PTZRequest implements OnvifRequest {
     private Float currentZoomPercentage = 0.0f;
 
     private Float currentPanCamValue = 0.0f;
+    @SuppressWarnings("unused")
     private int selectedMediaProfile = 0;
     public Float currentTiltCamValue = 0.0f;
     public Float currentZoomCamValue = 0.0f;
@@ -58,6 +60,7 @@ public class PTZRequest implements OnvifRequest {
     int presetTokenIndex = 2;
     List<String> presetTokens = new LinkedList<String>();
     String requestType = "GetConfigurations";
+    @Nullable
     OnvifManager ptzManager = null;
     boolean ptzDevice = false;
     private OnvifDevice thisOnvifCamera;
@@ -104,7 +107,7 @@ public class PTZRequest implements OnvifRequest {
 
     public void gotoPreset(int index) {
         if (index > 0) {// 0 is reserved for HOME as cameras seem to start at preset 1.
-            presetTokenIndex = --index;
+            presetTokenIndex = index - 1;
             sendRequest("GotoPreset");
         }
     }
@@ -112,7 +115,7 @@ public class PTZRequest implements OnvifRequest {
     private void setupListener() {
         ptzManager.setOnvifResponseListener(new OnvifResponseListener() {
             @Override
-            public void onResponse(OnvifDevice thisOnvifCamera, OnvifResponse response) {
+            public void onResponse(@Nullable OnvifDevice thisOnvifCamera, @Nullable OnvifResponse response) {
                 logger.debug("We got an ONVIF ptz response:{}", response.getXml());
                 if (response.getXml().contains("GetStatusResponse")) {
                     logger.debug("Found a status response");
@@ -136,7 +139,7 @@ public class PTZRequest implements OnvifRequest {
             }
 
             @Override
-            public void onError(OnvifDevice thisOnvifCamera, int errorCode, String errorMessage) {
+            public void onError(@Nullable OnvifDevice thisOnvifCamera, int errorCode, @Nullable String errorMessage) {
                 logger.warn("We got a ONVIF PTZ ERROR:{}", errorMessage);
             }
         });
@@ -314,6 +317,6 @@ public class PTZRequest implements OnvifRequest {
                 }
             }
         }
-        return null;
+        return "";
     }
 }

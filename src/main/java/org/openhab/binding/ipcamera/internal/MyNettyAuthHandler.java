@@ -58,7 +58,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
     public void setURL(String method, String url) {
         httpUrl = url;
         httpMethod = method;
-        logger.trace("MyNettyAuthHandler is now setup for \t{}:{}", method, url);
+        // logger.trace("MyNettyAuthHandler is now setup for \t{}:{}", method, url);
     }
 
     private String calcMD5Hash(String toHash) {
@@ -204,12 +204,13 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                             if (closeConnection) {
                                 // Need to mark the channel as closing so the digest gets a new ch
                                 myHandler.listOfChStatus.set(indexInLists, (byte) 0);
-                                logger.debug("401: Mark as closing, the  channel:{} \t{}:{}", indexInLists, httpMethod,
-                                        httpUrl);
+                                // logger.debug("401: Mark as closing, the channel:{} \t{}:{}", indexInLists,
+                                // httpMethod,
+                                // httpUrl);
                             } else {
                                 myHandler.listOfChStatus.set(indexInLists, (byte) 2);
-                                logger.debug("401: Mark to re-use,  the channel:{} \t{}:{}", indexInLists, httpMethod,
-                                        httpUrl);
+                                // logger.debug("401: Mark to re-use, the channel:{} \t{}:{}", indexInLists, httpMethod,
+                                // httpUrl);
                             }
 
                         } else {
