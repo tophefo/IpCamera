@@ -710,13 +710,14 @@ then
 end
 ```
 
-### HikVision API differences
+**HikVision NVR's**
 
 In case your HikVision NVR does not communicate with the binding, make sure that:
 
 * ISAPI is enabled in the NVR settings
 * ONVIF is enabled
 * RTSP is enabled
+* Some NVR's allow each camera to be exposed on a set port to give direct access to each camera, most users report this works the best and needs to be enabled.
 
 Some versions of these NVRs require setting a different snapshot URL (`SNAPSHOT_URL_OVERRIDE`), as well as `FFMPEG_INPUT`.
 
@@ -774,7 +775,7 @@ Another example is:
 
 **Instar**
 
-These cameras have the ability to call the openHAB REST API directly when an alarm occurs, or you can use the built in Alarm Server that the binding auto sets up for you.
+These cameras have the ability to call the openHAB REST API directly when an alarm occurs, or you can use the built in Alarm Server that the binding auto sets up for you. Be sure to update to the latest firmware for your camera as Instar have made a lot of improvements in this area recently.
 For Onvif it may be required to disable the authentication in the cameras setup page if you experience issues using PTZ features. 
 
 ## Reducing log sizes
