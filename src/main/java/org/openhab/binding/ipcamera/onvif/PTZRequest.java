@@ -140,7 +140,7 @@ public class PTZRequest implements OnvifRequest {
 
             @Override
             public void onError(@Nullable OnvifDevice thisOnvifCamera, int errorCode, @Nullable String errorMessage) {
-                logger.warn("We got a ONVIF PTZ ERROR:{}", errorMessage);
+                logger.debug("We got a ONVIF PTZ ERROR {}:{}", errorCode, errorMessage);
             }
         });
     }

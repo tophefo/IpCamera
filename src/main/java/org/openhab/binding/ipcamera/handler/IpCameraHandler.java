@@ -175,8 +175,7 @@ public class IpCameraHandler extends BaseThingHandler {
     // basicAuth MUST remain private as it holds the password
     private @Nullable String basicAuth = null;
     public boolean useDigestAuth = false;
-
-    public @Nullable String snapshotUri = null;
+    public String snapshotUri = "";
     public String mjpegUri = "";
     @Nullable
     ChannelFuture serverFuture = null;
@@ -1296,7 +1295,7 @@ public class IpCameraHandler extends BaseThingHandler {
         @Override
         public void run() {
             if (thing.getThingTypeUID().getId().equals("HTTPONLY")) {
-                if (!snapshotUri.isEmpty()) {
+                if (snapshotUri != "") {
                     logger.debug("Camera at {} has a snapshot address of:{}:", ipAddress, snapshotUri);
                     if (sendHttpRequest("GET", snapshotUri, null)) {
                         updateStatus(ThingStatus.ONLINE);
@@ -1349,7 +1348,11 @@ public class IpCameraHandler extends BaseThingHandler {
                 @Override
                 public void onError(@Nullable OnvifDevice thisOnvifCamera, int errorCode,
                         @Nullable String errorMessage) {
-                    logger.warn("We got an ONVIF error{}:{}", errorCode, errorMessage);
+                    if (errorCode == -1) {// Failed to connect when camera is turned off
+                        logger.debug("We got an ONVIF error{}:{}", errorCode, errorMessage);
+                    } else {
+                        logger.warn("We got an ONVIF error{}:{}", errorCode, errorMessage);
+                    }
                 }
             });
 
@@ -1389,7 +1392,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                         }
                                     });
 
-                            if (snapshotUri == null) {
+                            if (snapshotUri == "") {
                                 onvifManager.sendOnvifRequest(thisOnvifCamera,
                                         new GetSnapshotUri(mediaProfiles.get(selectedMediaProfile)));
                             }
@@ -1403,7 +1406,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
             });
 
-            if (snapshotUri != null) {
+            if (snapshotUri != "") {
                 if (sendHttpRequest("GET", snapshotUri, null)) {
                     updateState(CHANNEL_IMAGE_URL, new StringType("http://" + ipAddress + snapshotUri));
                     if (rtspUri != "") {
@@ -1458,7 +1461,7 @@ public class IpCameraHandler extends BaseThingHandler {
         @Override
         public void run() {
             // Snapshot should be first to keep consistent time between shots
-            if (snapshotUri != null) {
+            if (snapshotUri != "") {
                 if (updateImageEvents.contains("1") || updateImage) {
                     sendHttpGET(snapshotUri);
                 } else if (audioAlarmUpdateSnapshot || shortAudioAlarm) {
@@ -1548,7 +1551,7 @@ public class IpCameraHandler extends BaseThingHandler {
         updateImageEvents = config.get(CONFIG_IMAGE_UPDATE_EVENTS).toString();
         updateImage = (boolean) config.get(CONFIG_UPDATE_IMAGE);
 
-        snapshotUri = (config.get(CONFIG_SNAPSHOT_URL_OVERRIDE) == null) ? null
+        snapshotUri = (config.get(CONFIG_SNAPSHOT_URL_OVERRIDE) == null) ? ""
                 : getCorrectUrlFormat(config.get(CONFIG_SNAPSHOT_URL_OVERRIDE).toString());
 
         mjpegUri = (config.get(CONFIG_STREAM_URL_OVERRIDE) == null) ? ""
@@ -1572,7 +1575,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 if (mjpegUri == "") {
                     mjpegUri = "/cgi-bin/mjpg/video.cgi?channel=" + nvrChannel + "&subtype=1";
                 }
-                if (snapshotUri == null) {
+                if (snapshotUri == "") {
                     snapshotUri = "/cgi-bin/snapshot.cgi?channel=" + nvrChannel;
                 }
                 break;
@@ -1580,7 +1583,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 if (mjpegUri == "") {
                     mjpegUri = "/bha-api/video.cgi";
                 }
-                if (snapshotUri == null) {
+                if (snapshotUri == "") {
                     snapshotUri = "/bha-api/image.cgi";
                 }
                 break;
@@ -1591,7 +1594,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 if (mjpegUri == "") {
                     mjpegUri = "/cgi-bin/CGIStream.cgi?cmd=GetMJStream&usr=" + username + "&pwd=" + password;
                 }
-                if (snapshotUri == null) {
+                if (snapshotUri == "") {
                     snapshotUri = "/cgi-bin/CGIProxy.fcgi?usr=" + username + "&pwd=" + password + "&cmd=snapPicture2";
                 }
                 break;
@@ -1599,12 +1602,12 @@ public class IpCameraHandler extends BaseThingHandler {
                 if (mjpegUri == "") {
                     mjpegUri = "/ISAPI/Streaming/channels/" + nvrChannel + "02" + "/httppreview";
                 }
-                if (snapshotUri == null) {
+                if (snapshotUri == "") {
                     snapshotUri = "/ISAPI/Streaming/channels/" + nvrChannel + "01/picture";
                 }
                 break;
             case "INSTAR":
-                if (snapshotUri == null) {
+                if (snapshotUri == "") {
                     snapshotUri = "/tmpfs/snap.jpg";
                 }
                 if (mjpegUri == "") {
@@ -1612,13 +1615,11 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
                 break;
         }
-
         cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 1, 58, TimeUnit.SECONDS);
     }
 
     private void restart() {
-        logger.debug("ipCamera restart() called.");
-
+        // logger.debug("ipCamera restart() called.");
         basicAuth = null; // clear out stored password hash
         useDigestAuth = false;
         startStreamServer(false);
@@ -1656,7 +1657,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
     @Override
     public void dispose() {
-        logger.info("ipCamera Dispose() called.");
+        // logger.info("ipCamera Dispose() called.");
         restart();
     }
 }
