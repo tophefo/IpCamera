@@ -210,10 +210,10 @@ public class IpCameraHandler extends BaseThingHandler {
             logger.debug("Removing BASIC auth now.");
             basicAuth = "";
             return;
-        } else if (basicAuth.contentEquals("")) {
+        } else if (!basicAuth.equals("")) {
             logger.warn("Camera is reporting your username and/or password is wrong!");
         }
-        if (!username.contentEquals("") && !password.contentEquals("")) {
+        if (!username.equals("") && !password.equals("")) {
             String authString = username + ":" + password;
             ByteBuf byteBuf = null;
             try {
@@ -475,7 +475,7 @@ public class IpCameraHandler extends BaseThingHandler {
             request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
         }
 
-        if (!basicAuth.contentEquals("")) {
+        if (!basicAuth.equals("")) {
             if (useDigestAuth) {
                 logger.warn("Camera at IP:{} had both Basic and Digest set to be used", ipAddress);
                 setBasicAuth(false);
@@ -604,8 +604,7 @@ public class IpCameraHandler extends BaseThingHandler {
         private int bytesToRecieve = 0;
         private int bytesAlreadyRecieved = 0;
         private byte[] lastSnapshot;
-        @Nullable
-        private String incomingMessage;
+        private String incomingMessage = "";
         private String contentType = "empty";
         @Nullable
         private Object reply = null;
@@ -732,7 +731,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                 }
                             }
                         } else { // incomingMessage that is not an IMAGE
-                            if (incomingMessage == null) {
+                            if (incomingMessage.equals("")) {
                                 incomingMessage = content.content().toString(CharsetUtil.UTF_8);
                             } else {
                                 incomingMessage += content.content().toString(CharsetUtil.UTF_8);
@@ -742,7 +741,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                 // If it is not an image send it on to the next handler//
                                 if (bytesAlreadyRecieved != 0) {
                                     reply = incomingMessage;
-                                    incomingMessage = null;
+                                    incomingMessage = "";
                                     bytesToRecieve = 0;
                                     bytesAlreadyRecieved = 0;
                                     super.channelRead(ctx, reply);
@@ -752,7 +751,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             if (contentType.contains("multipart")) {
                                 if (!contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
                                     reply = incomingMessage;
-                                    incomingMessage = null;
+                                    incomingMessage = "";
                                     bytesToRecieve = 0;
                                     bytesAlreadyRecieved = 0;
                                     super.channelRead(ctx, reply);
@@ -761,7 +760,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             // Foscam needs this as will other cameras with chunks//
                             if (isChunked && bytesAlreadyRecieved != 0) {
                                 reply = incomingMessage;
-                                incomingMessage = null;
+                                incomingMessage = "";
                                 bytesToRecieve = 0;
                                 bytesAlreadyRecieved = 0;
                                 super.channelRead(ctx, reply);
@@ -775,7 +774,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     if (!contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
                         reply = incomingMessage;
                         logger.debug("Packet back from camera is {}", incomingMessage);
-                        incomingMessage = null;
+                        incomingMessage = "";
                         bytesToRecieve = 0;
                         bytesAlreadyRecieved = 0;
                         // TODO: Following line causes NPE that gets safely caught once every few days,
@@ -789,15 +788,15 @@ public class IpCameraHandler extends BaseThingHandler {
         }
 
         @Override
-        public void channelReadComplete(@Nullable ChannelHandlerContext ctx) {
+        public void channelReadComplete(ChannelHandlerContext ctx) {
         }
 
         @Override
-        public void handlerAdded(@Nullable ChannelHandlerContext ctx) {
+        public void handlerAdded(ChannelHandlerContext ctx) {
         }
 
         @Override
-        public void handlerRemoved(@Nullable ChannelHandlerContext ctx) {
+        public void handlerRemoved(ChannelHandlerContext ctx) {
             lock.lock();
             try {
                 byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
@@ -819,7 +818,7 @@ public class IpCameraHandler extends BaseThingHandler {
         }
 
         @Override
-        public void exceptionCaught(@Nullable ChannelHandlerContext ctx, @Nullable Throwable cause) {
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             lock.lock();
             try {
                 byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
@@ -836,7 +835,7 @@ public class IpCameraHandler extends BaseThingHandler {
         }
 
         @Override
-        public void userEventTriggered(@Nullable ChannelHandlerContext ctx, @Nullable Object evt) throws Exception {
+        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
             if (evt instanceof IdleStateEvent) {
                 IdleStateEvent e = (IdleStateEvent) evt;
                 // If camera does not use the channel for X amount of time it will close.
@@ -1327,7 +1326,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
             onvifManager.setOnvifResponseListener(new OnvifResponseListener() {
                 @Override
-                public void onResponse(@Nullable OnvifDevice thisOnvifCamera, @Nullable OnvifResponse response) {
+                public void onResponse(OnvifDevice thisOnvifCamera, OnvifResponse response) {
                     logger.trace("We got an ONVIF response:{}", response.getXml());
                     if (response.request().toString().contains("org.openhab.binding.ipcamera.onvif.GetSnapshotUri")) {
                         snapshotUri = org.openhab.binding.ipcamera.onvif.GetSnapshotUri
@@ -1346,8 +1345,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
 
                 @Override
-                public void onError(@Nullable OnvifDevice thisOnvifCamera, int errorCode,
-                        @Nullable String errorMessage) {
+                public void onError(OnvifDevice thisOnvifCamera, int errorCode, String errorMessage) {
                     if (errorCode == -1) {// Failed to connect when camera is turned off
                         logger.debug("We got an ONVIF error{}:{}", errorCode, errorMessage);
                     } else {

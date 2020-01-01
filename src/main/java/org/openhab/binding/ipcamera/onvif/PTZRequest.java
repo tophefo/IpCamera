@@ -115,7 +115,7 @@ public class PTZRequest implements OnvifRequest {
     private void setupListener() {
         ptzManager.setOnvifResponseListener(new OnvifResponseListener() {
             @Override
-            public void onResponse(@Nullable OnvifDevice thisOnvifCamera, @Nullable OnvifResponse response) {
+            public void onResponse(OnvifDevice thisOnvifCamera, OnvifResponse response) {
                 logger.debug("We got an ONVIF ptz response:{}", response.getXml());
                 if (response.getXml().contains("GetStatusResponse")) {
                     logger.debug("Found a status response");

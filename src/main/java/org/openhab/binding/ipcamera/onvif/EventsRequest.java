@@ -31,6 +31,7 @@ public class EventsRequest implements OnvifRequest {
     String profileToken = "1";
     String requestType = "GetConfigurations";
     String eventAddress = "";// todo implement this again.
+    @SuppressWarnings("unused")
     private IpCameraHandler thisCamera;
 
     public EventsRequest(String requestType, OnvifMediaProfile onvifMediaProfile) {
