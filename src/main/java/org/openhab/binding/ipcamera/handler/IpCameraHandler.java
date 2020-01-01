@@ -173,7 +173,7 @@ public class IpCameraHandler extends BaseThingHandler {
     // ChannelGroup is thread safe
     final ChannelGroup mjpegChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
     // basicAuth MUST remain private as it holds the password
-    private @Nullable String basicAuth = null;
+    private String basicAuth = "";
     public boolean useDigestAuth = false;
     public String snapshotUri = "";
     public String mjpegUri = "";
@@ -207,13 +207,13 @@ public class IpCameraHandler extends BaseThingHandler {
     // false clears the stored user/pass hash, true creates the hash
     public void setBasicAuth(boolean useBasic) {
         if (useBasic == false) {
-            logger.debug("Removing BASIC auth now and making it NULL.");
-            basicAuth = null;
+            logger.debug("Removing BASIC auth now.");
+            basicAuth = "";
             return;
-        } else if (basicAuth != null) {
+        } else if (basicAuth.contentEquals("")) {
             logger.warn("Camera is reporting your username and/or password is wrong!");
         }
-        if (username != null && password != null) {
+        if (!username.contentEquals("") && !password.contentEquals("")) {
             String authString = username + ":" + password;
             ByteBuf byteBuf = null;
             try {
@@ -475,7 +475,7 @@ public class IpCameraHandler extends BaseThingHandler {
             request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
         }
 
-        if (basicAuth != null) {
+        if (!basicAuth.contentEquals("")) {
             if (useDigestAuth) {
                 logger.warn("Camera at IP:{} had both Basic and Digest set to be used", ipAddress);
                 setBasicAuth(false);
@@ -984,7 +984,7 @@ public class IpCameraHandler extends BaseThingHandler {
         if (start) {
             mjpegChannelGroup.add(ctx.channel());
             if (mjpegChannelGroup.size() == 1) {
-                if (mjpegUri != "") {
+                if (!mjpegUri.equals("")) {
                     sendHttpGET(mjpegUri);
                 }
             } else if (firstStreamedMsg != null) {
@@ -1295,7 +1295,7 @@ public class IpCameraHandler extends BaseThingHandler {
         @Override
         public void run() {
             if (thing.getThingTypeUID().getId().equals("HTTPONLY")) {
-                if (snapshotUri != "") {
+                if (!snapshotUri.equals("")) {
                     logger.debug("Camera at {} has a snapshot address of:{}:", ipAddress, snapshotUri);
                     if (sendHttpRequest("GET", snapshotUri, null)) {
                         updateStatus(ThingStatus.ONLINE);
@@ -1386,13 +1386,13 @@ public class IpCameraHandler extends BaseThingHandler {
                                         public void onMediaStreamURIReceived(@Nullable OnvifDevice device,
                                                 @Nullable OnvifMediaProfile profile, @Nullable String uri) {
                                             logger.debug("We got a ONVIF MEDIA URI:{}", uri);
-                                            if (rtspUri == "") {
+                                            if (rtspUri.equals("")) {
                                                 rtspUri = uri;
                                             }
                                         }
                                     });
 
-                            if (snapshotUri == "") {
+                            if (snapshotUri.equals("")) {
                                 onvifManager.sendOnvifRequest(thisOnvifCamera,
                                         new GetSnapshotUri(mediaProfiles.get(selectedMediaProfile)));
                             }
@@ -1406,10 +1406,10 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
             });
 
-            if (snapshotUri != "") {
+            if (!snapshotUri.equals("")) {
                 if (sendHttpRequest("GET", snapshotUri, null)) {
                     updateState(CHANNEL_IMAGE_URL, new StringType("http://" + ipAddress + snapshotUri));
-                    if (rtspUri != "") {
+                    if (!rtspUri.equals("")) {
                         updateState(CHANNEL_RTSP_URL, new StringType(rtspUri));
                     }
                     if (updateImage) {
@@ -1461,7 +1461,7 @@ public class IpCameraHandler extends BaseThingHandler {
         @Override
         public void run() {
             // Snapshot should be first to keep consistent time between shots
-            if (snapshotUri != "") {
+            if (!snapshotUri.equals("")) {
                 if (updateImageEvents.contains("1") || updateImage) {
                     sendHttpGET(snapshotUri);
                 } else if (audioAlarmUpdateSnapshot || shortAudioAlarm) {
@@ -1544,8 +1544,8 @@ public class IpCameraHandler extends BaseThingHandler {
         logger.debug("initialize() called.");
         config = thing.getConfiguration();
         ipAddress = config.get(CONFIG_IPADDRESS).toString();
-        username = (config.get(CONFIG_USERNAME) == null) ? null : config.get(CONFIG_USERNAME).toString();
-        password = (config.get(CONFIG_PASSWORD) == null) ? null : config.get(CONFIG_PASSWORD).toString();
+        username = (config.get(CONFIG_USERNAME) == null) ? "" : config.get(CONFIG_USERNAME).toString();
+        password = (config.get(CONFIG_PASSWORD) == null) ? "" : config.get(CONFIG_PASSWORD).toString();
         preroll = Integer.parseInt(config.get(CONFIG_GIF_PREROLL).toString());
         postroll = Integer.parseInt(config.get(CONFIG_GIF_POSTROLL).toString());
         updateImageEvents = config.get(CONFIG_IMAGE_UPDATE_EVENTS).toString();
@@ -1557,7 +1557,7 @@ public class IpCameraHandler extends BaseThingHandler {
         mjpegUri = (config.get(CONFIG_STREAM_URL_OVERRIDE) == null) ? ""
                 : getCorrectUrlFormat(config.get(CONFIG_STREAM_URL_OVERRIDE).toString());
 
-        nvrChannel = (config.get(CONFIG_NVR_CHANNEL) == null) ? null : config.get(CONFIG_NVR_CHANNEL).toString();
+        nvrChannel = (config.get(CONFIG_NVR_CHANNEL) == null) ? "" : config.get(CONFIG_NVR_CHANNEL).toString();
 
         selectedMediaProfile = (config.get(CONFIG_ONVIF_PROFILE_NUMBER) == null) ? 0
                 : Integer.parseInt(config.get(CONFIG_ONVIF_PROFILE_NUMBER).toString());
@@ -1572,18 +1572,18 @@ public class IpCameraHandler extends BaseThingHandler {
         switch (thing.getThingTypeUID().getId()) {
             case "AMCREST":
             case "DAHUA":
-                if (mjpegUri == "") {
+                if (mjpegUri.equals("")) {
                     mjpegUri = "/cgi-bin/mjpg/video.cgi?channel=" + nvrChannel + "&subtype=1";
                 }
-                if (snapshotUri == "") {
+                if (snapshotUri.equals("")) {
                     snapshotUri = "/cgi-bin/snapshot.cgi?channel=" + nvrChannel;
                 }
                 break;
             case "DOORBIRD":
-                if (mjpegUri == "") {
+                if (mjpegUri.equals("")) {
                     mjpegUri = "/bha-api/video.cgi";
                 }
-                if (snapshotUri == "") {
+                if (snapshotUri.equals("")) {
                     snapshotUri = "/bha-api/image.cgi";
                 }
                 break;
@@ -1591,26 +1591,26 @@ public class IpCameraHandler extends BaseThingHandler {
                 // Foscam needs any special char like spaces (%20) to be encoded for URLs.
                 username = encodeSpecialChars(username);
                 password = encodeSpecialChars(password);
-                if (mjpegUri == "") {
+                if (mjpegUri.equals("")) {
                     mjpegUri = "/cgi-bin/CGIStream.cgi?cmd=GetMJStream&usr=" + username + "&pwd=" + password;
                 }
-                if (snapshotUri == "") {
+                if (snapshotUri.equals("")) {
                     snapshotUri = "/cgi-bin/CGIProxy.fcgi?usr=" + username + "&pwd=" + password + "&cmd=snapPicture2";
                 }
                 break;
             case "HIKVISION":// The 02 gives you the first sub stream which needs to be set to MJPEG
-                if (mjpegUri == "") {
+                if (mjpegUri.equals("")) {
                     mjpegUri = "/ISAPI/Streaming/channels/" + nvrChannel + "02" + "/httppreview";
                 }
-                if (snapshotUri == "") {
+                if (snapshotUri.equals("")) {
                     snapshotUri = "/ISAPI/Streaming/channels/" + nvrChannel + "01/picture";
                 }
                 break;
             case "INSTAR":
-                if (snapshotUri == "") {
+                if (snapshotUri.equals("")) {
                     snapshotUri = "/tmpfs/snap.jpg";
                 }
-                if (mjpegUri == "") {
+                if (mjpegUri.equals("")) {
                     mjpegUri = "/mjpegstream.cgi?-chn=12";
                 }
                 break;
@@ -1620,7 +1620,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
     private void restart() {
         // logger.debug("ipCamera restart() called.");
-        basicAuth = null; // clear out stored password hash
+        basicAuth = ""; // clear out stored password hash
         useDigestAuth = false;
         startStreamServer(false);
 

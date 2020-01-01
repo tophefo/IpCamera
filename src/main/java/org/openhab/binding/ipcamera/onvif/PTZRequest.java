@@ -130,7 +130,6 @@ public class PTZRequest implements OnvifRequest {
                     sendRequest("GetPresets");
                 } else if (response.getXml().contains("GetPresetsResponse")) {
                     collectPrestTokens(response.getXml());
-                    // sendRequest("GetPresets");
                 } else if (response.getXml().contains("GetNodesResponse")) {
                     ptzNodeToken = searchString(response.getXml(), "token=\"");
                     logger.debug("ptzNodeToken={}", ptzNodeToken);
