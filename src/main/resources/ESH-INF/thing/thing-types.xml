@@ -110,7 +110,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
+<default>-strict -2 -f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -266,7 +266,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
+<default>-strict -2 -f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -445,7 +445,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
+<default>-strict -2 -f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -673,7 +673,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
+<default>-strict -2 -f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -881,7 +881,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
+<default>-strict -2 -f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -1083,7 +1083,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
+<default>-strict -2 -f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -1310,7 +1310,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
+<default>-strict -2 -f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -1526,7 +1526,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>FFMPEG_HLS_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used.
 </description>
-<default>-f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
+<default>-strict -2 -f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
 <advanced>true</advanced>
 </parameter>
 

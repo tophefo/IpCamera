@@ -14,7 +14,6 @@
 package org.openhab.binding.ipcamera.onvif;
 
 import java.util.LinkedList;
-import java.util.List;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.slf4j.Logger;
@@ -56,8 +55,9 @@ public class PTZRequest implements OnvifRequest {
     public String ptzConfigToken = "000";
     public final Logger logger = LoggerFactory.getLogger(getClass());
     String mediaProfileToken = "Profile1";
-    int presetTokenIndex = 2;
-    List<String> presetTokens = new LinkedList<String>();
+    int mediaProfileIndex = 0;
+    int presetTokenIndex = 0;
+    LinkedList<String> presetTokens = new LinkedList<String>();
     String requestType = "GetConfigurations";
     @Nullable
     OnvifManager ptzManager = null;
@@ -68,7 +68,6 @@ public class PTZRequest implements OnvifRequest {
         this.ptzManager = ptzManager;
         this.thisOnvifCamera = thisOnvifCamera;
         this.mediaProfileToken = mediaProfileToken;
-        logger.debug("mediaProfileToken={}", this.mediaProfileToken);
         setupListener();
         sendRequest("GetNodes");
         ptzDevice = true;
@@ -82,50 +81,55 @@ public class PTZRequest implements OnvifRequest {
         return ptzDevice;
     }
 
-    void collectPrestTokens(String result) {
-        logger.debug("Collecting preset tokens now.");
-
+    LinkedList<String> listOfResults(String search, String toFind) {
+        LinkedList<String> results = new LinkedList<String>();
         for (int beginIndex = 0, endIndex = 0; beginIndex != -1;) {
-            beginIndex = result.indexOf("Preset token=\"", beginIndex);
+            beginIndex = search.indexOf(toFind, beginIndex);
             if (beginIndex >= 0) {
-                endIndex = result.indexOf("\"", (beginIndex + 14));
+                endIndex = search.indexOf("\"", (beginIndex + toFind.length()));
                 if (endIndex >= 0) {
-                    logger.debug("Token Found:{}", result.substring(beginIndex + 14, endIndex));
-                    presetTokens.add(result.substring(beginIndex + 14, endIndex));
+                    logger.debug("String was found:{}", search.substring(beginIndex + toFind.length(), endIndex));
+                    results.add(search.substring(beginIndex + 14, endIndex));
                 }
                 ++beginIndex;
             } else {
-                logger.debug("no more tokens");
+                logger.debug("no more to find");
             }
         }
+        return results;
     }
 
     public void gotoPreset(int index) {
         if (index > 0) {// 0 is reserved for HOME as cameras seem to start at preset 1.
-            presetTokenIndex = index - 1;
-            sendRequest("GotoPreset");
+            if (presetTokens.isEmpty()) {
+                logger.warn("Camera did not report any presets to the binding");
+            } else {
+                presetTokenIndex = index - 1;
+                sendRequest("GotoPreset");
+            }
         }
     }
 
+    // may need to make requestType thread safe if multiple reply trigger a SOAP to be sent at the same time.
     private void setupListener() {
         ptzManager.setOnvifResponseListener(new OnvifResponseListener() {
             @Override
             public void onResponse(OnvifDevice thisOnvifCamera, OnvifResponse response) {
                 logger.debug("We got an ONVIF ptz response:{}", response.getXml());
                 if (response.getXml().contains("GetStatusResponse")) {
-                    logger.debug("Found a status response");
                     processPTZLocation(response.getXml());
+                } else if (response.getXml().contains("GetPresetsResponse")) {
+                    // collectPrestTokens(response.getXml());
+                    presetTokens = listOfResults(response.getXml(), "Preset token=\"");
                 } else if (response.getXml().contains("GetConfigurationsResponse")) {
+                    sendRequest("GetPresets");
                     ptzConfigToken = searchString(response.getXml(), "PTZConfiguration token=\"");
                     logger.debug("ptzConfigToken={}", ptzConfigToken);
                     sendRequest("GetConfigurationOptions");
                     // sendRequest("AddPTZConfiguration");
                     // sendRequest("SetConfiguration");
-                    getStatus();
-                    sendRequest("GetPresets");
-                } else if (response.getXml().contains("GetPresetsResponse")) {
-                    collectPrestTokens(response.getXml());
                 } else if (response.getXml().contains("GetNodesResponse")) {
+                    sendRequest("GetStatus");
                     ptzNodeToken = searchString(response.getXml(), "token=\"");
                     logger.debug("ptzNodeToken={}", ptzNodeToken);
                     sendRequest("GetConfigurations");
