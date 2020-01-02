@@ -50,7 +50,6 @@ public class PTZRequest implements OnvifRequest {
 
     private Float currentPanCamValue = 0.0f;
     @SuppressWarnings("unused")
-    private int selectedMediaProfile = 0;
     public Float currentTiltCamValue = 0.0f;
     public Float currentZoomCamValue = 0.0f;
     public String ptzNodeToken = "000";
@@ -81,10 +80,6 @@ public class PTZRequest implements OnvifRequest {
 
     public boolean supportsPTZ() {
         return ptzDevice;
-    }
-
-    public void setMediaProfile(int profile) {
-        selectedMediaProfile = profile;
     }
 
     void collectPrestTokens(String result) {

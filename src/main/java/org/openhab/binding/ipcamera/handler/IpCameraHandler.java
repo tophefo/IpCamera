@@ -158,6 +158,7 @@ public class IpCameraHandler extends BaseThingHandler {
     private LinkedList<byte[]> fifoSnapshotBuffer = new LinkedList<byte[]>();
     private int preroll, postroll, snapCount = 0;
     private boolean updateImage = true;
+    private int updateCounter = 0;
     private byte lowPriorityCounter = 0;
     public String hostIp = "0.0.0.0";
 
@@ -712,7 +713,10 @@ public class IpCameraHandler extends BaseThingHandler {
                             if (content instanceof LastHttpContent) {
                                 if (contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
                                     if (updateImage) {
-                                        updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
+                                        if (++updateCounter > 9) {
+                                            updateCounter = 0;
+                                            updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
+                                        }
                                     }
                                     if (preroll > 0) {
                                         fifoSnapshotBuffer.add(lastSnapshot);
@@ -1356,13 +1360,12 @@ public class IpCameraHandler extends BaseThingHandler {
 
             onvifManager.getServices(thisOnvifCamera, new OnvifServicesListener() {
                 @Override
-                public void onServicesReceived(@Nullable OnvifDevice thisOnvifCamera, @Nullable OnvifServices paths) {
+                public void onServicesReceived(OnvifDevice thisOnvifCamera, OnvifServices paths) {
                     logger.debug("We sucessfully connected to a ONVIF SERVICE:{}", paths);
                     logger.debug("Fetching the number of Media Profiles this camera supports.");
                     onvifManager.getMediaProfiles(thisOnvifCamera, new OnvifMediaProfilesListener() {
                         @Override
-                        public void onMediaProfilesReceived(@Nullable OnvifDevice device,
-                                List<OnvifMediaProfile> mediaProfiles) {
+                        public void onMediaProfilesReceived(OnvifDevice device, List<OnvifMediaProfile> mediaProfiles) {
                             if (selectedMediaProfile >= mediaProfiles.size()) {
                                 logger.warn(
                                         "The selected Media Profile in the binding is higher than the max reported profiles. Changing to use Media Profile 0.");
@@ -1371,24 +1374,18 @@ public class IpCameraHandler extends BaseThingHandler {
 
                             mediaProfileToken = mediaProfiles.get(selectedMediaProfile).getToken();
                             ptzHandler = new PTZRequest(ptzManager, thisOnvifCamera, mediaProfileToken);
-                            ptzHandler.setMediaProfile(selectedMediaProfile);
 
-                            for (OnvifMediaProfile profile : mediaProfiles) {
-                                logger.debug("Media Profile found:{}", profile);
-                            }
-
-                            onvifManager.getMediaStreamURI(thisOnvifCamera, mediaProfiles.get(selectedMediaProfile),
-                                    new OnvifMediaStreamURIListener() {
-
-                                        @Override
-                                        public void onMediaStreamURIReceived(@Nullable OnvifDevice device,
-                                                @Nullable OnvifMediaProfile profile, @Nullable String uri) {
-                                            logger.debug("We got a ONVIF MEDIA URI:{}", uri);
-                                            if (rtspUri.equals("")) {
+                            if (rtspUri.equals("")) {
+                                onvifManager.getMediaStreamURI(thisOnvifCamera, mediaProfiles.get(selectedMediaProfile),
+                                        new OnvifMediaStreamURIListener() {
+                                            @Override
+                                            public void onMediaStreamURIReceived(@Nullable OnvifDevice device,
+                                                    @Nullable OnvifMediaProfile profile, @Nullable String uri) {
+                                                logger.debug("We got a ONVIF MEDIA URI:{}", uri);
                                                 rtspUri = uri;
                                             }
-                                        }
-                                    });
+                                        });
+                            }
 
                             if (snapshotUri.equals("")) {
                                 onvifManager.sendOnvifRequest(thisOnvifCamera,
@@ -1464,9 +1461,11 @@ public class IpCameraHandler extends BaseThingHandler {
                     sendHttpGET(snapshotUri);
                 } else if (audioAlarmUpdateSnapshot || shortAudioAlarm) {
                     sendHttpGET(snapshotUri);
+                    updateCounter = 10;
                     shortAudioAlarm = false;
                 } else if (motionAlarmUpdateSnapshot || shortMotionAlarm) {
                     sendHttpGET(snapshotUri);
+                    updateCounter = 10;
                     shortMotionAlarm = false;
                 }
             }

@@ -421,10 +421,12 @@ Ways to use snapshots are:
 + Use the cameras URL and fetch it directly so it passes from the camera to your end device ie Tablet without passing any data through the openHAB server. For cameras like Dahua that refuse to allow DIGEST to be turned off this is not an option, plus the binding has some advantages which are explained below so even if your camera can work directly, you may not wish to do so.
 + Request a snapshot with the url ``http://192.168.xxx.xxx:54321/ipcamera.jpg`` (with 54321 being the server port number you specify) this will return the current snapshot which only works if the binding is setup to fetch jpg snapshots. Replace 54321 with your SERVER_PORT. This file does not exist on disk and is served out of ram to keep disk writes to a minimum with this binding. It also means the binding can serve a jpg file much faster than a camera can directly as a camera usually waits for a keyframe, then has to compresses the data, before it can be sent. All of this takes time giving you a delay compared to serving the file from Ram.
 + Use the Create GIF feature (explained in more detail below) and use a preroll value >0. This creates a number of snapshots in the ffmpeg output folder called snapshotXXX.jpg where XXX starts at 0 and increases each poll amount of time. This means you can get a snapshot from an exact amount of time before, on or after triggering the GIF to be created. Handy for cameras which lag due to slow processors and buffering. These snapshots can be fetched either directly as they exist on disk, or via this url format. ``http://192.168.xxx.xxx:54321/snapshot0.jpg`` Where the IP is your Openhab server and the port is what is setup in the binding as the SERVER_PORT.
++ The Image channel is limited to only update every 10th poll period of time unless an alarm is triggered, so instead use the above mentioned ipcamera.jpg method which is shown in more detail in the forum thread linked below.
 + You can also read the image data directly from the image channel and use it in rules, there are some examples on the forum how to do this, however it is far easier to use the above methods.
 + Also worth a mention is that you can off load cameras to a software and hardware server. These have their advantages, but can be overkill depending on what you plan to do with your cameras. The motion project is one example
 
-
+See this forum thread for examples of how to use snapshots and streams.
+<https://community.openhab.org/t/ip-camera-how-to-clickable-thumbnail-overview-in-sitemaps-that-opens-up-to-a-larger-view/77990>
 
 ## How to get working video streams
 
@@ -436,6 +438,9 @@ There are now multiple ways to get a moving picture:
 + Animated GIF.
 + HLS (Http Live Streaming) which uses h264. This can be used to cast to Chromecast devices and works well in iOS/Apple devices.
 + MJPEG which uses multiple jpeg files one after another to create what is called MOTION JPEG. Whilst larger in size, it is more compatible. Most cameras limit the resolution in this format so for higher res, use HLS.
+
+See this forum thread for examples of how to use snapshots and streams.
+<https://community.openhab.org/t/ip-camera-how-to-clickable-thumbnail-overview-in-sitemaps-that-opens-up-to-a-larger-view/77990>
 
 To get the first two video formats working, you need to install the ffmpeg program. Visit their site here to learn how <https://ffmpeg.org/>
 
