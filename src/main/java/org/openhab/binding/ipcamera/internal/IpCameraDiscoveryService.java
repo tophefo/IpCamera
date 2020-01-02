@@ -96,8 +96,8 @@ public class IpCameraDiscoveryService extends AbstractDiscoveryService {
         ThingTypeUID thingtypeuid = new ThingTypeUID("ipcamera", brand);
         ThingUID thingUID = new ThingUID(thingtypeuid, "Camera" + ++numberOfCameras);
         DiscoveryResult discoveryResult = DiscoveryResultBuilder.create(thingUID)
-                .withProperty(CONFIG_IPADDRESS, hostname.substring(7)).withLabel(brand + " Camera" + numberOfCameras)
-                .build();
+                .withProperty(CONFIG_IPADDRESS, hostname.substring(7))
+                .withLabel(brand + " Camera" + numberOfCameras + " @ " + hostname.substring(7)).build();
         thingDiscovered(discoveryResult);
     }
 
@@ -115,13 +115,13 @@ public class IpCameraDiscoveryService extends AbstractDiscoveryService {
             @Override
             public void onDevicesFound(List<Device> devices) {
                 for (Device device : devices) {
-                    logger.info("Device found:{} ", device.getHostName());
+                    logger.info("Device found Hostname:{}", device.getHostName());
                     try {
                         String brand;
                         brand = getCameraBrand(device.getHostName());
                         newCameraFound(brand, device.getHostName());
                     } catch (IOException e) {
-                        logger.debug("error trying to fetch cameras login page:{}", e);
+                        logger.debug("Error trying to fetch cameras login page:{}", e);
                     }
                 }
             }
