@@ -73,7 +73,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                             handlingMjpeg = true;
                         } else {
                             logger.error(
-                                    "MJPEG stream was told to start and there is no STREAM_URL_OVERRIDE supplied.");
+                                    "MJPEG stream was asked to start and there is no STREAM_URL_OVERRIDE supplied.");
                         }
                     } else if (httpRequest.uri().contains("/ipcamera.m3u8")) {
                         ipCameraHandler.setupFfmpegFormat("HLS");

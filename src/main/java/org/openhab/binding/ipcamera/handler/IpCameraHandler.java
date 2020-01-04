@@ -43,7 +43,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.library.types.OnOffType;
@@ -141,16 +140,17 @@ public class IpCameraHandler extends BaseThingHandler {
 
     public @Nullable Ffmpeg ffmpegHLS = null;
     public @Nullable Ffmpeg ffmpegGIF = null;
+    private @Nullable ScheduledFuture<?> cameraConnectionJob = null;
+    private @Nullable ScheduledFuture<?> pollCameraJob = null;
+    private @Nullable Bootstrap mainBootstrap;
+    private @Nullable ServerBootstrap serverBootstrap;
 
     private OnvifDevice thisOnvifCamera;
     private String mediaProfileToken = "empty";
     private String username = "";
     private String password = "";
-    private @Nullable ScheduledFuture<?> cameraConnectionJob = null;
-    private @Nullable ScheduledFuture<?> pollCameraJob = null;
     private int selectedMediaProfile = 0;
-    private Bootstrap mainBootstrap;
-    private ServerBootstrap serverBootstrap;
+
     private EventLoopGroup mainEventLoopGroup = new NioEventLoopGroup();
     private EventLoopGroup serversLoopGroup = new NioEventLoopGroup();
     private FullHttpRequest putRequestWithBody;
@@ -161,6 +161,7 @@ public class IpCameraHandler extends BaseThingHandler {
     private int updateCounter = 0;
     private byte lowPriorityCounter = 0;
     public String hostIp = "0.0.0.0";
+    private String ffmpegOutputFolder = "";
 
     public ArrayList<String> listOfRequests = new ArrayList<String>(18);
     public ArrayList<Channel> listOfChannels = new ArrayList<Channel>(18);
@@ -178,11 +179,9 @@ public class IpCameraHandler extends BaseThingHandler {
     public boolean useDigestAuth = false;
     public String snapshotUri = "";
     public String mjpegUri = "";
-    @Nullable
-    ChannelFuture serverFuture = null;
+    private @Nullable ChannelFuture serverFuture = null;
     public int serverPort = 0;
-    @Nullable
-    Object firstStreamedMsg = null;
+    private @Nullable Object firstStreamedMsg = null;
     public byte[] currentSnapshot;
     private String rtspUri = "";
     public String ipAddress = "empty";
@@ -194,11 +193,9 @@ public class IpCameraHandler extends BaseThingHandler {
     public boolean firstMotionAlarm = false;
     boolean shortAudioAlarm = true; // used for when the alarm is less than the polling amount of time.
     boolean shortMotionAlarm = true; // used for when the alarm is less than the polling amount of time.
-
     private OnvifManager onvifManager = new OnvifManager();
     private OnvifManager ptzManager = new OnvifManager(); // used so listener is in PTZ class.
     boolean movePTZ = false; // delay movements so all made at once
-
     PTZRequest ptzHandler = new PTZRequest("httponly");
 
     public IpCameraHandler(Thing thing) {
@@ -920,8 +917,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 try {
                     NetworkInterface.getNetworkInterfaces();
                 } catch (SocketException e1) {
-                    // TODO Auto-generated catch block
-                    e1.printStackTrace();
+                    logger.error(e1.toString());
                 }
 
                 InetAddress inet;
@@ -989,6 +985,8 @@ public class IpCameraHandler extends BaseThingHandler {
             if (mjpegChannelGroup.size() == 1) {
                 if (!mjpegUri.equals("")) {
                     sendHttpGET(mjpegUri);
+                } else {
+                    logger.error("Binding does not know where to find a mjpeg steam.");
                 }
             } else if (firstStreamedMsg != null) {
                 ctx.channel().writeAndFlush(firstStreamedMsg);
@@ -1012,11 +1010,12 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     private void storeSnapshots() {
+        // setupFfmpegFormat() will create an error if the output location is not set
         int count = 0;
         OutputStream fos = null;
         for (Object lastSnapshot : fifoSnapshotBuffer) {
             byte[] foo = (byte[]) lastSnapshot;
-            File file = new File(config.get(CONFIG_FFMPEG_OUTPUT).toString() + "snapshot" + count + ".jpg");
+            File file = new File(ffmpegOutputFolder + "snapshot" + count + ".jpg");
             count++;
             try {
                 fos = new FileOutputStream(file);
@@ -1031,24 +1030,38 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     public void setupFfmpegFormat(String format) {
+        if (ffmpegOutputFolder.equals("")) {
+            logger.error("The camera tried to use a ffmpeg feature when the output folder is not set.");
+            return;
+        }
+        if (rtspUri.equals("")) {
+            logger.error("The camera tried to use a ffmpeg feature when no rtsp or valid input for ffmpeg is known.");
+            return;
+        }
+        if (config.get(CONFIG_FFMPEG_LOCATION) == null) {
+            logger.error("The camera tried to use a ffmpeg feature when the location for ffmpeg is not known.");
+            return;
+        }
+        if (config.get(CONFIG_FFMPEG_LOCATION) == null) {
+            logger.error("The camera tried to use a ffmpeg feature when the location for ffmpeg is not known.");
+            return;
+        }
+
         // Make sure the folder exists, if not create it.
-        new File(config.get(CONFIG_FFMPEG_OUTPUT).toString()).mkdirs();
+        new File(ffmpegOutputFolder).mkdirs();
         switch (format) {
             case "HLS":
                 if (ffmpegHLS == null) {
-                    @NonNull
-                    String ffmpegInput = (config.get(CONFIG_FFMPEG_INPUT) == null) ? rtspUri
-                            : config.get(CONFIG_FFMPEG_INPUT).toString();
-                    if (ffmpegInput.contains(":554")) {
+                    if (rtspUri.contains(":554")) {
                         ffmpegHLS = new Ffmpeg((IpCameraHandler) thing.getHandler(),
-                                config.get(CONFIG_FFMPEG_LOCATION).toString(), "-rtsp_transport tcp", ffmpegInput,
+                                config.get(CONFIG_FFMPEG_LOCATION).toString(), "-rtsp_transport tcp", rtspUri,
                                 config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
-                                config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8", username, password);
+                                ffmpegOutputFolder + "ipcamera.m3u8", username, password);
                     } else {
                         ffmpegHLS = new Ffmpeg((IpCameraHandler) thing.getHandler(),
-                                config.get(CONFIG_FFMPEG_LOCATION).toString(), "", ffmpegInput,
+                                config.get(CONFIG_FFMPEG_LOCATION).toString(), "", rtspUri,
                                 config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
-                                config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8", username, password);
+                                ffmpegOutputFolder + "ipcamera.m3u8", username, password);
                     }
                 }
                 ffmpegHLS.setFormat(format);
@@ -1059,21 +1072,19 @@ public class IpCameraHandler extends BaseThingHandler {
                     if (preroll > 0) {
                         ffmpegGIF = new Ffmpeg((IpCameraHandler) thing.getHandler(),
                                 config.get(CONFIG_FFMPEG_LOCATION).toString(), "-y -f image2 -framerate 1",
-                                config.get(CONFIG_FFMPEG_OUTPUT).toString() + "snapshot%d.jpg",
+                                ffmpegOutputFolder + "snapshot%d.jpg",
                                 "-frames:v " + (preroll + postroll) + " "
                                         + config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
-                                config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.gif", null, null);
+                                ffmpegOutputFolder + "ipcamera.gif", null, null);
                     } else {
-                        String ffmpegInput = (config.get(CONFIG_FFMPEG_INPUT) == null) ? rtspUri
-                                : config.get(CONFIG_FFMPEG_INPUT).toString();
                         String inOptions = "-y -t " + postroll + " -rtsp_transport tcp";
-                        if (!ffmpegInput.contains("rtsp")) {
+                        if (!rtspUri.contains("rtsp")) {
                             inOptions = "-y -t " + postroll;
                         }
                         ffmpegGIF = new Ffmpeg((IpCameraHandler) thing.getHandler(),
-                                config.get(CONFIG_FFMPEG_LOCATION).toString(), inOptions, ffmpegInput,
+                                config.get(CONFIG_FFMPEG_LOCATION).toString(), inOptions, rtspUri,
                                 config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
-                                config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.gif", username, password);
+                                ffmpegOutputFolder + "ipcamera.gif", username, password);
                     }
                 }
                 if (preroll > 0) {
@@ -1280,6 +1291,14 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     }
 
+    Runnable runnableMovePTZ = new Runnable() {
+        @Override
+        public void run() {
+            logger.debug("Trying to move with new PTZ Absolute move.");
+            ptzHandler.sendRequest("AbsoluteMove");
+        }
+    };
+
     public void setChannelState(String channelToUpdate, State valueOf) {
         updateState(channelToUpdate, valueOf);
     }
@@ -1298,12 +1317,11 @@ public class IpCameraHandler extends BaseThingHandler {
         @Override
         public void run() {
             if (thing.getThingTypeUID().getId().equals("HTTPONLY")) {
-                if (!snapshotUri.equals("")) {
+                if (!snapshotUri.equals("")) { // thing-type.xml requires this so it can't be empty
                     logger.debug("Camera at {} has a snapshot address of:{}:", ipAddress, snapshotUri);
                     if (sendHttpRequest("GET", snapshotUri, null)) {
                         updateStatus(ThingStatus.ONLINE);
                         isOnline = true;
-
                         cameraConnectionJob.cancel(false);
                         cameraConnectionJob = null;
                         pollCameraJob = pollCamera.scheduleAtFixedRate(pollingCamera, 4000,
@@ -1528,17 +1546,9 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     };
 
-    Runnable runnableMovePTZ = new Runnable() {
-        @Override
-        public void run() {
-            logger.debug("Trying to move with new PTZ now");
-            ptzHandler.sendRequest("AbsoluteMove");
-        }
-    };
-
     @Override
     public void initialize() {
-        logger.debug("initialize() called.");
+        // logger.debug("initialize() called.");
         config = thing.getConfiguration();
         ipAddress = config.get(CONFIG_IPADDRESS).toString();
         username = (config.get(CONFIG_USERNAME) == null) ? "" : config.get(CONFIG_USERNAME).toString();
@@ -1560,10 +1570,16 @@ public class IpCameraHandler extends BaseThingHandler {
                 : Integer.parseInt(config.get(CONFIG_ONVIF_PROFILE_NUMBER).toString());
 
         serverPort = Integer.parseInt(config.get(CONFIG_SERVER_PORT).toString());
-        if (serverPort > -1 && serverPort < 1025) {
-            logger.warn(
-                    "The streaming server's port is <= 1024 and may cause permission errors under Linux, try using a higher port.");
+        if (serverPort == -1) {
+            logger.warn("The SERVER_PORT = -1 which disables a lot of features. See readme for more info.");
+        } else if (serverPort < 1025) {
+            logger.warn("The SERVER_PORT is <= 1024 and may cause permission errors under Linux, try a higher port.");
         }
+
+        rtspUri = (config.get(CONFIG_FFMPEG_INPUT) == null) ? "" : config.get(CONFIG_FFMPEG_INPUT).toString();
+
+        ffmpegOutputFolder = (config.get(CONFIG_FFMPEG_OUTPUT) == null) ? ""
+                : config.get(CONFIG_FFMPEG_OUTPUT).toString();
 
         // Known cameras will connect quicker if we skip ONVIF questions.
         switch (thing.getThingTypeUID().getId()) {
@@ -1616,7 +1632,6 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     private void restart() {
-        // logger.debug("ipCamera restart() called.");
         basicAuth = ""; // clear out stored password hash
         useDigestAuth = false;
         startStreamServer(false);
@@ -1640,7 +1655,6 @@ public class IpCameraHandler extends BaseThingHandler {
             ffmpegGIF.stopConverting();
             ffmpegGIF = null;
         }
-
         lock.lock();
         try {
             listOfRequests.clear();
@@ -1654,7 +1668,6 @@ public class IpCameraHandler extends BaseThingHandler {
 
     @Override
     public void dispose() {
-        // logger.info("ipCamera Dispose() called.");
         restart();
     }
 }
