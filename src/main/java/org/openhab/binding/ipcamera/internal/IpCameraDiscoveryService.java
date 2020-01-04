@@ -43,6 +43,12 @@ import be.teletask.onvif.DiscoveryManager;
 import be.teletask.onvif.listeners.DiscoveryListener;
 import be.teletask.onvif.models.Device;
 
+/**
+ * The {@link IpCameraDiscoveryService} is responsible for finding cameras
+ *
+ * @author Matthew Skinner - Initial contribution
+ */
+
 @Component(service = DiscoveryService.class, immediate = true, configurationPid = "binding.ipcamera")
 public class IpCameraDiscoveryService extends AbstractDiscoveryService {
 

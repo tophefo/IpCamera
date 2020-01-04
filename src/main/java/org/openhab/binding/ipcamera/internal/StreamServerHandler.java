@@ -1,15 +1,15 @@
 /**
-	 * Copyright (c) 2010-2019 Contributors to the openHAB project
-	 *
-	 * See the NOTICE file(s) distributed with this work for additional
-	 * information.
-	 *
-	 * This program and the accompanying materials are made available under the
-	 * terms of the Eclipse Public License 2.0 which is available at
-	 * http://www.eclipse.org/legal/epl-2.0
-	 *
-	 * SPDX-License-Identifier: EPL-2.0
-	 */
+ * Copyright (c) 2010-2019 Contributors to the openHAB project
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
 
 package org.openhab.binding.ipcamera.internal;
 
@@ -38,6 +38,12 @@ import io.netty.handler.stream.ChunkedFile;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.util.ReferenceCountUtil;
+
+/**
+ * The {@link StreamServerHandler} is responsible for handling streams and sending requested files
+ *
+ * @author Matthew Skinner - Initial contribution
+ */
 
 public class StreamServerHandler extends ChannelInboundHandlerAdapter {
     private final Logger logger = LoggerFactory.getLogger(getClass());

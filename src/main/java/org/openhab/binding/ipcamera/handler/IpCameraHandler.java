@@ -249,7 +249,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
             }
         } catch (MalformedURLException e) {
-            logger.error("A non valid url was given to the binding {} - {}", longUrl, e);
+            logger.error("A non valid url was given to the binding {}", longUrl);
         }
         return temp;
     }
@@ -619,7 +619,7 @@ public class IpCameraHandler extends BaseThingHandler {
             @Nullable
             HttpContent content = null;
             try {
-                logger.trace(msg.toString());
+                logger.trace("{}", msg.toString());
                 if (msg instanceof HttpResponse) {
                     HttpResponse response = (HttpResponse) msg;
                     if (response.status().code() != 401) {
@@ -831,7 +831,7 @@ public class IpCameraHandler extends BaseThingHandler {
             } finally {
                 lock.unlock();
             }
-            logger.warn("!!!! Camera has closed the channel \tURL:{} Cause reported is: {}", requestUrl, cause);
+            logger.warn("!!!! Camera has closed a channel \tURL: Cause reported is: {}", cause);
             ctx.close();
         }
 
@@ -917,7 +917,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 try {
                     NetworkInterface.getNetworkInterfaces();
                 } catch (SocketException e1) {
-                    logger.error(e1.toString());
+                    logger.error("{}", e1.toString());
                 }
 
                 InetAddress inet;

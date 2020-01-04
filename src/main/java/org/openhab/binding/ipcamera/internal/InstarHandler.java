@@ -1,15 +1,15 @@
 /**
-	 * Copyright (c) 2010-2019 Contributors to the openHAB project
-	 *
-	 * See the NOTICE file(s) distributed with this work for additional
-	 * information.
-	 *
-	 * This program and the accompanying materials are made available under the
-	 * terms of the Eclipse Public License 2.0 which is available at
-	 * http://www.eclipse.org/legal/epl-2.0
-	 *
-	 * SPDX-License-Identifier: EPL-2.0
-	 */
+ * Copyright (c) 2010-2019 Contributors to the openHAB project
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
 
 package org.openhab.binding.ipcamera.internal;
 
@@ -30,6 +30,13 @@ import org.openhab.binding.ipcamera.handler.IpCameraHandler;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.ReferenceCountUtil;
+
+/**
+ * The {@link InstarHandler} is responsible for handling commands, which are
+ * sent to one of the channels.
+ *
+ * @author Matthew Skinner - Initial contribution
+ */
 
 public class InstarHandler extends ChannelDuplexHandler {
     IpCameraHandler ipCameraHandler;
