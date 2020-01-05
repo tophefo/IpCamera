@@ -12,36 +12,27 @@
  */
 package org.openhab.binding.ipcamera.onvif;
 
-import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.openhab.binding.ipcamera.handler.IpCameraHandler;
+import org.eclipse.jdt.annotation.NonNullByDefault;
 
-import be.teletask.onvif.models.OnvifMediaProfile;
 import be.teletask.onvif.models.OnvifType;
 import be.teletask.onvif.requests.OnvifRequest;
 
 /**
- * The {@link EventsRequest} is responsible for handling onvif events and alarms.
+ * The {@link EventsRequest} is responsible for handling Onvif events and alarms which are not fully implemented or
+ * tested yet.
  *
  * @author Matthew Skinner - Initial contribution
  */
 
+@NonNullByDefault
 public class EventsRequest implements OnvifRequest {
-
-    String profileToken = "1";
-    String requestType = "GetConfigurations";
+    String profileToken;
+    String requestType;
     String eventAddress = "";// todo implement this again.
-    @SuppressWarnings("unused")
-    private IpCameraHandler thisCamera;
 
-    public EventsRequest(String requestType, OnvifMediaProfile onvifMediaProfile) {
+    public EventsRequest(String requestType, String profileToken) {
         this.requestType = requestType;
-        profileToken = onvifMediaProfile.getToken();
-    }
-
-    public EventsRequest(String string, OnvifMediaProfile onvifMediaProfile, @Nullable ThingHandler handler) {
-        this(string, onvifMediaProfile);
-        thisCamera = (IpCameraHandler) handler;
+        this.profileToken = profileToken;
     }
 
     @Override
@@ -62,9 +53,5 @@ public class EventsRequest implements OnvifRequest {
     @Override
     public OnvifType getType() {
         return OnvifType.CUSTOM;
-    }
-
-    public String getParsedResult(String result) {
-        return "notImplementedYet";
     }
 }

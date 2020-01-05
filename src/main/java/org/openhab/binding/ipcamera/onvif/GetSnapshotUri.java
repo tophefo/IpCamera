@@ -13,6 +13,8 @@
 
 package org.openhab.binding.ipcamera.onvif;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 import be.teletask.onvif.models.OnvifMediaProfile;
 import be.teletask.onvif.models.OnvifType;
 import be.teletask.onvif.requests.OnvifRequest;
@@ -23,6 +25,7 @@ import be.teletask.onvif.requests.OnvifRequest;
  * @author Matthew Skinner - Initial contribution
  */
 
+@NonNullByDefault
 public class GetSnapshotUri implements OnvifRequest {
 
     String profileToken = "1";

@@ -1075,7 +1075,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                 ffmpegOutputFolder + "snapshot%d.jpg",
                                 "-frames:v " + (preroll + postroll) + " "
                                         + config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
-                                ffmpegOutputFolder + "ipcamera.gif", null, null);
+                                ffmpegOutputFolder + "ipcamera.gif", username, password);
                     } else {
                         String inOptions = "-y -t " + postroll + " -rtsp_transport tcp";
                         if (!rtspUri.contains("rtsp")) {

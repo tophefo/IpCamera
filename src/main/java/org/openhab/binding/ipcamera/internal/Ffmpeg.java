@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.openhab.binding.ipcamera.handler.IpCameraHandler;
 import org.slf4j.Logger;
@@ -34,11 +35,10 @@ import org.slf4j.LoggerFactory;
 
 public class Ffmpeg {
     private final Logger logger = LoggerFactory.getLogger(getClass());
-    IpCameraHandler ipCameraHandler;
-    private Process process = null;
-    private String location, inArguments, input, outArguments, output;
-    private String ffmpegCommand, format, password, username;
-    private String[] commandArray = null;
+    private IpCameraHandler ipCameraHandler;
+    private @Nullable Process process = null;
+    private String ffmpegCommand = "", format = "";
+    private String[] commandArray;
     private StreamRunning streamRunning = new StreamRunning();
     private int keepAlive = 0;
 
@@ -61,31 +61,14 @@ public class Ffmpeg {
     public Ffmpeg(IpCameraHandler handle, String location, String inArguments, String input, String outArguments,
             String output, String username, String password) {
         ipCameraHandler = handle;
-        this.location = location;
-        if (input != null) {
-            this.input = input;
-        }
-        this.inArguments = inArguments;
-        this.outArguments = outArguments;
-        this.output = output;
-        this.username = username;
-        this.password = password;
-        buildFfmpegCommand();
-    }
+        String altInput = input;
 
-    private void buildFfmpegCommand() {
-        if (input == null) {
-            logger.error(
-                    "Camera did not know its RTSP url, please use FFMPEG_INPUT to specify a working http or rtsp url.");
-            return;
-        } else {
-            if (password != null && !input.contains("@")) {
-                String credentials = username + ":" + password + "@";
-                // will not work for https: but currently binding does not use https
-                input = input.substring(0, 7) + credentials + input.substring(7);
-            }
+        if (!password.equals("") && !input.contains("@")) {
+            String credentials = username + ":" + password + "@";
+            // will not work for https: but currently binding does not use https
+            altInput = input.substring(0, 7) + credentials + input.substring(7);
         }
-        ffmpegCommand = location + " " + inArguments + " -i " + input + " " + outArguments + " " + output;
+        ffmpegCommand = location + " " + inArguments + " -i " + altInput + " " + outArguments + " " + output;
         commandArray = ffmpegCommand.trim().split("\\s+");
     }
 
@@ -95,6 +78,7 @@ public class Ffmpeg {
         public void run() {
             try {
                 process = Runtime.getRuntime().exec(commandArray);
+                @SuppressWarnings("null")
                 InputStream errorStream = process.getErrorStream();
                 InputStreamReader errorStreamReader = new InputStreamReader(errorStream);
                 BufferedReader bufferedReader = new BufferedReader(errorStreamReader);
@@ -132,12 +116,15 @@ public class Ffmpeg {
         }
     }
 
+    @SuppressWarnings("null")
     public void stopConverting() {
         if (streamRunning.isAlive()) {
             logger.debug("Stopping ffmpeg now");
-            process.destroy();
-            if (process.isAlive()) {
-                process.destroyForcibly();
+            if (process != null) {
+                process.destroy();
+                if (process.isAlive()) {
+                    process.destroyForcibly();
+                }
             }
         }
     }
