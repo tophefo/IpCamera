@@ -468,6 +468,7 @@ Cameras with h264 format streams can have this copied into the HLS format which 
 
 
 To use the HLS steaming features, you need to:
+
 1. Set a valid ``SERVER_PORT`` as the default value of -1 will turn the feature off.
 2. Add any IPs that need access to the ``IP_WHITELIST`` surrounding each one in brackets (see below example). Internal IPs will trigger a warning in the logs if they are not in the whitelist, however external IPs or localhost will not trigger a warning in the logs as they are completely ignored and the binding will refuse to connect to them. This is a security feature.
 3. Ensure ffmpeg is installed.
@@ -591,6 +592,7 @@ Let's say you have a multiple cameras with motion detection, intrusion detection
 You can create a Group item called `gCameraEvent` that would combine all these events:
 
 *.items:
+
 ```java
 Group gCameraEvent
 
@@ -603,6 +605,7 @@ DateTime East_Camera_LastMotion                      "Last motion [%1$tH:%1$tM %
 Then we can make a rule that would launch GIF recorder for each camera that caught motion alert:
 
 camera.rules:
+
 ```java
 import org.eclipse.smarthome.model.script.ScriptServiceUtil
 
@@ -640,6 +643,7 @@ By default all GIFs are saved with `ipcamera.gif` name.
 Now we can archive the old ones by renaming them with a timestamp:
 
 camera.rules:
+
 ```java
 var Timer timer = null // top of the file, optionally after imports
 
@@ -775,9 +779,9 @@ Another example is:
 **Instar**
 
 + For mjpeg to work you need to set the first substream to be in mjpeg format for the default settings to work, otherwise you can override the default with STREAM_URL_OVERRIDE with a valid url for mjpeg streams.
-
 + These cameras have the ability to call the openHAB REST API directly when an alarm occurs, or you can use the built in Alarm Server that the binding auto sets up for you. Be sure to update to the latest firmware for your camera as Instar have made a lot of improvements in this area recently.
-For Onvif it may be required to disable the authentication in the cameras setup page if you experience issues using PTZ features. Make sure the cameras timezone, Date and Time match the Openhab server. UTC time is used in the Onvif authentication hash so it needs to be correct.
++ For Onvif it may be required to disable the authentication in the cameras setup page if you experience issues using PTZ features. Make sure the cameras timezone, Date and Time match the Openhab server. UTC time is used in the Onvif authentication hash so it needs to be correct.
+
 
 ## Reducing log sizes
 
