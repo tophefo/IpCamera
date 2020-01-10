@@ -13,15 +13,15 @@
 
 package org.openhab.binding.ipcamera.internal;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
- * The {@link IpCameraConfiguration} class contains fields mapping thing configuration paramters.
+ * The {@link IpCameraConfiguration} class contains fields mapping thing configuration parameters.
  *
  * @author Matthew Skinner - Initial contribution
  */
+
+@NonNullByDefault
 public class IpCameraConfiguration {
 
-    /**
-     * Sample configuration parameter. Replace with you own.
-     */
-    public String config1;
 }

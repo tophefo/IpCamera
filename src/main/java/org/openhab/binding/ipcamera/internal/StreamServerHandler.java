@@ -19,6 +19,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.ipcamera.handler.IpCameraHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +47,7 @@ import io.netty.util.ReferenceCountUtil;
  * @author Matthew Skinner - Initial contribution
  */
 
+@NonNullByDefault
 public class StreamServerHandler extends ChannelInboundHandlerAdapter {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private IpCameraHandler ipCameraHandler;
@@ -55,11 +58,11 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void handlerAdded(ChannelHandlerContext ctx) {
+    public void handlerAdded(@Nullable ChannelHandlerContext ctx) {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(@Nullable ChannelHandlerContext ctx, @Nullable Object msg) throws Exception {
         try {
             if (msg instanceof HttpRequest) {
                 HttpRequest httpRequest = (HttpRequest) msg;
@@ -83,7 +86,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                         }
                     } else if (httpRequest.uri().contains("/ipcamera.m3u8")) {
                         ipCameraHandler.setupFfmpegFormat("HLS");
-                        ipCameraHandler.ffmpegHLS.setKeepAlive();// setup must come first
+                        ipCameraHandler.ffmpegHLS.setKeepAlive(60);// setup must come first
                         sendFile(ctx, httpRequest.uri(), "application/x-mpegURL");
                     } else if (httpRequest.uri().contains(".ts")) {
                         sendFile(ctx, httpRequest.uri(), "video/MP2T");
@@ -141,11 +144,11 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+    public void channelReadComplete(@Nullable ChannelHandlerContext ctx) throws Exception {
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+    public void exceptionCaught(@Nullable ChannelHandlerContext ctx, @Nullable Throwable cause) throws Exception {
         if (cause.toString().contains("Connection reset by peer")) {
             logger.debug("Connection reset by peer.");
         } else if (cause.toString().contains("An established connection was aborted by the software")) {
@@ -162,7 +165,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+    public void userEventTriggered(@Nullable ChannelHandlerContext ctx, @Nullable Object evt) throws Exception {
         if (evt instanceof IdleStateEvent) {
             IdleStateEvent e = (IdleStateEvent) evt;
             if (e.state() == IdleState.WRITER_IDLE) {
@@ -173,7 +176,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void handlerRemoved(ChannelHandlerContext ctx) {
+    public void handlerRemoved(@Nullable ChannelHandlerContext ctx) {
         logger.debug("Closing a StreamServerHandler.");
         if (handlingMjpeg) {
             ipCameraHandler.setupMjpegStreaming(false, ctx);

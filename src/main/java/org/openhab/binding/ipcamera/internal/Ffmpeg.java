@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.openhab.binding.ipcamera.handler.IpCameraHandler;
@@ -27,12 +28,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link Ffmpeg} is responsible for handling the ffmpeg conversions
+ * The {@link Ffmpeg} is responsible for handling multiple ffmpeg conversions which are used for many tasks
  *
  *
  * @author Matthew Skinner - Initial contribution
  */
 
+@NonNullByDefault
 public class Ffmpeg {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private IpCameraHandler ipCameraHandler;
@@ -42,9 +44,8 @@ public class Ffmpeg {
     private StreamRunning streamRunning = new StreamRunning();
     private int keepAlive = 0;
 
-    public void setKeepAlive() {
-        // reset to Keep alive ffmpeg for another 60 seconds
-        keepAlive = 60 / (Integer.parseInt(ipCameraHandler.config.get(CONFIG_POLL_CAMERA_MS).toString()) / 1000);
+    public void setKeepAlive(int seconds) {
+        keepAlive = seconds / (Integer.parseInt(ipCameraHandler.config.get(CONFIG_POLL_CAMERA_MS).toString()) / 1000);
     }
 
     public void setFormat(String format) {
@@ -72,7 +73,9 @@ public class Ffmpeg {
         commandArray = ffmpegCommand.trim().split("\\s+");
     }
 
+    @NonNullByDefault
     private class StreamRunning extends Thread {
+        public int countOfMotions = 0;
 
         @Override
         public void run() {
@@ -84,7 +87,27 @@ public class Ffmpeg {
                 BufferedReader bufferedReader = new BufferedReader(errorStreamReader);
                 String line = null;
                 while ((line = bufferedReader.readLine()) != null) {
-                    logger.debug("{}", line);
+                    if (format.equals("MOTION")) {
+                        logger.debug("{}", line);
+                        if (line.contains("lavfi.")) {
+                            if (countOfMotions == 3) {
+                                ipCameraHandler.motionDetected(CHANNEL_MOTION_ALARM);
+                            } else {
+                                countOfMotions++;
+                            }
+                        } else if (line.contains("speed=")) {
+                            if (countOfMotions > 0) {
+                                countOfMotions--;
+                                if (countOfMotions == 0) {
+                                    ipCameraHandler.setChannelState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
+                                    ipCameraHandler.firstMotionAlarm = false;
+                                    ipCameraHandler.motionAlarmUpdateSnapshot = false;
+                                }
+                            }
+                        }
+                    } else {
+                        logger.debug("{}", line);
+                    }
                 }
             } catch (IOException e) {
                 logger.error("{}", e.toString());
@@ -107,7 +130,7 @@ public class Ffmpeg {
         if (!streamRunning.isAlive()) {
             streamRunning = new StreamRunning();
             logger.debug("Starting ffmpeg with this command now:{}", ffmpegCommand);
-            setKeepAlive();
+            setKeepAlive(60);
             streamRunning.start();
             try {
                 Thread.sleep(4500);

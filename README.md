@@ -780,7 +780,7 @@ Another example is:
 
 + For mjpeg to work you need to set the first substream to be in mjpeg format for the default settings to work, otherwise you can override the default with STREAM_URL_OVERRIDE with a valid url for mjpeg streams.
 + These cameras have the ability to call the openHAB REST API directly when an alarm occurs, or you can use the built in Alarm Server that the binding auto sets up for you. Be sure to update to the latest firmware for your camera as Instar have made a lot of improvements in this area recently.
-+ For Onvif it may be required to disable the authentication in the cameras setup page if you experience issues using PTZ features. Make sure the cameras timezone, Date and Time match the Openhab server. UTC time is used in the Onvif authentication hash so it needs to be correct.
++ For Onvif it may be required to disable the authentication (only for ONVIF) in the cameras setup page if you experience issues using PTZ features. Make sure the cameras timezone, Date and Time match the Openhab server. UTC time is used in the Onvif authentication hash so it needs to be correct.
 
 
 ## Reducing log sizes

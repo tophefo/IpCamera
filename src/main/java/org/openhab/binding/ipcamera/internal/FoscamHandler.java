@@ -17,6 +17,8 @@ import static org.openhab.binding.ipcamera.IpCameraBindingConstants.*;
 
 import java.util.ArrayList;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.PercentType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
@@ -36,6 +38,7 @@ import io.netty.util.ReferenceCountUtil;
  * @author Matthew Skinner - Initial contribution
  */
 
+@NonNullByDefault
 public class FoscamHandler extends ChannelDuplexHandler {
     IpCameraHandler ipCameraHandler;
     String username, password;
@@ -48,7 +51,7 @@ public class FoscamHandler extends ChannelDuplexHandler {
 
     // This handles the incoming http replies back from the camera.
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(@Nullable ChannelHandlerContext ctx, @Nullable Object msg) throws Exception {
         String content = null;
         try {
             content = msg.toString();

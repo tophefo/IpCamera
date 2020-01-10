@@ -16,6 +16,8 @@ package org.openhab.binding.ipcamera.internal;
 import java.security.MessageDigest;
 import java.util.Random;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.thing.binding.ThingHandler;
 import org.openhab.binding.ipcamera.handler.IpCameraHandler;
 import org.slf4j.Logger;
@@ -32,12 +34,13 @@ import io.netty.handler.codec.http.HttpResponse;
  * @author Matthew Skinner - Initial contribution
  */
 
+@NonNullByDefault
 public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
     private Logger logger = LoggerFactory.getLogger(getClass());
     private IpCameraHandler myHandler;
     private String username, password;
-    private String httpMethod, httpUrl;
+    private String httpMethod = "", httpUrl = "";
     private byte ncCounter = 0;
     String nonce = "empty", opaque = "empty", qop = "empty", realm = "empty";
 
@@ -75,7 +78,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
         } catch (java.security.NoSuchAlgorithmException e) {
             logger.error("NoSuchAlgorithmException error when calculating MD5 hash");
         }
-        return null;
+        return "";
     }
 
     private String searchString(String rawString, String searchedString) {
@@ -108,7 +111,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
                 }
             }
         }
-        return null;
+        return "";
     }
 
     // Method can be used a few ways. processAuth(null, string,string, false) to return the digest on demand, and
@@ -172,13 +175,13 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
         if (reSend) {
             myHandler.sendHttpRequest(httpMethod, requestURI, digestString);
-            return null;
+            return "";
         }
         return digestString;
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(@Nullable ChannelHandlerContext ctx, @Nullable Object msg) throws Exception {
         boolean closeConnection = true;
         String authenticate = null;
         if (msg instanceof HttpResponse) {
@@ -237,14 +240,16 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
     }
 
     @Override
-    public void handlerAdded(ChannelHandlerContext ctx) {
+    public void handlerAdded(@Nullable ChannelHandlerContext ctx) {
     }
 
     @Override
-    public void handlerRemoved(ChannelHandlerContext ctx) {
-        logger = null;
-        myHandler = null;
-        username = password = httpMethod = httpUrl = null;
-        nonce = opaque = qop = realm = null;
+    public void handlerRemoved(@Nullable ChannelHandlerContext ctx) {
+        /*
+         * logger = null;
+         * myHandler = null;
+         * username = password = httpMethod = httpUrl = null;
+         * nonce = opaque = qop = realm = null;
+         */
     }
 }

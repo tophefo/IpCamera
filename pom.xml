@@ -60,15 +60,6 @@
       <scope>provided</scope>
     </dependency>
 
-  	<!-- https://mvnrepository.com/artifact/javax.xml.soap/javax.xml.soap-api 
-	<dependency>
-    <groupId>javax.xml.soap</groupId>
-    <artifactId>javax.xml.soap-api</artifactId>
-    <version>1.4.0</version>
-    <scope>provided</scope>
-	</dependency>
-	-->
-	
 	<!-- https://mvnrepository.com/artifact/be.teletask.onvif/onvif -->
     <dependency>
     <groupId>be.teletask.onvif</groupId>

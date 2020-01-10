@@ -15,6 +15,8 @@ package org.openhab.binding.ipcamera.internal;
 
 import java.net.InetSocketAddress;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +50,10 @@ import io.netty.util.CharsetUtil;
 
 // Class is my custom implementation for RTSP with netty, aim is to ask stream what format it is and more
 // was working before it was moved into its own handler. WIP
+
+@NonNullByDefault
 public class RtspHandler extends ChannelDuplexHandler {
+    @Nullable
     private Bootstrap rtspBootstrap;
     private EventLoopGroup mainEventLoopGroup = new NioEventLoopGroup();
     private String ipAddress = "todo";
@@ -146,7 +151,7 @@ public class RtspHandler extends ChannelDuplexHandler {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(@Nullable ChannelHandlerContext ctx, @Nullable Object msg) throws Exception {
 
         logger.info("{}", msg.toString());
 
@@ -158,25 +163,25 @@ public class RtspHandler extends ChannelDuplexHandler {
     }
 
     @Override
-    public void channelReadComplete(ChannelHandlerContext ctx) {
+    public void channelReadComplete(@Nullable ChannelHandlerContext ctx) {
     }
 
     @Override
-    public void handlerAdded(ChannelHandlerContext ctx) {
+    public void handlerAdded(@Nullable ChannelHandlerContext ctx) {
         logger.debug("RTSP handler just created now");
     }
 
     @Override
-    public void handlerRemoved(ChannelHandlerContext ctx) {
+    public void handlerRemoved(@Nullable ChannelHandlerContext ctx) {
         logger.debug("RTSP handler removed just now");
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+    public void exceptionCaught(@Nullable ChannelHandlerContext ctx, @Nullable Throwable cause) {
     }
 
     @Override
-    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+    public void userEventTriggered(@Nullable ChannelHandlerContext ctx, @Nullable Object evt) throws Exception {
 
     }
 }

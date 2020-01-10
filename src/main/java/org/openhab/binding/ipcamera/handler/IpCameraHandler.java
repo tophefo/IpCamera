@@ -28,7 +28,6 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -138,8 +137,10 @@ public class IpCameraHandler extends BaseThingHandler {
     OnvifServicesListener onvifServicesListener;
     public Configuration config;
 
-    public @Nullable Ffmpeg ffmpegHLS = null;
+    @Nullable
+    public Ffmpeg ffmpegHLS = null;
     public @Nullable Ffmpeg ffmpegGIF = null;
+    public @Nullable Ffmpeg ffmpegMotion = null;
     private @Nullable ScheduledFuture<?> cameraConnectionJob = null;
     private @Nullable ScheduledFuture<?> pollCameraJob = null;
     private @Nullable Bootstrap mainBootstrap;
@@ -197,9 +198,14 @@ public class IpCameraHandler extends BaseThingHandler {
     private OnvifManager ptzManager = new OnvifManager(); // used so listener is in PTZ class.
     boolean movePTZ = false; // delay movements so all made at once
     PTZRequest ptzHandler = new PTZRequest("httponly");
+    Double motionThreshold = 0.0016;
 
     public IpCameraHandler(Thing thing) {
         super(thing);
+    }
+
+    private IpCameraHandler getHandle() {
+        return this;
     }
 
     // false clears the stored user/pass hash, true creates the hash
@@ -424,34 +430,33 @@ public class IpCameraHandler extends BaseThingHandler {
                     socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(18, 0, 0));
                     socketChannel.pipeline().addLast("HttpClientCodec", new HttpClientCodec());
                     socketChannel.pipeline().addLast("authHandler",
-                            new MyNettyAuthHandler(username, password, thing.getHandler()));
+                            new MyNettyAuthHandler(username, password, getHandle()));
                     socketChannel.pipeline().addLast("commonHandler", new CommonCameraHandler());
 
                     switch (thing.getThingTypeUID().getId()) {
                         case "AMCREST":
-                            socketChannel.pipeline().addLast("amcrestHandler", new AmcrestHandler(thing.getHandler()));
+                            socketChannel.pipeline().addLast("amcrestHandler", new AmcrestHandler(getHandle()));
                             break;
                         case "DAHUA":
-                            socketChannel.pipeline().addLast("brandHandler",
-                                    new DahuaHandler(thing.getHandler(), nvrChannel));
+                            socketChannel.pipeline().addLast("brandHandler", new DahuaHandler(getHandle(), nvrChannel));
                             break;
                         case "DOORBIRD":
-                            socketChannel.pipeline().addLast("brandHandler", new DoorBirdHandler(thing.getHandler()));
+                            socketChannel.pipeline().addLast("brandHandler", new DoorBirdHandler(getHandle()));
                             break;
                         case "FOSCAM":
                             socketChannel.pipeline().addLast("brandHandler",
-                                    new FoscamHandler(thing.getHandler(), username, password));
+                                    new FoscamHandler(getHandle(), username, password));
                             break;
                         case "HIKVISION":
                             socketChannel.pipeline().addLast("brandHandler",
-                                    new HikvisionHandler(thing.getHandler(), nvrChannel));
+                                    new HikvisionHandler(getHandle(), nvrChannel));
                             break;
                         case "INSTAR":
-                            socketChannel.pipeline().addLast("instarHandler", new InstarHandler(thing.getHandler()));
+                            socketChannel.pipeline().addLast("instarHandler", new InstarHandler(getHandle()));
                             break;
                         default:
                             socketChannel.pipeline().addLast("brandHandler",
-                                    new HikvisionHandler(thing.getHandler(), nvrChannel));
+                                    new HikvisionHandler(getHandle(), nvrChannel));
                             break;
                     }
                 }
@@ -710,7 +715,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             if (content instanceof LastHttpContent) {
                                 if (contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
                                     if (updateImage) {
-                                        if (++updateCounter > 9) {
+                                        if (++updateCounter > 4) {
                                             updateCounter = 0;
                                             updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
                                         }
@@ -887,7 +892,7 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     public String getLocalIpAddress() {
-        String ipAddress = null;
+        String ipAddress = "";
         try {
             for (Enumeration<NetworkInterface> enumNetworks = NetworkInterface.getNetworkInterfaces(); enumNetworks
                     .hasMoreElements();) {
@@ -895,15 +900,16 @@ public class IpCameraHandler extends BaseThingHandler {
                 for (Enumeration<InetAddress> enumIpAddr = networkInterface.getInetAddresses(); enumIpAddr
                         .hasMoreElements();) {
                     InetAddress inetAddress = enumIpAddr.nextElement();
-                    ipAddress = new String(inetAddress.getHostAddress().toString());
-                    if (!inetAddress.isLoopbackAddress() && ipAddress.length() < 18) {
-                        return inetAddress.getHostAddress().toString();
+                    if (!inetAddress.isLoopbackAddress() && inetAddress.getHostAddress().toString().length() < 18
+                            && inetAddress.isSiteLocalAddress()) {
+                        ipAddress = inetAddress.getHostAddress().toString();
+                        logger.debug("Possible NIC/IP match found:{}", ipAddress);
                     }
                 }
             }
         } catch (SocketException ex) {
         }
-        return null;
+        return ipAddress;
     }
 
     public void startStreamServer(boolean start) {
@@ -913,57 +919,27 @@ public class IpCameraHandler extends BaseThingHandler {
             serverBootstrap = null;
         } else {
             if (serverBootstrap == null) {
-
-                try {
-                    NetworkInterface.getNetworkInterfaces();
-                } catch (SocketException e1) {
-                    logger.error("{}", e1.toString());
-                }
-
-                InetAddress inet;
-                try {
-                    inet = InetAddress.getLocalHost();
-                    InetAddress[] ipConnections = InetAddress.getAllByName(inet.getCanonicalHostName());
-                    if (ipConnections != null) {
-                        for (int i = 0; i < ipConnections.length; i++) {
-                            logger.debug("Stream Server possible connections are:{}", ipConnections[i]);
-                            if (ipConnections[i].isSiteLocalAddress()) {
-                                hostIp = ipConnections[i].getHostAddress();
-                            }
-                        }
-                    }
-                    ipConnections = null;
-                } catch (UnknownHostException e2) {
-                    logger.error("Stream Server has an error finding an IP:{}", e2);
-                }
-
-                if (hostIp.contentEquals("0.0.0.0")) {
-                    hostIp = getLocalIpAddress();
-                    logger.debug("Alt Ip finder gives:{}", hostIp);
-                }
-
-                inet = null;
-
+                hostIp = getLocalIpAddress();
                 try {
                     serversLoopGroup = new NioEventLoopGroup();
                     serverBootstrap = new ServerBootstrap();
                     serverBootstrap.group(serversLoopGroup);
                     serverBootstrap.channel(NioServerSocketChannel.class);
                     // IP "0.0.0.0" will bind the server to all network connections//
-                    serverBootstrap.localAddress(new InetSocketAddress(hostIp, serverPort));
+                    serverBootstrap.localAddress(new InetSocketAddress("0.0.0.0", serverPort));
                     serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
                             socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(0, 10, 0));
                             socketChannel.pipeline().addLast("HttpServerCodec", new HttpServerCodec());
                             socketChannel.pipeline().addLast("ChunkedWriteHandler", new ChunkedWriteHandler());
-                            socketChannel.pipeline()
-                                    .addLast(new StreamServerHandler((IpCameraHandler) thing.getHandler()));
+                            socketChannel.pipeline().addLast(new StreamServerHandler(getHandle()));
                         }
                     });
                     serverFuture = serverBootstrap.bind().sync();
                     serverFuture.await(4000);
-                    logger.info("IpCamera file server for camera {} has started on port {}", ipAddress, serverPort);
+                    logger.info("IpCamera file server for camera {} has started on port {} for all NIC's.", ipAddress,
+                            serverPort);
                     updateState(CHANNEL_STREAM_URL,
                             new StringType("http://" + hostIp + ":" + serverPort + "/ipcamera.mjpeg"));
                     updateState(CHANNEL_HLS_URL,
@@ -1053,13 +1029,11 @@ public class IpCameraHandler extends BaseThingHandler {
             case "HLS":
                 if (ffmpegHLS == null) {
                     if (rtspUri.contains(":554")) {
-                        ffmpegHLS = new Ffmpeg((IpCameraHandler) thing.getHandler(),
-                                config.get(CONFIG_FFMPEG_LOCATION).toString(), "-rtsp_transport tcp", rtspUri,
-                                config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
+                        ffmpegHLS = new Ffmpeg(this, config.get(CONFIG_FFMPEG_LOCATION).toString(),
+                                "-rtsp_transport tcp", rtspUri, config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
                                 ffmpegOutputFolder + "ipcamera.m3u8", username, password);
                     } else {
-                        ffmpegHLS = new Ffmpeg((IpCameraHandler) thing.getHandler(),
-                                config.get(CONFIG_FFMPEG_LOCATION).toString(), "", rtspUri,
+                        ffmpegHLS = new Ffmpeg(this, config.get(CONFIG_FFMPEG_LOCATION).toString(), "", rtspUri,
                                 config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
                                 ffmpegOutputFolder + "ipcamera.m3u8", username, password);
                     }
@@ -1070,9 +1044,8 @@ public class IpCameraHandler extends BaseThingHandler {
             case "GIF":
                 if (ffmpegGIF == null) {
                     if (preroll > 0) {
-                        ffmpegGIF = new Ffmpeg((IpCameraHandler) thing.getHandler(),
-                                config.get(CONFIG_FFMPEG_LOCATION).toString(), "-y -f image2 -framerate 1",
-                                ffmpegOutputFolder + "snapshot%d.jpg",
+                        ffmpegGIF = new Ffmpeg(this, config.get(CONFIG_FFMPEG_LOCATION).toString(),
+                                "-y -f image2 -framerate 1", ffmpegOutputFolder + "snapshot%d.jpg",
                                 "-frames:v " + (preroll + postroll) + " "
                                         + config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
                                 ffmpegOutputFolder + "ipcamera.gif", username, password);
@@ -1081,8 +1054,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         if (!rtspUri.contains("rtsp")) {
                             inOptions = "-y -t " + postroll;
                         }
-                        ffmpegGIF = new Ffmpeg((IpCameraHandler) thing.getHandler(),
-                                config.get(CONFIG_FFMPEG_LOCATION).toString(), inOptions, rtspUri,
+                        ffmpegGIF = new Ffmpeg(this, config.get(CONFIG_FFMPEG_LOCATION).toString(), inOptions, rtspUri,
                                 config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
                                 ffmpegOutputFolder + "ipcamera.gif", username, password);
                     }
@@ -1092,6 +1064,20 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
                 ffmpegGIF.setFormat(format);
                 ffmpegGIF.startConverting();
+                break;
+            case "MOTION":
+                if (ffmpegMotion != null) {
+                    ffmpegMotion.stopConverting();
+                }
+                String inOptions = "-rtsp_transport tcp";
+                if (!rtspUri.contains("rtsp")) {
+                    inOptions = "";
+                }
+                ffmpegMotion = new Ffmpeg(this, config.get(CONFIG_FFMPEG_LOCATION).toString(), inOptions, rtspUri,
+                        "-vf select='gte(scene," + motionThreshold + ")',metadata=print", "-f null -", username,
+                        password);
+                ffmpegMotion.setFormat(format);
+                ffmpegMotion.startConverting();
                 break;
         }
     }
@@ -1196,6 +1182,19 @@ public class IpCameraHandler extends BaseThingHandler {
         } // caution "REFRESH" can still progress to brand Handlers below the else.
         else {
             switch (channelUID.getId()) {
+                case CHANNEL_CONTROL_MOTION_ALARM:
+                    if ("ON".equals(command.toString())) {
+                        setupFfmpegFormat("MOTION");
+                    } else if ("OFF".equals(command.toString()) || "0".equals(command.toString())) {
+                        if (ffmpegMotion != null) {
+                            ffmpegMotion.stopConverting();
+                        }
+                    } else {
+                        motionThreshold = Double.valueOf(command.toString());
+                        motionThreshold = motionThreshold / 10000;
+                        setupFfmpegFormat("MOTION");
+                    }
+                    return;
                 case CHANNEL_GOTO_PRESET:
                     if (ptzHandler.supportsPTZ()) {
                         ptzHandler.gotoPreset(Integer.valueOf(command.toString()));
@@ -1240,49 +1239,49 @@ public class IpCameraHandler extends BaseThingHandler {
         // commands and refresh now get passed to brand handlers
         switch (thing.getThingTypeUID().getId()) {
             case "AMCREST":
-                AmcrestHandler amcrestHandler = new AmcrestHandler(thing.getHandler());
+                AmcrestHandler amcrestHandler = new AmcrestHandler(getHandle());
                 amcrestHandler.handleCommand(channelUID, command);
                 if (lowPriorityRequests == null) {
                     lowPriorityRequests = amcrestHandler.getLowPriorityRequests();
                 }
                 break;
             case "DAHUA":
-                DahuaHandler dahuaHandler = new DahuaHandler(thing.getHandler(), nvrChannel);
+                DahuaHandler dahuaHandler = new DahuaHandler(getHandle(), nvrChannel);
                 dahuaHandler.handleCommand(channelUID, command);
                 if (lowPriorityRequests == null) {
                     lowPriorityRequests = dahuaHandler.getLowPriorityRequests();
                 }
                 break;
             case "DOORBIRD":
-                DoorBirdHandler doorBirdHandler = new DoorBirdHandler(thing.getHandler());
+                DoorBirdHandler doorBirdHandler = new DoorBirdHandler(getHandle());
                 doorBirdHandler.handleCommand(channelUID, command);
                 if (lowPriorityRequests == null) {
                     lowPriorityRequests = doorBirdHandler.getLowPriorityRequests();
                 }
                 break;
             case "HIKVISION":
-                HikvisionHandler hikvisionHandler = new HikvisionHandler(thing.getHandler(), nvrChannel);
+                HikvisionHandler hikvisionHandler = new HikvisionHandler(getHandle(), nvrChannel);
                 hikvisionHandler.handleCommand(channelUID, command);
                 if (lowPriorityRequests == null) {
                     lowPriorityRequests = hikvisionHandler.getLowPriorityRequests();
                 }
                 break;
             case "FOSCAM":
-                FoscamHandler foscamHandler = new FoscamHandler(thing.getHandler(), username, password);
+                FoscamHandler foscamHandler = new FoscamHandler(getHandle(), username, password);
                 foscamHandler.handleCommand(channelUID, command);
                 if (lowPriorityRequests == null) {
                     lowPriorityRequests = foscamHandler.getLowPriorityRequests();
                 }
                 break;
             case "INSTAR":
-                InstarHandler instarHandler = new InstarHandler(thing.getHandler());
+                InstarHandler instarHandler = new InstarHandler(getHandle());
                 instarHandler.handleCommand(channelUID, command);
                 if (lowPriorityRequests == null) {
                     lowPriorityRequests = instarHandler.getLowPriorityRequests();
                 }
                 break;
             default:
-                HikvisionHandler defaultHandler = new HikvisionHandler(thing.getHandler(), nvrChannel);
+                HikvisionHandler defaultHandler = new HikvisionHandler(getHandle(), nvrChannel);
                 defaultHandler.handleCommand(channelUID, command);
                 if (lowPriorityRequests == null) {
                     lowPriorityRequests = new ArrayList<String>(1);
@@ -1313,29 +1312,37 @@ public class IpCameraHandler extends BaseThingHandler {
         return encodedString;
     }
 
+    void bringCameraOnline() {
+        updateStatus(ThingStatus.ONLINE);
+        isOnline = true;
+        cameraConnectionJob.cancel(false);
+        cameraConnectionJob = null;
+        pollCameraJob = pollCamera.scheduleAtFixedRate(pollingCamera, 4000,
+                Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
+        logger.info("IP Camera at {} is now online.", ipAddress);
+        if (!"-1".contentEquals(config.get(CONFIG_SERVER_PORT).toString())) {
+            startStreamServer(true);
+        }
+        if (!rtspUri.equals("")) {
+            updateState(CHANNEL_RTSP_URL, new StringType(rtspUri));
+        }
+    }
+
     Runnable pollingCameraConnection = new Runnable() {
         @Override
         public void run() {
             if (thing.getThingTypeUID().getId().equals("HTTPONLY")) {
-                if (!snapshotUri.equals("")) { // thing-type.xml requires this so it can't be empty
+                if (!snapshotUri.equals("")) {
                     logger.debug("Camera at {} has a snapshot address of:{}:", ipAddress, snapshotUri);
                     if (sendHttpRequest("GET", snapshotUri, null)) {
-                        updateStatus(ThingStatus.ONLINE);
-                        isOnline = true;
-                        cameraConnectionJob.cancel(false);
-                        cameraConnectionJob = null;
-                        pollCameraJob = pollCamera.scheduleAtFixedRate(pollingCamera, 4000,
-                                Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
-
+                        bringCameraOnline();
                         updateState(CHANNEL_IMAGE_URL, new StringType("http://" + ipAddress + snapshotUri));
                         if (updateImage) {
                             updateState(CHANNEL_UPDATE_IMAGE_NOW, OnOffType.valueOf("ON"));
                         }
-                        if (!"-1".contentEquals(config.get(CONFIG_SERVER_PORT).toString())) {
-                            startStreamServer(true);
-                        }
-                        logger.info("IP Camera at {} is now online.", ipAddress);
                     }
+                } else {
+                    bringCameraOnline();
                 }
                 return;
             }
@@ -1368,7 +1375,10 @@ public class IpCameraHandler extends BaseThingHandler {
 
                 @Override
                 public void onError(OnvifDevice thisOnvifCamera, int errorCode, String errorMessage) {
-                    if (errorCode == -1) {// Failed to connect when camera is turned off
+                    if (errorCode == -1) {// camera
+                                          // is
+                                          // turned
+                                          // off
                         logger.debug("We got an ONVIF error{}:{}", errorCode, errorMessage);
                     } else {
                         logger.warn("We got an ONVIF error{}:{}", errorCode, errorMessage);
@@ -1413,7 +1423,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             // disable this in case it causes issues until proven.
                             // onvifManager.sendOnvifRequest(thisOnvifCamera, new
                             // EventsRequest("CreatePullPointSubscription",
-                            // listOfMediaProfiles.get(selectedMediaProfile), thing.getHandler()));
+                            // listOfMediaProfiles.get(selectedMediaProfile), getHandle()));
                         }
                     });
                 }
@@ -1479,11 +1489,11 @@ public class IpCameraHandler extends BaseThingHandler {
                     sendHttpGET(snapshotUri);
                 } else if (audioAlarmUpdateSnapshot || shortAudioAlarm) {
                     sendHttpGET(snapshotUri);
-                    updateCounter = 10;
+                    updateCounter = 5;
                     shortAudioAlarm = false;
                 } else if (motionAlarmUpdateSnapshot || shortMotionAlarm) {
                     sendHttpGET(snapshotUri);
-                    updateCounter = 10;
+                    updateCounter = 5;
                     shortMotionAlarm = false;
                 }
             }
@@ -1654,6 +1664,10 @@ public class IpCameraHandler extends BaseThingHandler {
         if (ffmpegGIF != null) {
             ffmpegGIF.stopConverting();
             ffmpegGIF = null;
+        }
+        if (ffmpegMotion != null) {
+            ffmpegMotion.stopConverting();
+            ffmpegMotion = null;
         }
         lock.lock();
         try {

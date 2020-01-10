@@ -19,11 +19,12 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.PercentType;
 import org.eclipse.smarthome.core.library.types.StringType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.ipcamera.handler.IpCameraHandler;
@@ -39,18 +40,19 @@ import io.netty.util.ReferenceCountUtil;
  * @author Matthew Skinner - Initial contribution
  */
 
+@NonNullByDefault
 public class DahuaHandler extends ChannelDuplexHandler {
     IpCameraHandler ipCameraHandler;
     String nvrChannel;
 
-    public DahuaHandler(ThingHandler handler, String nvrChannel) {
-        ipCameraHandler = (IpCameraHandler) handler;
+    public DahuaHandler(IpCameraHandler handler, String nvrChannel) {
+        ipCameraHandler = handler;
         this.nvrChannel = nvrChannel;
     }
 
     // This handles the incoming http replies back from the camera.
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(@Nullable ChannelHandlerContext ctx, @Nullable Object msg) throws Exception {
         String content = null;
         try {
             content = msg.toString();
@@ -157,7 +159,7 @@ public class DahuaHandler extends ChannelDuplexHandler {
     }
 
     public String encodeSpecialChars(String text) {
-        String Processed = null;
+        String Processed = text;
         try {
             Processed = URLEncoder.encode(text, "UTF-8").replace("+", "%20");
         } catch (UnsupportedEncodingException e) {

@@ -10,6 +10,8 @@
 		<channel id="updateImageNow" typeId="updateImageNow"/>
 		<channel id="updateGif" typeId="updateGif"/>
 		<channel id="image" typeId="image"/>
+		<channel id="controlMotionAlarm" typeId="controlMotionAlarm"/>
+		<channel id="motionAlarm" typeId="motionAlarm"/>
 		<channel id="streamUrl" typeId="streamUrl"/>
 		<channel id="rtspUrl" typeId="rtspUrl"/>
 		<channel id="imageUrl" typeId="imageUrl"/>
@@ -71,7 +73,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <default>80</default>
 </parameter>
 
-<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="true" groupName="Image Settings">
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Image Settings">
 <context>url</context>
 <label>SNAPSHOT_URL_OVERRIDE</label>
 <description>Enter a http url to where a snapshot can be seen if entered into any browser.
@@ -88,7 +90,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
 <context>url</context>
 <label>FFMPEG_INPUT</label>
-<description>Enter any HTTP or RTSP URL that ffmpeg can use as an input.
+<description>Enter any HTTP or RTSP URL that ffmpeg can use as an input. Best if this is in H264 format.
 </description>
 </parameter>
 
@@ -1837,6 +1839,13 @@ The Image channel and JPG served on request can be set to update in a number of 
 		<item-type>Switch</item-type>
 		<label>Enable/Disable the Motion Alarm</label>
 		<description>By using this feature you can stop the camera from sending emails when you are actually home.</description>
+		<category>Motion</category>
+		</channel-type>
+		
+		<channel-type id="controlMotionAlarm">
+		<item-type>Dimmer</item-type>
+		<label>Enable/Disable/Threshold for the Motion Alarm</label>
+		<description>Enable/Disable the motion alarm and control the sensitivity.</description>
 		<category>Motion</category>
 		</channel-type>
 

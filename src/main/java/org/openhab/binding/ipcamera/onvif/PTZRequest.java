@@ -15,6 +15,7 @@ package org.openhab.binding.ipcamera.onvif;
 
 import java.util.LinkedList;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,6 +33,7 @@ import be.teletask.onvif.responses.OnvifResponse;
  * @author Matthew Skinner - Initial contribution
  */
 
+@NonNullByDefault
 public class PTZRequest implements OnvifRequest {
     // These hold the cameras PTZ position in the range that the camera uses, ie
     // mine is -1 to +1
@@ -75,6 +77,7 @@ public class PTZRequest implements OnvifRequest {
 
     public PTZRequest(String request) {
         requestType = request;
+        this.thisOnvifCamera = new OnvifDevice("none");
     }
 
     public boolean supportsPTZ() {
@@ -114,7 +117,7 @@ public class PTZRequest implements OnvifRequest {
     private void setupListener() {
         ptzManager.setOnvifResponseListener(new OnvifResponseListener() {
             @Override
-            public void onResponse(OnvifDevice thisOnvifCamera, OnvifResponse response) {
+            public void onResponse(@Nullable OnvifDevice thisOnvifCamera, @Nullable OnvifResponse response) {
                 logger.debug("We got an ONVIF ptz response:{}", response.getXml());
                 if (response.getXml().contains("GetStatusResponse")) {
                     processPTZLocation(response.getXml());
