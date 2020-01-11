@@ -59,17 +59,17 @@ public class Ffmpeg {
         return --keepAlive;
     }
 
-    public Ffmpeg(IpCameraHandler handle, String location, String inArguments, String input, String outArguments,
-            String output, String username, String password) {
+    public Ffmpeg(IpCameraHandler handle, String ffmpegLocation, String inputArguments, String input,
+            String outArguments, String output, String username, String password) {
         ipCameraHandler = handle;
         String altInput = input;
-
-        if (!password.equals("") && !input.contains("@")) {
+        // Input can be snapshots not just rtsp or http
+        if (!password.equals("") && !input.contains("@") && input.contains("rtsp")) {
             String credentials = username + ":" + password + "@";
             // will not work for https: but currently binding does not use https
             altInput = input.substring(0, 7) + credentials + input.substring(7);
         }
-        ffmpegCommand = location + " " + inArguments + " -i " + altInput + " " + outArguments + " " + output;
+        ffmpegCommand = ffmpegLocation + " " + inputArguments + " -i " + altInput + " " + outArguments + " " + output;
         commandArray = ffmpegCommand.trim().split("\\s+");
     }
 
