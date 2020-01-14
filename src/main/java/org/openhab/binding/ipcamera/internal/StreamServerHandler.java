@@ -19,7 +19,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.ipcamera.handler.IpCameraHandler;
 import org.slf4j.Logger;
@@ -30,6 +29,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpRequest;
@@ -47,11 +47,11 @@ import io.netty.util.ReferenceCountUtil;
  * @author Matthew Skinner - Initial contribution
  */
 
-@NonNullByDefault
 public class StreamServerHandler extends ChannelInboundHandlerAdapter {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private IpCameraHandler ipCameraHandler;
-    private boolean handlingMjpeg = false;
+    private boolean handlingMjpeg = false; // used to remove ctx from group when handler is removed.
+    private boolean handlingSnapshotStream = false; // used to remove ctx from group when handler is removed.
 
     public StreamServerHandler(IpCameraHandler ipCameraHandler) {
         this.ipCameraHandler = ipCameraHandler;
@@ -63,52 +63,72 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(@Nullable ChannelHandlerContext ctx, @Nullable Object msg) throws Exception {
+        @Nullable
+        HttpContent content = null;
         try {
+            logger.debug("{}", msg);
             if (msg instanceof HttpRequest) {
                 HttpRequest httpRequest = (HttpRequest) msg;
-                // logger.info("{}", msg);
+                logger.debug("{}", httpRequest);
                 logger.debug("Stream Server recieved request \t{}:{}", httpRequest.method(), httpRequest.uri());
                 String requestIP = "("
                         + ((InetSocketAddress) ctx.channel().remoteAddress()).getAddress().getHostAddress() + ")";
-
                 if (!ipCameraHandler.config.get(CONFIG_IP_WHITELIST).toString().contains(requestIP)
                         && !ipCameraHandler.config.get(CONFIG_IP_WHITELIST).toString().contentEquals("DISABLE")) {
                     logger.warn("The request made from {} was not in the whitelist and will be ignored.", requestIP);
                     return;
                 } else if ("GET".equalsIgnoreCase(httpRequest.method().toString())) {
-                    if (httpRequest.uri().contains("/ipcamera.mjpeg")) {
-                        if (ipCameraHandler.mjpegUri != null) {
-                            ipCameraHandler.setupMjpegStreaming(true, ctx);
-                            handlingMjpeg = true;
-                        } else {
-                            logger.error(
-                                    "MJPEG stream was asked to start and there is no STREAM_URL_OVERRIDE supplied.");
-                        }
-                    } else if (httpRequest.uri().contains("/ipcamera.m3u8")) {
-                        ipCameraHandler.setupFfmpegFormat("HLS");
-                        ipCameraHandler.ffmpegHLS.setKeepAlive(60);// setup must come first
-                        sendFile(ctx, httpRequest.uri(), "application/x-mpegURL");
-                    } else if (httpRequest.uri().contains(".ts")) {
-                        sendFile(ctx, httpRequest.uri(), "video/MP2T");
-                    } else if (httpRequest.uri().contains("/ipcamera.gif")) {
-                        sendFile(ctx, httpRequest.uri(), "image/gif");
-                    } else if (httpRequest.uri().contains(".jpg")) {
-                        if (httpRequest.uri().contains("ipcamera.jpg")) {
+                    switch (httpRequest.uri()) {
+                        case "/ipcamera.m3u8":
+                            ipCameraHandler.setupFfmpegFormat("HLS");
+                            ipCameraHandler.ffmpegHLS.setKeepAlive(60);// setup must come first
+                            sendFile(ctx, httpRequest.uri(), "application/x-mpegURL");
+                            break;
+                        case "/ipcamera.gif":
+                            sendFile(ctx, httpRequest.uri(), "image/gif");
+                            break;
+                        case "/ipcamera.jpg":
                             if (!ipCameraHandler.updateImageEvents.contentEquals("1")) {
                                 if (ipCameraHandler.snapshotUri != null) {
                                     ipCameraHandler.sendHttpGET(ipCameraHandler.snapshotUri);
                                 }
                             }
                             sendSnapshotImage(ctx, "image/jpeg");
-                        } else {
-                            // Allow access to the preroll and postroll jpg files
-                            sendFile(ctx, httpRequest.uri(), "image/jpeg");
-                        }
-                    } else if (httpRequest.uri().contains("/instar")) {
-                        InstarHandler instar = new InstarHandler(ipCameraHandler);
-                        instar.alarmTriggered(httpRequest.uri().toString());
+                            break;
+                        case "/snapshots.mjpeg":
+                            ipCameraHandler.setupSnapshotStreaming(true, ctx);
+                            handlingSnapshotStream = true;
+                            break;
+                        case "/ipcamera.mjpeg":
+                            ipCameraHandler.setupMjpegStreaming(true, ctx);
+                            handlingMjpeg = true;
+                            break;
+                        case "/instar":
+                            InstarHandler instar = new InstarHandler(ipCameraHandler);
+                            instar.alarmTriggered(httpRequest.uri().toString());
+                            break;
+                        default:
+                            if (httpRequest.uri().contains(".ts")) {
+                                sendFile(ctx, httpRequest.uri(), "video/MP2T");
+                            } else if (httpRequest.uri().contains(".jpg")) {
+                                // Allow access to the preroll and postroll jpg files
+                                sendFile(ctx, httpRequest.uri(), "image/jpeg");
+                            }
+                    }
+                } else if ("POST".equalsIgnoreCase(httpRequest.method().toString())) {
+                    switch (httpRequest.uri()) {
+                        case "/ipcamera.mjpeg":
+                            HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1,
+                                    HttpResponseStatus.OK);
+                            ctx.writeAndFlush(response);
+                            ipCameraHandler.streamToMjpegGroup(msg);
+                            break;
                     }
                 }
+            }
+            if (msg instanceof HttpContent) {
+                content = (HttpContent) msg;
+                logger.debug("CONTENT:{}", content);
             }
         } finally {
             ReferenceCountUtil.release(msg);
@@ -122,7 +142,6 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
         response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
         response.headers().add("Access-Control-Allow-Origin", "*");
         response.headers().add("Access-Control-Expose-Headers", "content-length");
-
         ByteBuf bbuf = Unpooled.copiedBuffer(ipCameraHandler.currentSnapshot);
         response.headers().add(HttpHeaderNames.CONTENT_LENGTH, bbuf.readableBytes());
         ctx.channel().write(response);
@@ -180,6 +199,9 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
         logger.debug("Closing a StreamServerHandler.");
         if (handlingMjpeg) {
             ipCameraHandler.setupMjpegStreaming(false, ctx);
+        } else if (handlingSnapshotStream) {
+            handlingSnapshotStream = false;
+            ipCameraHandler.setupSnapshotStreaming(false, ctx);
         }
     }
 }

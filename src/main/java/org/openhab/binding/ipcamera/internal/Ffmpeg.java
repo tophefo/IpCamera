@@ -48,10 +48,6 @@ public class Ffmpeg {
         keepAlive = seconds / (Integer.parseInt(ipCameraHandler.config.get(CONFIG_POLL_CAMERA_MS).toString()) / 1000);
     }
 
-    public void setFormat(String format) {
-        this.format = format;
-    }
-
     public int getKeepAlive() {
         if (keepAlive < 0) {
             this.stopConverting();
@@ -59,8 +55,9 @@ public class Ffmpeg {
         return --keepAlive;
     }
 
-    public Ffmpeg(IpCameraHandler handle, String ffmpegLocation, String inputArguments, String input,
+    public Ffmpeg(IpCameraHandler handle, String format, String ffmpegLocation, String inputArguments, String input,
             String outArguments, String output, String username, String password) {
+        this.format = format;
         ipCameraHandler = handle;
         String altInput = input;
         // Input can be snapshots not just rtsp or http

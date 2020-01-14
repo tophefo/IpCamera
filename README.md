@@ -1,6 +1,9 @@
 # IP Camera Binding
 
-This binding allows you to use IP cameras in openHAB 2 and has multiple features and ways to work around common challenges that cameras present. Please take the time to read through this guide as it will show hidden features and different ways to work with cameras that you may not know about. I highly recommend purchasing a brand of camera that has an open API to give you easy access to alarms and many other advanced features that the binding has implemented. You will have a much more enjoyable time with these cameras. To see what each brand has implemented from the API, please see this post:
+This binding allows you to use IP cameras in openHAB 2 and has multiple features and ways to work around common challenges that cameras present. 
+Please take the time to read through this guide as it will show hidden features and different ways to work with cameras that you may not know about. 
+I highly recommend purchasing a brand of camera that has an open API to give you easy access to alarms and many other advanced features that the binding has implemented. 
+You will have a much more enjoyable time with these cameras. To see what each brand has implemented from the API, please see this post:
 
 <https://community.openhab.org/t/ipcamera-new-ip-camera-binding/42771>
 
@@ -25,7 +28,8 @@ _(not implemented, but should be possible to add)_
 
 ## Supported Things
 
-If using openHAB's textual configuration or when needing to setup HABPANEL/sitemaps, you are going to need to know what your camera is as a "thing type". These are listed in CAPS below. Example: The thing type for a generic onvif camera is "ONVIF".
+If using openHAB's textual configuration or when needing to setup HABPANEL/sitemaps, you are going to need to know what your camera is as a "thing type". 
+These are listed in CAPS below. Example: The thing type for a generic onvif camera is "ONVIF".
 
 | Thing Type ID | Description |
 |-|-|
@@ -41,13 +45,20 @@ If using openHAB's textual configuration or when needing to setup HABPANEL/sitem
 
 ## Discovery
 
-Auto discovery is now working, however I would still recommend using textual configuration which is covered below in more detail. Textual config should be preferred whilst the binding is under going a lot of changes as the channels and config items appear to be stored in a database and are not checked to be correct by the Openhab framework. If you use auto discovery it may be required to delete the camera and re-add it for the DB to be refreshed with correct data.
+Auto discovery is now working, however I would still recommend using textual configuration which is covered below in more detail. 
+Textual config should be preferred whilst the binding is under going a lot of changes as the channels and config items appear to be stored in a database and are not checked to be correct by the Openhab framework. 
+If you use auto discovery it may be required to delete the camera and re-add it for the DB to be refreshed with the correct data.
 
 ## Binding Configuration
 
-The binding can be configured with PaperUI by clicking on the pencil icon of any of the cameras that you have manually added via the PaperUI inbox. To add a camera just press on the PLUS (+) icon in the INBOX of PaperUI.
+The binding can be configured with PaperUI by clicking on the pencil icon of any of the cameras that you have manually added via the PaperUI inbox. 
+To add a camera just press on the PLUS (+) icon in the INBOX of PaperUI.
 
-Cameras can also be manually configured with text files by doing the following. DO NOT try and change a setting using PaperUI after using textual configuration as the two will conflict as the text file locks the settings preventing them from changing. Because the binding is changing so much at the moment I would recommend you use textual configuration, as each time openHAB restarts it removes and adds the camera so you automatically gain any extra channels or abilities that I add. If using PaperUI, each time I add a new channel you will need to remove and re-add the camera which then gives it a new UID number (Unique ID number), which in turn can break your sitemap and HABPanel setups. Textual configuration has its advantages and locks the camera to use a simple UID which can be a plain text name like "DrivewayCamera".
+Cameras can also be manually configured with text files by doing the following. 
+DO NOT try and change a setting using PaperUI after using textual configuration as the two will conflict as the text file locks the settings preventing them from changing. 
+Because the binding is changing so much at the moment I would recommend you use textual configuration, as each time openHAB restarts it removes and adds the camera so you automatically gain any extra channels or abilities that I add. 
+If using PaperUI, each time I add a new channel you will need to remove and re-add the camera which then gives it a new UID number (Unique ID number), which in turn can break your sitemap and HABPanel setups. 
+Textual configuration has its advantages and locks the camera to use a simple UID which can be a plain text name like "DrivewayCamera".
 
 The configuration parameters that can be used in textual configuration are in CAPS, descriptions can be seen in PaperUI to help guide you on what each one does:
 
@@ -86,7 +97,8 @@ The configuration parameters that can be used in textual configuration are in CA
 | `GIF_POSTROLL`| How long in seconds to create a GIF from a stream. Alternatively if `GIF_PREROLL` is set to value greater than `0`, this is how many snapshots to use AFTER you trigger a GIF creation as snapshots occur at the poll rate. |
 | `IP_WHITELIST`| Enter any IPs inside brackets that you wish to allow to access the video stream. `DISABLE` the default value will turn this feature off.  Example: `IP_WHITELIST="(127.0.0.1)(192.168.0.99)"` |
 
-Create a file called `ipcamera.things` and save it to your things folder. Inside this file enter this in plain text and modify it to your needs.
+Create a file called `ipcamera.things` and save it to your things folder. 
+Inside this file enter this in plain text and modify it to your needs.
 
 ```java
 // Defined a custom HLS setting to allow audio to be casted.
@@ -159,7 +171,10 @@ BindingID: is always ipcamera.
 
 THINGTYPE: is found listed above under the heading "supported things"
 
-UID: Can be made up but it must be UNIQUE, hence why it is called uniqueID. If you use PaperUI you will notice the UID will be something like "0A78687F" which is not very nice when using it in sitemaps and rules. PaperUI will choose a new random ID each time you remove and add the camera causing you to edit your rules, items and sitemaps to make them match. You can use text to name it something useful like "DrivewayCamera" if you wish.
+UID: Can be made up but it must be UNIQUE, hence why it is called uniqueID. 
+If you use PaperUI you will notice the UID will be something like "0A78687F" which is not very nice when using it in sitemaps and rules. 
+PaperUI will choose a new random ID each time you remove and add the camera causing you to edit your rules, items and sitemaps to make them match. 
+You can use text to name it something useful like "DrivewayCamera" if you wish.
 
 
 ## Thing Configuration
@@ -168,30 +183,45 @@ Not all the configuration controls will be explained here, only the ones which a
 
 **IMAGE_UPDATE_EVENTS**
 
-If you look in PaperUI you will notice that there are numbers in brackets after each option. These numbers represents the number for textual config that you can enter into the thing file which is described above. Cameras with supported alarms have more options compared to generic cameras. The channel updateImageNow can work with this setting to allow you to manually start and stop the image from updating.
+If you look in PaperUI you will notice that there are numbers in brackets after each option. 
+These numbers represents the number for textual config that you can enter into the thing file which is described above. 
+Cameras with supported alarms have more options compared to generic cameras. 
+The channel updateImageNow can work with this setting to allow you to manually start and stop the image from updating.
 
 **UPDATE_IMAGE**
 
-The config `UPDATE_IMAGE` sets the default value of the switch updateImageNow when openHAB restarts. Recommend this is disabled and you use another method for a stream or snapshot covered in this readme.
+The config `UPDATE_IMAGE` sets the default value of the switch updateImageNow when openHAB restarts. 
+Recommend this is disabled and you use another method for a stream or snapshot covered in this readme.
 
 
 ## Channels
 
-See PaperUI for a full list of channels and the descriptions as most are easy to understand. Any which need further explanations will be added here. Each camera brand will have different channels depending on how much of the support for an API has been added. The channels are kept consistent as much as possible from brand to brand to make upgrading to a different branded camera easier and to help when sharing rules with other users in the forum.
+See PaperUI for a full list of channels and the descriptions as most are easy to understand. 
+Any which need further explanations will be added here. Each camera brand will have different channels depending on how much of the support for an API has been added. 
+The channels are kept consistent as much as possible from brand to brand to make upgrading to a different branded camera easier and to help when sharing rules with other users in the forum.
 
 **updateImageNow**
 
-This control can be used to manually start and stop updating the Image channel with a picture. The `UPDATE_IMAGE` config sets the state this control is set to on startup/reboot of Openhab. When ON the image will update at 10% of the `POLL_CAMERA_MS` rate. When OFF the Image will NOT update. Please see the snapshot and stream sections to learn how to get a picture without using the Image channel. The Image channel may be removed from the binding in the future due to the image data possible flooding the Openhab event bus with the raw data.
+This control can be used to manually start and stop updating the Image channel with a picture. 
+The `UPDATE_IMAGE` config sets the state this control is set to on startup/reboot of Openhab. 
+When ON the image will update at 10% of the `POLL_CAMERA_MS` rate. When OFF the Image will NOT update. 
+Please see the snapshot and stream sections to learn how to get a picture without using the Image channel. 
+The Image channel may be removed from the binding in the future due to the image data possible flooding the Openhab event bus with the raw data.
 
 **updateGif**
 
-When this control is turned ON it will trigger an animated Gif to be created by ffmpeg. You will need to install ffmpeg on your server manually. Once the file is created the control will auto turn itself back to OFF which can be used to trigger a rule to email/Pushover/Telegram the file to you. 
+When this control is turned ON it will trigger an animated Gif to be created by ffmpeg. 
+You will need to install ffmpeg on your server manually. 
+Once the file is created the control will auto turn itself back to OFF which can be used to trigger a rule to email/Pushover/Telegram the file to you. 
 When `GIF_PREROLL` is set to a value higher than 0, the binding will create and use snapshots (jpg) instead of using the RTSP feed from the camera which is the default behavior when the `GIF_PREROLL` is set to 0 or not defined. 
-`IMAGE_UPDATE_EVENTS` must be set to always update the image and `POLL_CAMERA_MS` sets how often the snapshot is added to the FIFO buffer that creates the animated GIF. The snapshot files are not deleted and this can be used to create and email Jpeg files also giving you a number to choose from in case your camera has delayed footage. The files are placed into the folder specified by the config `FFMPEG_OUTPUT`.
+`IMAGE_UPDATE_EVENTS` must be set to always update the image and `POLL_CAMERA_MS` sets how often the snapshot is added to the FIFO buffer that creates the animated GIF. 
+The snapshot files are not deleted and this can be used to create and email Jpeg files also giving you a number to choose from in case your camera has delayed footage. 
+The files are placed into the folder specified by the config `FFMPEG_OUTPUT`.
 
 **lastMotionType**
 
-Cameras with multiple alarm types will update this with which alarm detected motion.ie a lineCrossing, faceDetection or item stolen alarm. You can use this to create a timestamp of when the last motion was detected by creating a rule when this channel is updated.
+Cameras with multiple alarm types will update this with which alarm detected motion.ie a lineCrossing, faceDetection or item stolen alarm. 
+You can use this to create a timestamp of when the last motion was detected by creating a rule when this channel is updated.
 
 items:
 
@@ -214,11 +244,15 @@ end
 
 ## API Access Channel
 
-A special String channel has been added that allows you to send any GET request to Dahua cameras only. This is due to the HTTP binding currently not supporting the DIGEST method that these cameras must use in the latest firmwares. 
-For other brands you can use the HTTP binding should a feature not have direct support in this binding. It is far better to add or request a feature so that it gets added to the binding so that all future users benefit. One goal of this binding is to save all users from needing to learn an API, instead they can use that time saved to automate with openHAB.
+A special String channel has been added that allows you to send any GET request to Dahua cameras only. 
+This is due to the HTTP binding currently not supporting the DIGEST method that these cameras must use in the latest firmwares. 
+For other brands you can use the HTTP binding should a feature not have direct support in this binding. 
+It is far better to add or request a feature so that it gets added to the binding so that all future users benefit. 
+One goal of this binding is to save all users from needing to learn an API, instead they can use that time saved to automate with openHAB.
 
 The reply from the camera is not captured nor returned, so this is only a 1 way GET request.
-To use this feature you can simply use this command inside any rule at any time and with as many url Strings as you wish. User/pass and the IP are handled automagically.
+To use this feature you can simply use this command inside any rule at any time and with as many url Strings as you wish. 
+User/pass and the IP are handled automagically.
 
 item:
 
@@ -236,9 +270,12 @@ The URL must be in this format without the IP:Port info and the binding will han
 
 ## Full Example
 
-Use the following examples to base your setup on to save some time. In the example below I believe older versions of OpenHAB needed a fake address in the "Image url=" line, however Openhab 2.4 and newer do not need this to work but for backwards compatibility reasons it was left in the examples. The item= overrides the url. 
+Use the following examples to base your setup on to save some time. 
+In the example below I believe older versions of OpenHAB needed a fake address in the "Image url=" line, however Openhab 2.4 and newer do not need this to work but for backwards compatibility reasons it was left in the examples. 
+The item= overrides the url. 
 
-NNOTE: If you used PaperUI to create the camera thing instead of textual config, you will need to ensure the 001 is replaced with the cameras UID which may look like "0A78687F". Also replace AMCREST or HIKVISION with the name of the supported thing you are using from the list above.
+NOTE: If you used PaperUI to create the camera thing instead of textual config, you will need to ensure the 001 is replaced with the cameras UID which may look like "0A78687F". 
+Also replace AMCREST or HIKVISION with the name of the supported thing you are using from the list above.
 
 
 *.things
@@ -377,7 +414,8 @@ For the above notifications to work you will need to setup multiple users with t
 
 ## Moving PTZ capable cameras
 
-Currently there are two ways to move the camera, 1 with Onvif Absolute move and the second with Onvif presets. The full example above shows how to use the Absolute move method which when a control is moved, it will wait until the next poll time has arrived and make all the movements at the same time. 
+Currently there are two ways to move the camera, 1 with Onvif Absolute move and the second with Onvif presets. 
+The full example above shows how to use the Absolute move method which when a control is moved, it will wait until the next poll time has arrived and make all the movements at the same time. 
 Not all cameras support Absolute movements, so the below Onvif Preset method is easier to use, does not need a rule to set 3 different values from a single button, and does not wait for the Poll time to arrive.
 
 item:
@@ -408,16 +446,29 @@ To create the preset locations, use a program like the free 'onvif device manage
 
 ## Image Snapshots
 
-There are a number of ways to use snapshots with this binding, however the best way is to always request the snapshot directly from the camera unless there is a reason why this does not work. The reason for this is to keep network traffic to a minimum and to prevent creating a bottleneck with loads of traffic in and out of your openHAB servers network port.
+There are a number of ways to use snapshots with this binding, and often there are advantages to using these methods from the binding instead of directly from the camera. 
 
-Ways to use snapshots are:
+**Ways to use snapshots are:**
 
-+ Use the cameras URL and fetch it directly so it passes from the camera to your end device ie Tablet without passing any data through the openHAB server. For cameras like Dahua that refuse to allow DIGEST to be turned off this is not an option, plus the binding has some advantages which are explained below so even if your camera can work directly, you may not wish to do so.
-+ Request a snapshot with the url ``http://192.168.xxx.xxx:54321/ipcamera.jpg`` (with 54321 being the server port number you specify) this will return the current snapshot which only works if the binding is setup to fetch jpg snapshots. Replace 54321 with your SERVER_PORT. This file does not exist on disk and is served out of ram to keep disk writes to a minimum with this binding. It also means the binding can serve a jpg file much faster than a camera can directly as a camera usually waits for a keyframe, then has to compresses the data, before it can be sent. All of this takes time giving you a delay compared to serving the file from Ram.
-+ Use the Create GIF feature (explained in more detail below) and use a preroll value >0. This creates a number of snapshots in the ffmpeg output folder called snapshotXXX.jpg where XXX starts at 0 and increases each poll amount of time. This means you can get a snapshot from an exact amount of time before, on or after triggering the GIF to be created. Handy for cameras which lag due to slow processors and buffering. These snapshots can be fetched either directly as they exist on disk, or via this url format. ``http://192.168.xxx.xxx:54321/snapshot0.jpg`` Where the IP is your Openhab server and the port is what is setup in the binding as the SERVER_PORT.
-+ The Image channel is limited to only update every 10th poll period of time unless an alarm is triggered, so instead use the above mentioned ipcamera.jpg method which is shown in more detail in the forum thread linked below.
-+ You can also read the image data directly from the image channel and use it in rules, there are some examples on the forum how to do this, however it is far easier to use the above methods.
-+ Also worth a mention is that you can off load cameras to a software and hardware server. These have their advantages, but can be overkill depending on what you plan to do with your cameras. The motion project is one example
++ Use the cameras URL and fetch it directly so it passes from the camera to your end device ie Tablet without passing any data through the openHAB server. 
+For cameras like Dahua that refuse to allow DIGEST to be turned off this is not an option, plus the binding has some advantages which are explained below so even if your camera can work directly, you may not wish to do so.
++ Request a snapshot with the url ``http://192.168.xxx.xxx:54321/ipcamera.jpg`` (with 54321 being the SERVER_PORT number that you specify in the bindings setup) this will return the current snapshot without needing to wait for the camera to create and send a snapshot.
+This file does not exist on disk and is served out of ram to keep disk writes to a minimum with this binding. 
+It also means the binding can serve a jpg file much faster than a camera can directly as a camera usually waits for a keyframe, then has to compresses the data, before it can be sent. 
+All of this takes time giving you a delay compared to serving the file from Ram and can make a sitemap or habpanel UI feel slow to respond if the pictures take time to appear.
++ Use the ``http://192.168.xxx.xxx:54321/snapshots.mjpeg`` to request a stream of snapshots to be delivered in mjpeg format. See the streaming section for more info.
++ Use the Create GIF feature (explained in more detail below) and use a preroll value >0. 
+This creates a number of snapshots in the ffmpeg output folder called snapshotXXX.jpg where XXX starts at 0 and increases each poll amount of time. 
+This means you can get a snapshot from an exact amount of time before, on, or after triggering the GIF to be created. 
+Handy for cameras which lag due to slow processors and buffering. 
+These snapshots can be fetched either directly as they exist on disk, or via this url format. 
+``http://192.168.xxx.xxx:54321/snapshot0.jpg`` Where the IP is your Openhab server and the port is what is setup in the binding as the SERVER_PORT.
++ The Image channel can be used but is currently limited to only update every 5th poll period of time unless an alarm is triggered, so instead use the above mentioned ipcamera.jpg method which is shown in more detail in the forum thread linked below.
++ You can also read the raw image data directly from the image channel and use it in rules, there are some examples on the forum how to do this, however it is far easier to use the above methods.
++ Also worth a mention is that you can off load cameras to a software and hardware server. 
+These have their advantages, but can be overkill depending on what you plan to do with your cameras. 
+The motion project is one example.
+
 
 See this forum thread for examples of how to use snapshots and streams.
 <https://community.openhab.org/t/ip-camera-how-to-clickable-thumbnail-overview-in-sitemaps-that-opens-up-to-a-larger-view/77990>
@@ -425,18 +476,28 @@ See this forum thread for examples of how to use snapshots and streams.
 ## How to get working video streams
 
 IMPORTANT:
-The binding has its own file server that works by allowing access to the snapshot and video streams with no user/password for requests that come from an IP located in the white list. Requests from outside IP's or internal requests not on the white list will fail to get any answer. If you prefer to use your own firewall instead, you can also choose to make the ip whitelist equal "DISABLE" (now the default) to turn this feature off and then all internal IP's will have access.
+The binding has its own file server that works by allowing access to the snapshot and video streams with no user/password for requests that come from an IP located in the white list. 
+Requests from outside IP's or internal requests not on the white list will fail to get any answer. 
+If you prefer to use your own firewall instead, you can also choose to make the ip whitelist equal "DISABLE" (now the default) to turn this feature off and then all internal IP's will have access.
 
 There are now multiple ways to get a moving picture:
 
++ HLS (Http Live Streaming) which can use high res h264. 
+This can be used to cast to Chromecast devices and works well in iOS/Apple devices.
+Other platforms it may be necessary to install a plugin or updates to the browser before the stream can be seen.
++ MJPEG which uses multiple jpeg files one after another to create what is called MOTION JPEG. 
+Whilst larger in size, it is more compatible. 
+Most cameras limit the resolution in this format so for higher res, use HLS or the snapshots.mjpeg which will often be in a higher res.
++ snapshots.mjpeg which is a special mjpeg stream created by the cameras snapshots that are at the Polling rate.
+If the polling time is too long this may not work so I suggest using with 1000ms poll time.
 + Animated GIF.
-+ HLS (Http Live Streaming) which uses h264. This can be used to cast to Chromecast devices and works well in iOS/Apple devices.
-+ MJPEG which uses multiple jpeg files one after another to create what is called MOTION JPEG. Whilst larger in size, it is more compatible. Most cameras limit the resolution in this format so for higher res, use HLS.
+This is small in size and very compatible and handy to use in push notifications, pushover, or emails.
 
 See this forum thread for examples of how to use snapshots and streams.
 <https://community.openhab.org/t/ip-camera-how-to-clickable-thumbnail-overview-in-sitemaps-that-opens-up-to-a-larger-view/77990>
 
-To get the first two video formats working, you need to install the ffmpeg program. Visit their site here to learn how <https://ffmpeg.org/>
+To get some of the video formats working, you need to install the ffmpeg program. 
+Visit their site here to learn how <https://ffmpeg.org/>
 
 Under Linux, Ffmpeg can be installed very easily with this command.
 
@@ -446,7 +507,13 @@ sudo apt update && sudo apt install ffmpeg
 
 **MJPEG Streaming**
 
-Cameras that have MJPEG abilities and also an API can stream to openHAB with the MJPEG format and Ffmpeg does not need to be installed. The main cameras that can do this are Amcrest, Dahua, Hikvision, Foscam HD and Instar HD. For cameras that do not auto detect the url for mjpeg streams, you will need to enter a working url for ``STREAM_URL_OVERRIDE`` This can be skipped for the already mentioned brands but check for any special setup steps for your brand in this readme. If you can not find STREAM_URL_OVERRIDE, you need to click on the pencil icon in PaperUI to edit the configuration and then scroll to the very bottom of the page and click on the SHOW MORE link.
+Cameras that have MJPEG abilities via HTTP (cameras with an API) can stream to openHAB with the MJPEG format with next to no CPU load and Ffmpeg does not need to be installed. 
+Soon the binding will be able to create mjpeg from a rtsp source and this will require Ffmpeg to be installed and will use the Openhab CPU to create the stream.
+Ffmpeg may require you to lower the resolution to lower the CPU load down.
+The main cameras that can do mjpeg with very low CPU load are Amcrest, Dahua, Hikvision, Foscam HD and Instar HD. 
+For cameras that do not auto detect the url for mjpeg streams, you will need to enter a working url for ``STREAM_URL_OVERRIDE``. 
+This can be skipped for the already mentioned brands but check for any special setup steps for your brand in this readme. 
+If you can not find STREAM_URL_OVERRIDE, you need to click on the pencil icon in PaperUI to edit the configuration and then scroll to the very bottom of the page and click on the SHOW MORE link.
 
 To request the mjpeg stream from the binding, all you need to do is use this link changing the IP to that of your Openhab server and the SERVER_PORT to match the settings in the bindings setup for that camera. ipcamera.mjpeg is not changed and stays the same for all of your cameras, it is the port that changes between multiple cameras, the rest stays the same. Also see the sitemap examples below.
 
@@ -460,6 +527,21 @@ If your camera can not do MJPEG you can use this method to turn a h.264 stream i
 Alternatively you can use 3rd party software running on a server to do the conversion. Converting from h264 to mjpeg takes a lot of CPU power to handle the conversion, so it is better to use HLS format as this will use h264 and not require a conversion that needs CPU grunt. You can run the open source motion software on a raspberry Pi with this project.
 
 <https://github.com/ccrisan/motioneyeos/wiki>
+
+
+**snapshot.mjpeg a special MJPEG Stream**
+
+This feature allows you to request a mjpeg stream created by the binding with low CPU usage from the cameras snapshots. Snapshots are usually high resolution and look great, however it is limited to max 1 FPS.
+The reason this is more useful than snapshots on their own, is some UI's will flash white or black when a snapshot is refreshing, this does not happen with snapshots.mjpeg and is the same bandwidth and CPU load as just using snapshots! 
+
+Request the stream to be sent to an item with this url. 
+NOTE: The IP is Openhabs not your cameras IP and the 54321 is what you have set as the SERVER_PORT.
+
+``http://192.168.xxx.xxx:54321/snapshots.mjpeg``
+
+Use this to display it in your sitemap or the habpanel equivalent.
+
+``Video url="http://192.168.0.32:54321/snapshots.mjpeg" encoding="mjpeg"``
 
 
 **HLS HTTP Live Streaming**
