@@ -11,7 +11,9 @@
 		<channel id="updateGif" typeId="updateGif"/>
 		<channel id="image" typeId="image"/>
 		<channel id="controlMotionAlarm" typeId="controlMotionAlarm"/>
-		<channel id="motionAlarm" typeId="motionAlarm"/>
+		<channel id="motionAlarm" typeId="motionAlarm"/>		
+        <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm"/>
+        <channel id="audioAlarm" typeId="audioAlarm"/>
 		<channel id="streamUrl" typeId="streamUrl"/>
 		<channel id="rtspUrl" typeId="rtspUrl"/>
 		<channel id="imageUrl" typeId="imageUrl"/>
@@ -48,6 +50,12 @@ The Image channel and JPG served on request can be set to update in a number of 
 <options>
 <option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
 <option value="1">Always update JPG, Image ch follows updateImageNow (1)</option>
+<option value="2">Start Motion Alarm (2)</option>
+<option value="3">Start Audio Alarm (3)</option>
+<option value="23">Start of Motion and Audio Alarms (23)</option>
+<option value="4">During Motion Alarm (4)</option>
+<option value="5">During Audio Alarm (5)</option>
+<option value="45">During Motion and Audio Alarms (45)</option>
 </options>
 </parameter>
 
@@ -183,6 +191,10 @@ The Image channel and JPG served on request can be set to update in a number of 
 		<channel id="updateImageNow" typeId="updateImageNow"/>
 		<channel id="updateGif" typeId="updateGif"/>
 		<channel id="image" typeId="image"/>
+		<channel id="controlMotionAlarm" typeId="controlMotionAlarm"/>
+        <channel id="motionAlarm" typeId="motionAlarm"/>        
+        <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm"/>
+        <channel id="audioAlarm" typeId="audioAlarm"/>
 		<channel id="pan" typeId="pan"/>
 		<channel id="tilt" typeId="tilt"/>
 		<channel id="zoom" typeId="zoom"/>
@@ -223,6 +235,12 @@ The Image channel and JPG served on request can be set to update in a number of 
 <options>
 <option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
 <option value="1">Always update JPG, Image ch follows updateImageNow (1)</option>
+<option value="2">Start Motion Alarm (2)</option>
+<option value="3">Start Audio Alarm (3)</option>
+<option value="23">Start of Motion and Audio Alarms (23)</option>
+<option value="4">During Motion Alarm (4)</option>
+<option value="5">During Audio Alarm (5)</option>
+<option value="45">During Motion and Audio Alarms (45)</option>
 </options>
 </parameter>
 

@@ -62,6 +62,7 @@ import org.openhab.binding.ipcamera.internal.DoorBirdHandler;
 import org.openhab.binding.ipcamera.internal.Ffmpeg;
 import org.openhab.binding.ipcamera.internal.FoscamHandler;
 import org.openhab.binding.ipcamera.internal.HikvisionHandler;
+import org.openhab.binding.ipcamera.internal.HttpOnlyHandler;
 import org.openhab.binding.ipcamera.internal.InstarHandler;
 import org.openhab.binding.ipcamera.internal.MyNettyAuthHandler;
 import org.openhab.binding.ipcamera.internal.StreamServerHandler;
@@ -142,7 +143,7 @@ public class IpCameraHandler extends BaseThingHandler {
     @Nullable
     public Ffmpeg ffmpegHLS = null;
     public @Nullable Ffmpeg ffmpegGIF = null;
-    public @Nullable Ffmpeg ffmpegMotion = null;
+    public @Nullable Ffmpeg ffmpegRtspHelper = null;
     public @Nullable Ffmpeg ffmpegMjpeg = null;
     private @Nullable ScheduledFuture<?> cameraConnectionJob = null;
     private @Nullable ScheduledFuture<?> pollCameraJob = null;
@@ -177,7 +178,7 @@ public class IpCameraHandler extends BaseThingHandler {
     public @Nullable ArrayList<String> lowPriorityRequests = null;
     public ReentrantLock lock = new ReentrantLock();
     // ChannelGroup is thread safe
-    final ChannelGroup mjpegChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+    public final ChannelGroup mjpegChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
     final ChannelGroup snapshotMjpegChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
     // basicAuth MUST remain private as it holds the password
@@ -203,9 +204,12 @@ public class IpCameraHandler extends BaseThingHandler {
     private OnvifManager ptzManager = new OnvifManager(); // used so listener is in PTZ class.
     boolean movePTZ = false; // delay movements so all made at once
     PTZRequest ptzHandler = new PTZRequest("httponly");
-    Double motionThreshold = 0.0016;
+    public Double motionThreshold = 0.0016;
+    public int audioThreshold = 35;
     private @Nullable StreamServerHandler streamServerHandler;
     boolean streamingSnapshotMjpeg = false;
+    public boolean motionAlarmEnabled = false;
+    public boolean audioAlarmEnabled = false;
 
     public IpCameraHandler(Thing thing) {
         super(thing);
@@ -462,8 +466,7 @@ public class IpCameraHandler extends BaseThingHandler {
                             socketChannel.pipeline().addLast("instarHandler", new InstarHandler(getHandle()));
                             break;
                         default:
-                            socketChannel.pipeline().addLast("brandHandler",
-                                    new HikvisionHandler(getHandle(), nvrChannel));
+                            socketChannel.pipeline().addLast("brandHandler", new HttpOnlyHandler(getHandle()));
                             break;
                     }
                 }
@@ -663,10 +666,11 @@ public class IpCameraHandler extends BaseThingHandler {
                                             isChunked = true;
                                         }
                                         break;
-                                    case "Strict-Transport-Security":
+                                    case "strict-transport-security":
                                         if (response.headers().getAsString(name)
                                                 .contains("max-age=63072000; includeSubdomains; preload")) {
-                                            logger.debug("!! Wasting ram by treating this as a Reolink camera. !!");
+                                            logger.debug(
+                                                    "!! Need to use more RAM as this as a Reolink camera. Report if this is not your brand !!");
                                             // Reolink cameras send more data than in the content length header.
                                             bytesToRecieve = 0;
                                         }
@@ -677,11 +681,11 @@ public class IpCameraHandler extends BaseThingHandler {
                                 closeConnection = false;
                                 if (mjpegUri.contains(requestUrl)) {
                                     if (msg instanceof HttpMessage) {
-                                        logger.debug("First stream packet back from camera is HttpMessage:{}", msg);
+                                        // logger.debug("First stream packet back from camera is HttpMessage:{}", msg);
                                         ReferenceCountUtil.retain(msg, 2);
                                         // very start of stream only
                                         firstStreamedMsg = msg;
-                                        streamToMjpegGroup(msg);
+                                        streamToGroup(msg, mjpegChannelGroup, true);
                                     }
                                 }
                             } else if (closeConnection) {
@@ -707,7 +711,7 @@ public class IpCameraHandler extends BaseThingHandler {
                         // multiple MJPEG stream packets come back as this.
                         // logger.debug("Stream packets back from camera is :{}", msg);
                         ReferenceCountUtil.retain(msg, 1);
-                        streamToMjpegGroup(msg);
+                        streamToGroup(msg, mjpegChannelGroup, true);
                     } else {
                         content = (HttpContent) msg;
                         // Found a TP Link camera uses Content-Type: image/jpg instead of image/jpeg
@@ -738,7 +742,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                     }
                                     currentSnapshot = lastSnapshot;
                                     if (streamingSnapshotMjpeg) {
-                                        sendMjpegFrame();
+                                        sendSnapshotMjpegFrame();
                                     }
                                     lastSnapshot = null;
                                     if (closeConnection) {
@@ -977,7 +981,7 @@ public class IpCameraHandler extends BaseThingHandler {
             snapshotMjpegChannelGroup.add(ctx.channel());
             try {
                 sendMjpegFirstPacket(ctx);
-                sendMjpegFrame();
+                sendSnapshotMjpegFrame();
                 streamingSnapshotMjpeg = true;
             } catch (IOException e) {
             }
@@ -999,12 +1003,18 @@ public class IpCameraHandler extends BaseThingHandler {
                 if (!mjpegUri.equals("")) {
                     sendHttpGET(mjpegUri);
                 } else {
-                    logger.debug("Binding creating mjpeg steam.");
                     setupFfmpegFormat("MJPEG");
                 }
             } else if (firstStreamedMsg != null) {
                 ctx.channel().writeAndFlush(firstStreamedMsg);
+            } else if (ffmpegMjpeg != null) {
+                try {
+                    sendMjpegFirstPacket(ctx);
+                } catch (IOException e) {
+
+                }
             }
+
         } else {
             mjpegChannelGroup.remove(ctx.channel());
             if (mjpegChannelGroup.isEmpty()) {
@@ -1018,6 +1028,7 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     }
 
+    // sends direct to ctx so can be either snapshots.mjpeg or normal mjpeg stream
     public void sendMjpegFirstPacket(ChannelHandlerContext ctx) throws IOException {
         final String BOUNDARY = "thisMjpegStream";
         String contentType = "multipart/x-mixed-replace;boundary=" + BOUNDARY;
@@ -1029,33 +1040,40 @@ public class IpCameraHandler extends BaseThingHandler {
         ctx.channel().write(response);
     }
 
-    public void sendMjpegFrame() {
+    public void sendMjpegGroupFirstPacket() throws IOException {
         final String BOUNDARY = "thisMjpegStream";
-        ByteBuf imageByteBuf = Unpooled.copiedBuffer(currentSnapshot);
+        String contentType = "multipart/x-mixed-replace;boundary=" + BOUNDARY;
+        HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
+        response.headers().add(HttpHeaderNames.CONTENT_TYPE, contentType);
+        response.headers().set(HttpHeaderNames.CACHE_CONTROL, HttpHeaderValues.NO_CACHE);
+        response.headers().add("Access-Control-Allow-Origin", "*");
+        response.headers().add("Access-Control-Expose-Headers", "content-length");
+        // Next line may be a bug
+        // firstStreamedMsg = response;
+        mjpegChannelGroup.write(response);
+    }
+
+    public void sendSnapshotMjpegFrame() {
+        sendMjpegFrame(currentSnapshot, snapshotMjpegChannelGroup);
+    }
+
+    public void sendMjpegFrame(byte[] jpg, ChannelGroup channelGroup) {
+        final String BOUNDARY = "thisMjpegStream";
+        ByteBuf imageByteBuf = Unpooled.copiedBuffer(jpg);
         int length = imageByteBuf.readableBytes();
         String header = "--" + BOUNDARY + "\r\n" + "Content-Type: image/jpeg\r\n" + "Content-Length: " + length + "\r\n"
                 + "\r\n";
         ByteBuf headerBbuf = Unpooled.copiedBuffer(header, 0, header.length(), StandardCharsets.UTF_8);
         ByteBuf footerBbuf = Unpooled.copiedBuffer("\r\n", 0, 2, StandardCharsets.UTF_8);
-        streamToSnapshotGroup(headerBbuf, false);
-        streamToSnapshotGroup(imageByteBuf, false);
-        streamToSnapshotGroup(footerBbuf, true);
+        streamToGroup(headerBbuf, channelGroup, false);
+        streamToGroup(imageByteBuf, channelGroup, false);
+        streamToGroup(footerBbuf, channelGroup, true);
     }
 
-    public void streamToMjpegGroup(Object msg) {
-        try {
-            ReferenceCountUtil.retain(msg, 1);
-            mjpegChannelGroup.writeAndFlush(msg);
-        } finally {
-            ReferenceCountUtil.release(msg);
-        }
-    }
-
-    public void streamToSnapshotGroup(ByteBuf chunk, boolean flush) {
+    public void streamToGroup(Object msg, ChannelGroup channelGroup, boolean flush) {
+        channelGroup.write(msg);
         if (flush) {
-            snapshotMjpegChannelGroup.writeAndFlush(chunk);
-        } else {
-            snapshotMjpegChannelGroup.write(chunk);
+            channelGroup.flush();
         }
     }
 
@@ -1086,11 +1104,7 @@ public class IpCameraHandler extends BaseThingHandler {
             return;
         }
         if (rtspUri.equals("")) {
-            logger.error("The camera tried to use a ffmpeg feature when no rtsp or valid input for ffmpeg is known.");
-            return;
-        }
-        if (config.get(CONFIG_FFMPEG_LOCATION) == null) {
-            logger.error("The camera tried to use a ffmpeg feature when the location for ffmpeg is not known.");
+            logger.error("The camera tried to use a ffmpeg feature when no valid input for ffmpeg is provided.");
             return;
         }
         if (config.get(CONFIG_FFMPEG_LOCATION) == null) {
@@ -1138,18 +1152,33 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
                 ffmpegGIF.startConverting();
                 break;
-            case "MOTION":
-                if (ffmpegMotion != null) {
-                    ffmpegMotion.stopConverting();
+            case "RTSPHELPER":
+                if (ffmpegRtspHelper != null) {
+                    ffmpegRtspHelper.stopConverting();
+                    if (!audioAlarmEnabled && !motionAlarmEnabled) {
+                        return;
+                    }
+                }
+
+                String filterOptions = "";
+                if (audioAlarmEnabled == false) {
+                    filterOptions = "-an";
+                } else if (audioAlarmEnabled == true) {
+                    filterOptions = "-af silencedetect=n=-" + audioThreshold + "dB:d=2";
+                }
+                if (motionAlarmEnabled == false) {
+                    filterOptions = filterOptions.concat(" -vn");
+                } else if (motionAlarmEnabled == true) {
+                    filterOptions = filterOptions
+                            .concat(" -vf select='gte(scene," + motionThreshold + ")',metadata=print");
                 }
                 inOptions = "-rtsp_transport tcp";
                 if (!rtspUri.contains("rtsp")) {
                     inOptions = "";
                 }
-                ffmpegMotion = new Ffmpeg(this, format, config.get(CONFIG_FFMPEG_LOCATION).toString(), inOptions,
-                        rtspUri, "-vf select='gte(scene," + motionThreshold + ")',metadata=print", "-f null -",
-                        username, password);
-                ffmpegMotion.startConverting();
+                ffmpegRtspHelper = new Ffmpeg(this, format, config.get(CONFIG_FFMPEG_LOCATION).toString(), inOptions,
+                        rtspUri, filterOptions, "-f null -", username, password);
+                ffmpegRtspHelper.startConverting();
                 break;
             case "MJPEG":
                 if (ffmpegMjpeg == null) {
@@ -1158,8 +1187,8 @@ public class IpCameraHandler extends BaseThingHandler {
                         inOptions = "";
                     }
                     ffmpegMjpeg = new Ffmpeg(this, format, config.get(CONFIG_FFMPEG_LOCATION).toString(), inOptions,
-                            rtspUri, "-f mpegts", "http://127.0.0.1:" + serverPort + "/ipcamera.mjpeg", username,
-                            password);
+                            rtspUri, "-f image2 -r 6", "http://127.0.0.1:" + serverPort + "/ipcamera%01d.jpeg",
+                            username, password);
                 }
                 ffmpegMjpeg.startConverting();
                 break;
@@ -1266,19 +1295,6 @@ public class IpCameraHandler extends BaseThingHandler {
         } // caution "REFRESH" can still progress to brand Handlers below the else.
         else {
             switch (channelUID.getId()) {
-                case CHANNEL_CONTROL_MOTION_ALARM:
-                    if ("ON".equals(command.toString())) {
-                        setupFfmpegFormat("MOTION");
-                    } else if ("OFF".equals(command.toString()) || "0".equals(command.toString())) {
-                        if (ffmpegMotion != null) {
-                            ffmpegMotion.stopConverting();
-                        }
-                    } else {
-                        motionThreshold = Double.valueOf(command.toString());
-                        motionThreshold = motionThreshold / 10000;
-                        setupFfmpegFormat("MOTION");
-                    }
-                    return;
                 case CHANNEL_GOTO_PRESET:
                     if (ptzHandler.supportsPTZ()) {
                         ptzHandler.gotoPreset(Integer.valueOf(command.toString()));
@@ -1365,10 +1381,10 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
                 break;
             default:
-                HikvisionHandler defaultHandler = new HikvisionHandler(getHandle(), nvrChannel);
+                HttpOnlyHandler defaultHandler = new HttpOnlyHandler(getHandle());
                 defaultHandler.handleCommand(channelUID, command);
                 if (lowPriorityRequests == null) {
-                    lowPriorityRequests = new ArrayList<String>(1);
+                    lowPriorityRequests = defaultHandler.getLowPriorityRequests();
                 }
                 break;
         }
@@ -1749,9 +1765,9 @@ public class IpCameraHandler extends BaseThingHandler {
             ffmpegGIF.stopConverting();
             ffmpegGIF = null;
         }
-        if (ffmpegMotion != null) {
-            ffmpegMotion.stopConverting();
-            ffmpegMotion = null;
+        if (ffmpegRtspHelper != null) {
+            ffmpegRtspHelper.stopConverting();
+            ffmpegRtspHelper = null;
         }
         if (ffmpegMjpeg != null) {
             ffmpegMjpeg.stopConverting();

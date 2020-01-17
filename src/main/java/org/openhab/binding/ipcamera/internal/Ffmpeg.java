@@ -84,7 +84,7 @@ public class Ffmpeg {
                 BufferedReader bufferedReader = new BufferedReader(errorStreamReader);
                 String line = null;
                 while ((line = bufferedReader.readLine()) != null) {
-                    if (format.equals("MOTION")) {
+                    if (format.equals("RTSPHELPER")) {
                         logger.debug("{}", line);
                         if (line.contains("lavfi.")) {
                             if (countOfMotions == 3) {
@@ -101,6 +101,12 @@ public class Ffmpeg {
                                     ipCameraHandler.motionAlarmUpdateSnapshot = false;
                                 }
                             }
+                        } else if (line.contains("silence_start")) {
+                            ipCameraHandler.setChannelState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
+                            ipCameraHandler.firstAudioAlarm = false;
+                            ipCameraHandler.audioAlarmUpdateSnapshot = false;
+                        } else if (line.contains("silence_end")) {
+                            ipCameraHandler.audioDetected();
                         }
                     } else {
                         logger.debug("{}", line);

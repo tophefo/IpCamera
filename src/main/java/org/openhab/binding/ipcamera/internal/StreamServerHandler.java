@@ -36,6 +36,7 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.stream.ChunkedFile;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
@@ -52,6 +53,9 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
     private IpCameraHandler ipCameraHandler;
     private boolean handlingMjpeg = false; // used to remove ctx from group when handler is removed.
     private boolean handlingSnapshotStream = false; // used to remove ctx from group when handler is removed.
+    byte[] incomingJpeg = null;
+    int recievedBytes = 0;
+    int count = 0;
 
     public StreamServerHandler(IpCameraHandler ipCameraHandler) {
         this.ipCameraHandler = ipCameraHandler;
@@ -63,6 +67,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(@Nullable ChannelHandlerContext ctx, @Nullable Object msg) throws Exception {
+
         @Nullable
         HttpContent content = null;
         try {
@@ -117,20 +122,41 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                     }
                 } else if ("POST".equalsIgnoreCase(httpRequest.method().toString())) {
                     switch (httpRequest.uri()) {
-                        case "/ipcamera.mjpeg":
-                            HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1,
-                                    HttpResponseStatus.OK);
-                            ctx.writeAndFlush(response);
-                            ipCameraHandler.streamToMjpegGroup(msg);
+                        case "/ipcamera1.jpeg":
+                            ipCameraHandler.sendMjpegGroupFirstPacket();
+                            // ipCameraHandler.sendMjpegFirstPacket(ctx);
                             break;
                     }
                 }
             }
             if (msg instanceof HttpContent) {
                 content = (HttpContent) msg;
-                logger.debug("CONTENT:{}", content);
+                int index = 0;
+
+                if (incomingJpeg == null) {
+                    incomingJpeg = new byte[content.content().capacity()];
+                } else {
+                    byte[] temp = incomingJpeg;
+                    incomingJpeg = new byte[recievedBytes + content.content().capacity()];
+
+                    for (; index < temp.length; index++) {
+                        incomingJpeg[index] = temp[index];
+                    }
+                }
+                for (int i = 0; i < content.content().capacity(); i++) {
+                    incomingJpeg[index++] = content.content().getByte(i);
+                }
+                recievedBytes = incomingJpeg.length;
+                if (content instanceof LastHttpContent) {
+                    // logger.debug("frame is {}", incomingJpeg);
+                    ipCameraHandler.sendMjpegFrame(incomingJpeg, ipCameraHandler.mjpegChannelGroup);
+                    incomingJpeg = null;
+                    recievedBytes = 0;
+                }
             }
-        } finally {
+        } finally
+
+        {
             ReferenceCountUtil.release(msg);
         }
     }
