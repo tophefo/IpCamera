@@ -197,8 +197,9 @@ Recommend this is disabled and you use another method for a stream or snapshot c
 
 ## Channels
 
-See PaperUI for a full list of channels and the descriptions as most are easy to understand. 
-Any which need further explanations will be added here. Each camera brand will have different channels depending on how much of the support for an API has been added. 
+See PaperUI for a full list of channels and the descriptions, as most are easy to understand. 
+Any which need further explanation will be added here. 
+Each camera brand will have different channels depending on how much of the support for an API has been added. 
 The channels are kept consistent as much as possible from brand to brand to make upgrading to a different branded camera easier and to help when sharing rules with other users in the forum.
 
 **updateImageNow**

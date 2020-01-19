@@ -56,6 +56,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
     byte[] incomingJpeg = null;
     int recievedBytes = 0;
     int count = 0;
+    boolean updateSnapshot = false;
 
     public StreamServerHandler(IpCameraHandler ipCameraHandler) {
         this.ipCameraHandler = ipCameraHandler;
@@ -71,10 +72,10 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
         @Nullable
         HttpContent content = null;
         try {
-            logger.debug("{}", msg);
+            // logger.debug("{}", msg);
             if (msg instanceof HttpRequest) {
                 HttpRequest httpRequest = (HttpRequest) msg;
-                logger.debug("{}", httpRequest);
+                // logger.debug("{}", httpRequest);
                 logger.debug("Stream Server recieved request \t{}:{}", httpRequest.method(), httpRequest.uri());
                 String requestIP = "("
                         + ((InetSocketAddress) ctx.channel().remoteAddress()).getAddress().getHostAddress() + ")";
@@ -122,9 +123,10 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                     }
                 } else if ("POST".equalsIgnoreCase(httpRequest.method().toString())) {
                     switch (httpRequest.uri()) {
-                        case "/ipcamera1.jpeg":
-                            ipCameraHandler.sendMjpegGroupFirstPacket();
-                            // ipCameraHandler.sendMjpegFirstPacket(ctx);
+                        case "/ipcamera.jpg":
+                            break;
+                        case "/snapshot.jpg":
+                            updateSnapshot = true;
                             break;
                     }
                 }
@@ -148,8 +150,14 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                 }
                 recievedBytes = incomingJpeg.length;
                 if (content instanceof LastHttpContent) {
-                    // logger.debug("frame is {}", incomingJpeg);
-                    ipCameraHandler.sendMjpegFrame(incomingJpeg, ipCameraHandler.mjpegChannelGroup);
+                    if (updateSnapshot) {
+                        ipCameraHandler.currentSnapshot = incomingJpeg;
+                        ipCameraHandler.processSnapshot();
+                    } else {
+                        if (recievedBytes > 1000) {
+                            ipCameraHandler.sendMjpegFrame(incomingJpeg, ipCameraHandler.mjpegChannelGroup);
+                        }
+                    }
                     incomingJpeg = null;
                     recievedBytes = 0;
                 }
@@ -214,7 +222,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
         if (evt instanceof IdleStateEvent) {
             IdleStateEvent e = (IdleStateEvent) evt;
             if (e.state() == IdleState.WRITER_IDLE) {
-                logger.debug("Stream server is going to close an idle channel.");
+                // logger.debug("Stream server is going to close an idle channel.");
                 ctx.close();
             }
         }
@@ -222,7 +230,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void handlerRemoved(@Nullable ChannelHandlerContext ctx) {
-        logger.debug("Closing a StreamServerHandler.");
+        // logger.debug("Closing a StreamServerHandler.");
         if (handlingMjpeg) {
             ipCameraHandler.setupMjpegStreaming(false, ctx);
         } else if (handlingSnapshotStream) {
