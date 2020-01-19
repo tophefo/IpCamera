@@ -730,7 +730,11 @@ public class IpCameraHandler extends BaseThingHandler {
                                 if (contentType.contains("image/jp") && bytesAlreadyRecieved != 0) {
                                     if (updateImage) {
                                         if (++updateCounter > 4) {
-                                            updateCounter = 0;
+                                            if (updateCounter < 100) {// if poll time is 5 seconds or over, don't limit.
+                                                updateCounter = 0;
+                                            } else {
+                                                updateCounter--; // prevent counter overflow
+                                            }
                                             updateState(CHANNEL_IMAGE, new RawType(lastSnapshot, "image/jpeg"));
                                         }
                                     }
@@ -1303,6 +1307,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 case CHANNEL_UPDATE_IMAGE_NOW:
                     if ("ON".equals(command.toString())) {
                         updateImage = true;
+                        sendHttpGET(snapshotUri);// Allows this to change Image FPS on demand
                     } else {
                         updateImage = false;
                     }
@@ -1738,6 +1743,11 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
                 break;
         }
+
+        if (5 <= Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString())) {
+            updateCounter = 100;
+        }
+
         cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 1, 58, TimeUnit.SECONDS);
     }
 
