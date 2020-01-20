@@ -140,8 +140,10 @@ public class IpCameraHandler extends BaseThingHandler {
     OnvifServicesListener onvifServicesListener;
     public Configuration config;
 
-    @Nullable
-    public Ffmpeg ffmpegHLS = null;
+    // ChannelGroup is thread safe
+    public final ChannelGroup mjpegChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+    final ChannelGroup snapshotMjpegChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+    public @Nullable Ffmpeg ffmpegHLS = null;
     public @Nullable Ffmpeg ffmpegGIF = null;
     public @Nullable Ffmpeg ffmpegRtspHelper = null;
     public @Nullable Ffmpeg ffmpegMjpeg = null;
@@ -179,9 +181,6 @@ public class IpCameraHandler extends BaseThingHandler {
 
     public @Nullable ArrayList<String> lowPriorityRequests = null;
     public ReentrantLock lock = new ReentrantLock();
-    // ChannelGroup is thread safe
-    public final ChannelGroup mjpegChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
-    final ChannelGroup snapshotMjpegChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
     // basicAuth MUST remain private as it holds the password
     private String basicAuth = "";
@@ -1308,9 +1307,18 @@ public class IpCameraHandler extends BaseThingHandler {
                     return;
                 case CHANNEL_UPDATE_IMAGE_NOW:
                     if ("ON".equals(command.toString())) {
+                        if (snapshotUri.equals("")) {
+                            ffmpegImageGeneration = true;
+                            setupFfmpegFormat("SNAPSHOT");
+                        } else {
+                            sendHttpGET(snapshotUri);// Allows this to change Image FPS on demand
+                        }
                         updateImage = true;
-                        sendHttpGET(snapshotUri);// Allows this to change Image FPS on demand
                     } else {
+                        if (ffmpegSnapshot != null) {
+                            ffmpegSnapshot.stopConverting();
+                            ffmpegImageGeneration = false;
+                        }
                         updateImage = false;
                     }
                     return;
@@ -1751,7 +1759,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
                 break;
         }
-
+        // for poll times above 5 seconds don't limit the refresh of the Image channel.
         if (5 <= Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString())) {
             updateCounter = 100;
         }
