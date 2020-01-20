@@ -691,10 +691,11 @@ public class IpCameraHandler extends BaseThingHandler {
                                         }
                                         break;
                                     case "strict-transport-security":
+                                        logger.debug("!! Header matched, this may be a Reolink camera. !!");
                                         if (response.headers().getAsString(name)
                                                 .contains("max-age=63072000; includeSubdomains; preload")) {
                                             logger.debug(
-                                                    "!! Need to use more RAM as this as a Reolink camera. Report if this is not your brand !!");
+                                                    "!! Using more RAM as this is a Reolink camera. Report if this is not your brand !!");
                                             // Reolink cameras send more data than in the content length header.
                                             bytesToRecieve = 0;
                                         }
@@ -877,7 +878,6 @@ public class IpCameraHandler extends BaseThingHandler {
                 IdleStateEvent e = (IdleStateEvent) evt;
                 // If camera does not use the channel for X amount of time it will close.
                 if (e.state() == IdleState.READER_IDLE) {
-
                     lock.lock();
                     try {
                         byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
@@ -914,7 +914,6 @@ public class IpCameraHandler extends BaseThingHandler {
                         lock.unlock();
                     }
                     ctx.close();
-
                 } else if (e.state() == IdleState.WRITER_IDLE) {
                     // ctx.writeAndFlush("fakePing\r\n");
                 }
@@ -980,7 +979,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     updateState(CHANNEL_IMAGE_URL,
                             new StringType("http://" + hostIp + ":" + serverPort + "/ipcamera.jpg"));
                 } catch (Exception e) {
-                    logger.error("Exception occured starting the new streaming server:{}", e);
+                    logger.error("Exception occured when starting the streaming server:{}", e);
                 }
             }
         }
