@@ -96,9 +96,7 @@ public class Ffmpeg {
                             if (countOfMotions > 0) {
                                 countOfMotions--;
                                 if (countOfMotions == 0) {
-                                    ipCameraHandler.setChannelState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                                    ipCameraHandler.firstMotionAlarm = false;
-                                    ipCameraHandler.motionAlarmUpdateSnapshot = false;
+                                    ipCameraHandler.noMotionDetected(CHANNEL_MOTION_ALARM);
                                 }
                             }
                         } else if (line.contains("silence_start")) {

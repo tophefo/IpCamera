@@ -18,6 +18,7 @@ import static org.openhab.binding.ipcamera.IpCameraBindingConstants.*;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.ipcamera.handler.IpCameraHandler;
@@ -90,6 +91,11 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                             ipCameraHandler.ffmpegHLS.setKeepAlive(60);// setup must come first
                             sendFile(ctx, httpRequest.uri(), "application/x-mpegURL");
                             break;
+                        case "/ipcamera.mpd":
+                            ipCameraHandler.setupFfmpegFormat("DASH");
+                            ipCameraHandler.ffmpegDASH.setKeepAlive(60);// setup must come first
+                            sendFile(ctx, httpRequest.uri(), "application/dash+xml");
+                            break;
                         case "/ipcamera.gif":
                             sendFile(ctx, httpRequest.uri(), "image/gif");
                             break;
@@ -102,23 +108,33 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                             sendSnapshotImage(ctx, "image/jpeg");
                             break;
                         case "/snapshots.mjpeg":
-                            ipCameraHandler.setupSnapshotStreaming(true, ctx);
+                            ipCameraHandler.setupSnapshotStreaming(true, ctx, false);
                             handlingSnapshotStream = true;
                             break;
                         case "/ipcamera.mjpeg":
                             ipCameraHandler.setupMjpegStreaming(true, ctx);
                             handlingMjpeg = true;
                             break;
+                        case "/autofps.mjpeg":
+                            ipCameraHandler.setupSnapshotStreaming(true, ctx, true);
+                            handlingSnapshotStream = true;
+                            break;
                         case "/instar":
                             InstarHandler instar = new InstarHandler(ipCameraHandler);
                             instar.alarmTriggered(httpRequest.uri().toString());
                             break;
+                        case "/ipcamera0.ts":
+                            TimeUnit.SECONDS.sleep(7);
                         default:
                             if (httpRequest.uri().contains(".ts")) {
                                 sendFile(ctx, httpRequest.uri(), "video/MP2T");
                             } else if (httpRequest.uri().contains(".jpg")) {
                                 // Allow access to the preroll and postroll jpg files
                                 sendFile(ctx, httpRequest.uri(), "image/jpeg");
+                            } else if (httpRequest.uri().contains(".m4s")) {
+                                sendFile(ctx, httpRequest.uri(), "video/mp4");
+                            } else if (httpRequest.uri().contains(".mp4")) {
+                                sendFile(ctx, httpRequest.uri(), "video/mp4");
                             }
                     }
                 } else if ("POST".equalsIgnoreCase(httpRequest.method().toString())) {
@@ -235,7 +251,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
             ipCameraHandler.setupMjpegStreaming(false, ctx);
         } else if (handlingSnapshotStream) {
             handlingSnapshotStream = false;
-            ipCameraHandler.setupSnapshotStreaming(false, ctx);
+            ipCameraHandler.setupSnapshotStreaming(false, ctx, false);
         }
     }
 }

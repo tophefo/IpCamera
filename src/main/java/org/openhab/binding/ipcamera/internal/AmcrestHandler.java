@@ -65,9 +65,7 @@ public class AmcrestHandler extends ChannelDuplexHandler {
             }
             if (content.contains("Error: No Events")) {
                 if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion".equals(requestUrl)) {
-                    ipCameraHandler.setChannelState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                    ipCameraHandler.firstMotionAlarm = false;
-                    ipCameraHandler.motionAlarmUpdateSnapshot = false;
+                    ipCameraHandler.noMotionDetected(CHANNEL_MOTION_ALARM);
                 } else if ("/cgi-bin/eventManager.cgi?action=getEventIndexes&code=AudioMutation".equals(requestUrl)) {
                     ipCameraHandler.setChannelState(CHANNEL_AUDIO_ALARM, OnOffType.valueOf("OFF"));
                     ipCameraHandler.firstAudioAlarm = false;

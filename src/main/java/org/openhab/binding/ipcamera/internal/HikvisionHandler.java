@@ -93,17 +93,19 @@ public class HikvisionHandler extends ChannelDuplexHandler {
                         pirCount = debounce;
                     }
                     if (content.contains("<eventType>videoloss</eventType>\r\n<eventState>inactive</eventState>")) {
-                        ipCameraHandler.audioAlarmUpdateSnapshot = false;
-                        ipCameraHandler.motionAlarmUpdateSnapshot = false;
-                        ipCameraHandler.firstMotionAlarm = false;
+                        ipCameraHandler.noMotionDetected(CHANNEL_MOTION_ALARM);
+                        // ipCameraHandler.audioAlarmUpdateSnapshot = false;
+                        // ipCameraHandler.motionAlarmUpdateSnapshot = false;
+                        // ipCameraHandler.firstMotionAlarm = false;
                         countDown();
                         countDown();
                     }
                 } else if (content.contains("<channelID>0</channelID>")) {// NVR uses channel 0 to say all channels
                     if (content.contains("<eventType>videoloss</eventType>\r\n<eventState>inactive</eventState>")) {
-                        ipCameraHandler.audioAlarmUpdateSnapshot = false;
-                        ipCameraHandler.motionAlarmUpdateSnapshot = false;
-                        ipCameraHandler.firstMotionAlarm = false;
+                        ipCameraHandler.noMotionDetected(CHANNEL_MOTION_ALARM);
+                        // ipCameraHandler.audioAlarmUpdateSnapshot = false;
+                        // ipCameraHandler.motionAlarmUpdateSnapshot = false;
+                        // ipCameraHandler.firstMotionAlarm = false;
                         countDown();
                         countDown();
                     }

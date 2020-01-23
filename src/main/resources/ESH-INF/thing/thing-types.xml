@@ -14,6 +14,7 @@
 		<channel id="motionAlarm" typeId="motionAlarm"/>		
         <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm"/>
         <channel id="audioAlarm" typeId="audioAlarm"/>
+        <channel id="startStream" typeId="startStream"/>        
 		<channel id="streamUrl" typeId="streamUrl"/>
 		<channel id="rtspUrl" typeId="rtspUrl"/>
 		<channel id="imageUrl" typeId="imageUrl"/>
@@ -199,6 +200,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 		<channel id="tilt" typeId="tilt"/>
 		<channel id="zoom" typeId="zoom"/>
 		<channel id="gotoPreset" typeId="gotoPreset"/>
+		<channel id="startStream" typeId="startStream"/>  
 		<channel id="streamUrl" typeId="streamUrl"/>
 		<channel id="rtspUrl" typeId="rtspUrl"/>
 		<channel id="imageUrl" typeId="imageUrl"/>
@@ -405,6 +407,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 			<channel id="tilt" typeId="tilt"/>
 			<channel id="zoom" typeId="zoom"/>
 			<channel id="gotoPreset" typeId="gotoPreset"/>
+			<channel id="startStream" typeId="startStream"/>  
 			<channel id="streamUrl" typeId="streamUrl"/>
 			<channel id="rtspUrl" typeId="rtspUrl"/>
 			<channel id="imageUrl" typeId="imageUrl"/>
@@ -633,6 +636,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 			<channel id="tilt" typeId="tilt"/>
 			<channel id="zoom" typeId="zoom"/>
 			<channel id="gotoPreset" typeId="gotoPreset"/>
+			<channel id="startStream" typeId="startStream"/>  
 			<channel id="streamUrl" typeId="streamUrl"/>
 			<channel id="rtspUrl" typeId="rtspUrl"/>
 			<channel id="imageUrl" typeId="imageUrl"/>
@@ -841,6 +845,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 			<channel id="activateAlarmOutput2" typeId="activateAlarmOutput2"/>
 			<channel id="doorBell" typeId="doorBell"/>
 			<channel id="externalLight" typeId="externalLight"/>
+			<channel id="startStream" typeId="startStream"/>  
 			<channel id="streamUrl" typeId="streamUrl"/>
 			<channel id="rtspUrl" typeId="rtspUrl"/>
 			<channel id="imageUrl" typeId="imageUrl"/>
@@ -1043,6 +1048,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 			<channel id="tilt" typeId="tilt"/>
 			<channel id="zoom" typeId="zoom"/>
 			<channel id="gotoPreset" typeId="gotoPreset"/>
+			<channel id="startStream" typeId="startStream"/>  
 			<channel id="streamUrl" typeId="streamUrl"/>
 			<channel id="rtspUrl" typeId="rtspUrl"/>
 			<channel id="imageUrl" typeId="imageUrl"/>
@@ -1270,6 +1276,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 			<channel id="tilt" typeId="tilt"/>
 			<channel id="zoom" typeId="zoom"/>
 			<channel id="gotoPreset" typeId="gotoPreset"/>
+			<channel id="startStream" typeId="startStream"/>  
 			<channel id="streamUrl" typeId="streamUrl"/>
 			<channel id="rtspUrl" typeId="rtspUrl"/>		
 			<channel id="imageUrl" typeId="imageUrl"/>
@@ -1487,6 +1494,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 			<channel id="tilt" typeId="tilt"/>
 			<channel id="zoom" typeId="zoom"/>
 			<channel id="gotoPreset" typeId="gotoPreset"/>
+			<channel id="startStream" typeId="startStream"/>  
 			<channel id="streamUrl" typeId="streamUrl"/>
 			<channel id="rtspUrl" typeId="rtspUrl"/>
 			<channel id="imageUrl" typeId="imageUrl"/>
@@ -1901,6 +1909,12 @@ The Image channel and JPG served on request can be set to update in a number of 
 		<description>You can use the cameras output 2 to trigger a device like a burglar alarm.</description>
 		<category>Alarm</category>
 		</channel-type>
+		
+		<channel-type id="startStream">
+        <item-type>Switch</item-type>
+        <label>Create segments for casting/streaming</label>
+        <description>Lower the delay to start casting the camera by creating the files non stop in case they are needed.</description>
+        </channel-type>
 		
 		<channel-type id="enableLED">
 		<item-type>Dimmer</item-type>

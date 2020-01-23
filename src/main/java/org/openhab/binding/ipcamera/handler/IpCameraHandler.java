@@ -143,11 +143,15 @@ public class IpCameraHandler extends BaseThingHandler {
     // ChannelGroup is thread safe
     public final ChannelGroup mjpegChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
     final ChannelGroup snapshotMjpegChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+    final ChannelGroup autoSnapshotMjpegChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
     public @Nullable Ffmpeg ffmpegHLS = null;
+    public @Nullable Ffmpeg ffmpegDASH = null;
     public @Nullable Ffmpeg ffmpegGIF = null;
     public @Nullable Ffmpeg ffmpegRtspHelper = null;
     public @Nullable Ffmpeg ffmpegMjpeg = null;
     public @Nullable Ffmpeg ffmpegSnapshot = null;
+    public boolean streamingAutoFps = false;
+    boolean motionDetected = false;
 
     private @Nullable ScheduledFuture<?> cameraConnectionJob = null;
     private @Nullable ScheduledFuture<?> pollCameraJob = null;
@@ -195,10 +199,10 @@ public class IpCameraHandler extends BaseThingHandler {
     public String ipAddress = "empty";
     public String updateImageEvents;
     public boolean audioAlarmUpdateSnapshot = false;
-    public boolean motionAlarmUpdateSnapshot = false;
+    boolean motionAlarmUpdateSnapshot = false;
     boolean isOnline = false; // Used so only 1 error is logged when a network issue occurs.
     public boolean firstAudioAlarm = false;
-    public boolean firstMotionAlarm = false;
+    boolean firstMotionAlarm = false;
     boolean shortAudioAlarm = true; // used for when the alarm is less than the polling amount of time.
     boolean shortMotionAlarm = true; // used for when the alarm is less than the polling amount of time.
     private OnvifManager onvifManager = new OnvifManager();
@@ -615,13 +619,20 @@ public class IpCameraHandler extends BaseThingHandler {
 
     public void processSnapshot() {
         if (updateImage) {
-            if (++updateCounter > 4) {
-                if (updateCounter < 100) {// if poll time is 5 seconds or over, don't limit.
-                    updateCounter = 0;
-                } else {
-                    updateCounter--; // prevent counter overflow
-                }
-                updateState(CHANNEL_IMAGE, new RawType(currentSnapshot, "image/jpeg"));
+            updateState(CHANNEL_IMAGE, new RawType(currentSnapshot, "image/jpeg"));
+        }
+        if (streamingSnapshotMjpeg) {
+            sendMjpegFrame(currentSnapshot, snapshotMjpegChannelGroup);
+        }
+        if (streamingAutoFps) {
+            if (updateCounter++ > 200) {
+                updateCounter = 1;
+            }
+            if (motionDetected) {
+                sendMjpegFrame(currentSnapshot, autoSnapshotMjpegChannelGroup);
+                updateCounter = 4;
+            } else if (updateCounter % 8 == 0) {
+                sendMjpegFrame(currentSnapshot, autoSnapshotMjpegChannelGroup);
             }
         }
         if (preroll > 0) {
@@ -629,9 +640,6 @@ public class IpCameraHandler extends BaseThingHandler {
             if (fifoSnapshotBuffer.size() > (preroll + postroll)) {
                 fifoSnapshotBuffer.removeFirst();
             }
-        }
-        if (streamingSnapshotMjpeg) {
-            sendSnapshotMjpegFrame();
         }
     }
 
@@ -706,7 +714,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                 closeConnection = false;
                                 if (mjpegUri.contains(requestUrl)) {
                                     if (msg instanceof HttpMessage) {
-                                        // logger.debug("First stream packet back from camera is HttpMessage:{}", msg);
+                                        // logger.info("First stream packet back from camera is HttpMessage:{}", msg);
                                         ReferenceCountUtil.retain(msg, 1);
                                         // very start of stream only
                                         firstStreamedMsg = msg;
@@ -759,11 +767,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                     if (closeConnection) {
                                         // logger.debug("Snapshot recieved: Binding will now close the channel.");
                                         ctx.close();
-                                    } else {
-                                        // logger.debug("Snapshot recieved: Binding will now keep-alive the
-                                        // channel.");
                                     }
-
                                 }
                             }
                         } else { // incomingMessage that is not an IMAGE
@@ -985,17 +989,27 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     }
 
-    public void setupSnapshotStreaming(boolean stream, ChannelHandlerContext ctx) {
+    public void setupSnapshotStreaming(boolean stream, ChannelHandlerContext ctx, boolean auto) {
         if (stream) {
             sendMjpegFirstPacket(ctx);
-            snapshotMjpegChannelGroup.add(ctx.channel());
-            sendSnapshotMjpegFrame();
-            streamingSnapshotMjpeg = true;
+            if (auto) {
+                autoSnapshotMjpegChannelGroup.add(ctx.channel());
+                sendMjpegFrame(currentSnapshot, autoSnapshotMjpegChannelGroup);
+                streamingAutoFps = true;
+            } else {
+                snapshotMjpegChannelGroup.add(ctx.channel());
+                sendMjpegFrame(currentSnapshot, snapshotMjpegChannelGroup);
+                streamingSnapshotMjpeg = true;
+            }
         } else {
             snapshotMjpegChannelGroup.remove(ctx.channel());
+            autoSnapshotMjpegChannelGroup.remove(ctx.channel());
             if (snapshotMjpegChannelGroup.isEmpty()) {
                 streamingSnapshotMjpeg = false;
-                logger.debug("All new Snapshot based MJPEG streams have stopped.");
+                logger.debug("All Snapshot based MJPEG streams have stopped.");
+            } else if (autoSnapshotMjpegChannelGroup.isEmpty()) {
+                streamingAutoFps = false;
+                logger.debug("All AutoFps Snapshot based MJPEG streams have stopped.");
             }
         }
     }
@@ -1042,10 +1056,6 @@ public class IpCameraHandler extends BaseThingHandler {
         response.headers().add("Access-Control-Allow-Origin", "*");
         response.headers().add("Access-Control-Expose-Headers", "content-length");
         ctx.channel().write(response);
-    }
-
-    public void sendSnapshotMjpegFrame() {
-        sendMjpegFrame(currentSnapshot, snapshotMjpegChannelGroup);
     }
 
     public void sendMjpegFrame(byte[] jpg, ChannelGroup channelGroup) {
@@ -1119,6 +1129,20 @@ public class IpCameraHandler extends BaseThingHandler {
                     }
                 }
                 ffmpegHLS.startConverting();
+                break;
+            case "DASH":
+                if (ffmpegDASH == null) {
+                    if (rtspUri.contains(":554")) {
+                        ffmpegDASH = new Ffmpeg(this, format, config.get(CONFIG_FFMPEG_LOCATION).toString(),
+                                "-rtsp_transport tcp", rtspUri, "-strict -2 -c:a aac -vcodec copy -b:v 1000k -f dash",
+                                ffmpegOutputFolder + "ipcamera.mpd", username, password);
+                    } else {
+                        ffmpegDASH = new Ffmpeg(this, format, config.get(CONFIG_FFMPEG_LOCATION).toString(), "",
+                                rtspUri, "-strict -2 -c:a aac -vcodec copy -b:v 1000k -f dash",
+                                ffmpegOutputFolder + "ipcamera.mpd", username, password);
+                    }
+                }
+                ffmpegDASH.startConverting();
                 break;
             case "GIF":
                 if (ffmpegGIF == null) {
@@ -1199,9 +1223,17 @@ public class IpCameraHandler extends BaseThingHandler {
         }
     }
 
+    public void noMotionDetected(String thisAlarmsChannel) {
+        setChannelState(thisAlarmsChannel, OnOffType.valueOf("OFF"));
+        firstMotionAlarm = false;
+        motionAlarmUpdateSnapshot = false;
+        motionDetected = false;
+    }
+
     public void motionDetected(String thisAlarmsChannel) {
         updateState(thisAlarmsChannel.toString(), OnOffType.valueOf("ON"));
         updateState(CHANNEL_LAST_MOTION_TYPE, new StringType(thisAlarmsChannel));
+        motionDetected = true;
         if (updateImageEvents.contains("2")) {
             if (!firstMotionAlarm) {
                 sendHttpGET(snapshotUri);
@@ -1802,6 +1834,10 @@ public class IpCameraHandler extends BaseThingHandler {
         if (ffmpegSnapshot != null) {
             ffmpegSnapshot.stopConverting();
             ffmpegSnapshot = null;
+        }
+        if (ffmpegDASH != null) {
+            ffmpegDASH.stopConverting();
+            ffmpegDASH = null;
         }
 
         lock.lock();

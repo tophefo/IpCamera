@@ -69,33 +69,25 @@ public class DahuaHandler extends ChannelDuplexHandler {
             if (content.contains("Code=VideoMotion;action=Start;index=0")) {
                 ipCameraHandler.motionDetected(CHANNEL_MOTION_ALARM);
             } else if (content.contains("Code=VideoMotion;action=Stop;index=0")) {
-                ipCameraHandler.setChannelState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                ipCameraHandler.firstMotionAlarm = false;
-                ipCameraHandler.motionAlarmUpdateSnapshot = false;
+                ipCameraHandler.noMotionDetected(CHANNEL_MOTION_ALARM);
             }
             // Handle item taken alarm
             if (content.contains("Code=TakenAwayDetection;action=Start;index=0")) {
                 ipCameraHandler.motionDetected(CHANNEL_ITEM_TAKEN);
             } else if (content.contains("Code=TakenAwayDetection;action=Stop;index=0")) {
-                ipCameraHandler.setChannelState(CHANNEL_ITEM_TAKEN, OnOffType.valueOf("OFF"));
-                ipCameraHandler.firstMotionAlarm = false;
-                ipCameraHandler.motionAlarmUpdateSnapshot = false;
+                ipCameraHandler.noMotionDetected(CHANNEL_ITEM_TAKEN);
             }
             // Handle item left alarm
             if (content.contains("Code=LeftDetection;action=Start;index=0")) {
                 ipCameraHandler.motionDetected(CHANNEL_ITEM_LEFT);
             } else if (content.contains("Code=LeftDetection;action=Stop;index=0")) {
-                ipCameraHandler.setChannelState(CHANNEL_ITEM_LEFT, OnOffType.valueOf("OFF"));
-                ipCameraHandler.firstMotionAlarm = false;
-                ipCameraHandler.motionAlarmUpdateSnapshot = false;
+                ipCameraHandler.noMotionDetected(CHANNEL_ITEM_LEFT);
             }
             // Handle CrossLineDetection alarm
             if (content.contains("Code=CrossLineDetection;action=Start;index=0")) {
                 ipCameraHandler.motionDetected(CHANNEL_LINE_CROSSING_ALARM);
             } else if (content.contains("Code=CrossLineDetection;action=Stop;index=0")) {
-                ipCameraHandler.setChannelState(CHANNEL_LINE_CROSSING_ALARM, OnOffType.valueOf("OFF"));
-                ipCameraHandler.firstMotionAlarm = false;
-                ipCameraHandler.motionAlarmUpdateSnapshot = false;
+                ipCameraHandler.noMotionDetected(CHANNEL_LINE_CROSSING_ALARM);
             }
             // determine if the audio alarm is turned on or off.
             if (content.contains("table.AudioDetect[0].MutationDetect=true")) {
@@ -120,25 +112,19 @@ public class DahuaHandler extends ChannelDuplexHandler {
             if (content.contains("Code=FaceDetection;action=Start;index=0")) {
                 ipCameraHandler.motionDetected(CHANNEL_FACE_DETECTED);
             } else if (content.contains("Code=FaceDetection;action=Stop;index=0")) {
-                ipCameraHandler.setChannelState(CHANNEL_FACE_DETECTED, OnOffType.valueOf("OFF"));
-                ipCameraHandler.firstMotionAlarm = false;
-                ipCameraHandler.motionAlarmUpdateSnapshot = false;
+                ipCameraHandler.noMotionDetected(CHANNEL_FACE_DETECTED);
             }
             // Handle ParkingDetection alarm
             if (content.contains("Code=ParkingDetection;action=Start;index=0")) {
                 ipCameraHandler.motionDetected(CHANNEL_PARKING_ALARM);
             } else if (content.contains("Code=ParkingDetection;action=Stop;index=0")) {
-                ipCameraHandler.setChannelState(CHANNEL_PARKING_ALARM, OnOffType.valueOf("OFF"));
-                ipCameraHandler.firstMotionAlarm = false;
-                ipCameraHandler.motionAlarmUpdateSnapshot = false;
+                ipCameraHandler.noMotionDetected(CHANNEL_PARKING_ALARM);
             }
             // Handle CrossRegionDetection alarm
             if (content.contains("Code=CrossRegionDetection;action=Start;index=0")) {
                 ipCameraHandler.motionDetected(CHANNEL_FIELD_DETECTION_ALARM);
             } else if (content.contains("Code=CrossRegionDetection;action=Stop;index=0")) {
-                ipCameraHandler.setChannelState(CHANNEL_FIELD_DETECTION_ALARM, OnOffType.valueOf("OFF"));
-                ipCameraHandler.firstMotionAlarm = false;
-                ipCameraHandler.motionAlarmUpdateSnapshot = false;
+                ipCameraHandler.noMotionDetected(CHANNEL_FIELD_DETECTION_ALARM);
             }
             // Handle External Input alarm
             if (content.contains("Code=AlarmLocal;action=Start;index=0")) {

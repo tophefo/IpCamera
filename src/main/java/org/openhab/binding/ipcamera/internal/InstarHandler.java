@@ -92,9 +92,7 @@ public class InstarHandler extends ChannelDuplexHandler {
                         ipCameraHandler.setChannelState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
                     }
                     // Reset the Alarm, need to find better place to put this.
-                    ipCameraHandler.setChannelState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                    ipCameraHandler.firstMotionAlarm = false;
-                    ipCameraHandler.motionAlarmUpdateSnapshot = false;
+                    ipCameraHandler.noMotionDetected(CHANNEL_MOTION_ALARM);
                     break;
                 case "/cgi-bin/hi3510/param.cgi?cmd=getaudioalarmattr":// Audio Alarm
                     if (content.contains("var aa_enable=\"1\"")) {
@@ -119,9 +117,7 @@ public class InstarHandler extends ChannelDuplexHandler {
                         ipCameraHandler.setChannelState(CHANNEL_ENABLE_PIR_ALARM, OnOffType.valueOf("OFF"));
                     }
                     // Reset the Alarm, need to find better place to put this.
-                    ipCameraHandler.setChannelState(CHANNEL_PIR_ALARM, OnOffType.valueOf("OFF"));
-                    ipCameraHandler.firstMotionAlarm = false;
-                    ipCameraHandler.motionAlarmUpdateSnapshot = false;
+                    ipCameraHandler.noMotionDetected(CHANNEL_PIR_ALARM);
                     break;
                 case "/param.cgi?cmd=getioattr":// External Alarm Input
                     if (content.contains("var io_enable=\"1\"")) {

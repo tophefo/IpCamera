@@ -17,7 +17,6 @@ import static org.openhab.binding.ipcamera.IpCameraBindingConstants.*;
 import java.util.ArrayList;
 
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.ipcamera.handler.IpCameraHandler;
@@ -71,9 +70,7 @@ public class HttpOnlyHandler extends ChannelDuplexHandler {
                     ipCameraHandler.motionAlarmEnabled = true;
                 } else if ("OFF".equals(command.toString()) || "0".equals(command.toString())) {
                     ipCameraHandler.motionAlarmEnabled = false;
-                    ipCameraHandler.setChannelState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                    ipCameraHandler.firstMotionAlarm = false;
-                    ipCameraHandler.motionAlarmUpdateSnapshot = false;
+                    ipCameraHandler.noMotionDetected(CHANNEL_MOTION_ALARM);
                 } else {
                     ipCameraHandler.motionAlarmEnabled = true;
                     ipCameraHandler.motionThreshold = Double.valueOf(command.toString());

@@ -67,9 +67,7 @@ public class FoscamHandler extends ChannelDuplexHandler {
                     ipCameraHandler.setChannelState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("OFF"));
                 } else if (content.contains("<motionDetectAlarm>1</motionDetectAlarm>")) { // Enabled but no alarm
                     ipCameraHandler.setChannelState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
-                    ipCameraHandler.setChannelState(CHANNEL_MOTION_ALARM, OnOffType.valueOf("OFF"));
-                    ipCameraHandler.firstMotionAlarm = false;
-                    ipCameraHandler.motionAlarmUpdateSnapshot = false;
+                    ipCameraHandler.noMotionDetected(CHANNEL_MOTION_ALARM);
                 } else if (content.contains("<motionDetectAlarm>2</motionDetectAlarm>")) {// Enabled, alarm on
                     ipCameraHandler.setChannelState(CHANNEL_ENABLE_MOTION_ALARM, OnOffType.valueOf("ON"));
                     ipCameraHandler.motionDetected(CHANNEL_MOTION_ALARM);
