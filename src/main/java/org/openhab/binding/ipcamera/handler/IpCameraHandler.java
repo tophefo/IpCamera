@@ -215,7 +215,7 @@ public class IpCameraHandler extends BaseThingHandler {
     boolean streamingSnapshotMjpeg = false;
     public boolean motionAlarmEnabled = false;
     public boolean audioAlarmEnabled = false;
-    public boolean ffmpegImageGeneration = false;
+    public boolean ffmpegSnapshotGeneration = false;
 
     public IpCameraHandler(Thing thing) {
         super(thing);
@@ -630,7 +630,7 @@ public class IpCameraHandler extends BaseThingHandler {
             }
             if (motionDetected) {
                 sendMjpegFrame(currentSnapshot, autoSnapshotMjpegChannelGroup);
-                updateCounter = 4;
+                updateCounter = 4;// when motion ends give it half the time before a new snapshot is used.
             } else if (updateCounter % 8 == 0) {
                 sendMjpegFrame(currentSnapshot, autoSnapshotMjpegChannelGroup);
             }
@@ -1069,6 +1069,9 @@ public class IpCameraHandler extends BaseThingHandler {
         streamToGroup(headerBbuf, channelGroup, false);
         streamToGroup(imageByteBuf, channelGroup, false);
         streamToGroup(footerBbuf, channelGroup, true);
+        imageByteBuf.release();
+        headerBbuf.release();
+        footerBbuf.release();
     }
 
     public void streamToGroup(Object msg, ChannelGroup channelGroup, boolean flush) {
@@ -1185,7 +1188,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 } else if (audioAlarmEnabled == true) {
                     filterOptions = "-af silencedetect=n=-" + audioThreshold + "dB:d=2";
                 }
-                if (motionAlarmEnabled == false && ffmpegImageGeneration == false) {
+                if (motionAlarmEnabled == false && ffmpegSnapshotGeneration == false) {
                     filterOptions = filterOptions.concat(" -vn");
                 } else if (motionAlarmEnabled == true) {
                     filterOptions = filterOptions
@@ -1331,6 +1334,16 @@ public class IpCameraHandler extends BaseThingHandler {
         } // caution "REFRESH" can still progress to brand Handlers below the else.
         else {
             switch (channelUID.getId()) {
+                case CHANNEL_START_STREAM:
+                    if ("ON".equals(command.toString())) {
+                        setupFfmpegFormat("HLS");
+                        ffmpegHLS.setKeepAlive(-1);// will keep running till manually stopped.
+                    } else {
+                        if (ffmpegHLS != null) {
+                            ffmpegHLS.stopConverting();
+                        }
+                    }
+                    return;
                 case CHANNEL_GOTO_PRESET:
                     if (ptzHandler.supportsPTZ()) {
                         ptzHandler.gotoPreset(Integer.valueOf(command.toString()));
@@ -1339,16 +1352,16 @@ public class IpCameraHandler extends BaseThingHandler {
                 case CHANNEL_UPDATE_IMAGE_NOW:
                     if ("ON".equals(command.toString())) {
                         if (snapshotUri.equals("")) {
-                            ffmpegImageGeneration = true;
+                            ffmpegSnapshotGeneration = true;
                             setupFfmpegFormat("SNAPSHOT");
                         } else {
+                            updateImage = true;
                             sendHttpGET(snapshotUri);// Allows this to change Image FPS on demand
                         }
-                        updateImage = true;
                     } else {
                         if (ffmpegSnapshot != null) {
                             ffmpegSnapshot.stopConverting();
-                            ffmpegImageGeneration = false;
+                            ffmpegSnapshotGeneration = false;
                         }
                         updateImage = false;
                     }
@@ -1492,7 +1505,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     if (!rtspUri.equals("") && updateImageEvents.equals("1")) {
                         logger.info(
                                 "Binding has no snapshot url, and is set to always update images. Using your CPU to create snapshots with Ffmpeg.");
-                        ffmpegImageGeneration = true;
+                        ffmpegSnapshotGeneration = true;
                         setupFfmpegFormat("SNAPSHOT");
                     }
                 }
@@ -1687,7 +1700,7 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
             }
             if (ffmpegHLS != null) {
-                ffmpegHLS.getKeepAlive();
+                ffmpegHLS.checkKeepAlive();
             }
             // Delay movements so when a rule changes all 3, a single movement is made.
             if (movePTZ) {
@@ -1790,11 +1803,11 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
                 break;
         }
-        // for poll times above 5 seconds don't limit the refresh of the Image channel.
-        if (5 <= Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString())) {
-            updateCounter = 100;
+        // for poll times above 5 seconds don't display a warning about the Image channel.
+        if (9000 <= Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()) && updateImage) {
+            logger.warn(
+                    "The Image channel is set to update more often than 8 seconds. This is not recommended the Images channel is best used only for higher poll times. See the readme file on how to display the cameras picture for best results or use a higher poll time.");
         }
-
         cameraConnectionJob = cameraConnection.scheduleWithFixedDelay(pollingCameraConnection, 1, 58, TimeUnit.SECONDS);
     }
 

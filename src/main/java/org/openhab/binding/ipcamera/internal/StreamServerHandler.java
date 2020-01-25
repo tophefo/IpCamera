@@ -44,7 +44,8 @@ import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.util.ReferenceCountUtil;
 
 /**
- * The {@link StreamServerHandler} is responsible for handling streams and sending requested files
+ * The {@link StreamServerHandler} class is responsible for handling streams and sending any requested files to Openhabs
+ * features.
  *
  * @author Matthew Skinner - Initial contribution
  */
@@ -92,8 +93,8 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                             sendFile(ctx, httpRequest.uri(), "application/x-mpegURL");
                             break;
                         case "/ipcamera.mpd":
-                            ipCameraHandler.setupFfmpegFormat("DASH");
-                            ipCameraHandler.ffmpegDASH.setKeepAlive(60);// setup must come first
+                            // ipCameraHandler.setupFfmpegFormat("DASH");
+                            // ipCameraHandler.ffmpegDASH.setKeepAlive(60);// setup must come first
                             sendFile(ctx, httpRequest.uri(), "application/dash+xml");
                             break;
                         case "/ipcamera.gif":
@@ -178,9 +179,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                     recievedBytes = 0;
                 }
             }
-        } finally
-
-        {
+        } finally {
             ReferenceCountUtil.release(msg);
         }
     }

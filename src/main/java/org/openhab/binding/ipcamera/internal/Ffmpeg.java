@@ -28,7 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link Ffmpeg} is responsible for handling multiple ffmpeg conversions which are used for many tasks
+ * The {@link Ffmpeg} class is responsible for handling multiple ffmpeg conversions which are used for many tasks
  *
  *
  * @author Matthew Skinner - Initial contribution
@@ -48,11 +48,14 @@ public class Ffmpeg {
         keepAlive = seconds / (Integer.parseInt(ipCameraHandler.config.get(CONFIG_POLL_CAMERA_MS).toString()) / 1000);
     }
 
-    public int getKeepAlive() {
-        if (keepAlive < 0) {
+    public void checkKeepAlive() {
+        if (keepAlive <= -1) {
+            return;
+        } else if (keepAlive == 0) {
             this.stopConverting();
         }
-        return --keepAlive;
+        keepAlive--;
+        return;
     }
 
     public Ffmpeg(IpCameraHandler handle, String format, String ffmpegLocation, String inputArguments, String input,

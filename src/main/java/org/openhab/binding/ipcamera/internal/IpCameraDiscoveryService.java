@@ -44,7 +44,7 @@ import be.teletask.onvif.listeners.DiscoveryListener;
 import be.teletask.onvif.models.Device;
 
 /**
- * The {@link IpCameraDiscoveryService} is responsible for finding cameras
+ * The {@link IpCameraDiscoveryService} is responsible for auto finding cameras that have Onvif
  *
  * @author Matthew Skinner - Initial contribution
  */
