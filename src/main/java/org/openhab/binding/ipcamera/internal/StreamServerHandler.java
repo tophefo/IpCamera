@@ -88,8 +88,15 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                 } else if ("GET".equalsIgnoreCase(httpRequest.method().toString())) {
                     switch (httpRequest.uri()) {
                         case "/ipcamera.m3u8":
-                            ipCameraHandler.setupFfmpegFormat("HLS");
-                            ipCameraHandler.ffmpegHLS.setKeepAlive(60);// setup must come first
+                            if (ipCameraHandler.ffmpegHLS != null) {
+                                if (!ipCameraHandler.ffmpegHLS.getIsAlive()) {
+                                    ipCameraHandler.ffmpegHLS.setKeepAlive(60);
+                                    ipCameraHandler.ffmpegHLS.startConverting();
+                                }
+                            } else {
+                                ipCameraHandler.setupFfmpegFormat("HLS");
+                            }
+                            ipCameraHandler.ffmpegHLS.setKeepAlive(60);
                             sendFile(ctx, httpRequest.uri(), "application/x-mpegURL");
                             break;
                         case "/ipcamera.mpd":
@@ -125,7 +132,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                             instar.alarmTriggered(httpRequest.uri().toString());
                             break;
                         case "/ipcamera0.ts":
-                            TimeUnit.SECONDS.sleep(7);
+                            TimeUnit.SECONDS.sleep(6);
                         default:
                             if (httpRequest.uri().contains(".ts")) {
                                 sendFile(ctx, httpRequest.uri(), "video/MP2T");

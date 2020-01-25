@@ -1069,9 +1069,6 @@ public class IpCameraHandler extends BaseThingHandler {
         streamToGroup(headerBbuf, channelGroup, false);
         streamToGroup(imageByteBuf, channelGroup, false);
         streamToGroup(footerBbuf, channelGroup, true);
-        imageByteBuf.release();
-        headerBbuf.release();
-        footerBbuf.release();
     }
 
     public void streamToGroup(Object msg, ChannelGroup channelGroup, boolean flush) {
@@ -1131,7 +1128,10 @@ public class IpCameraHandler extends BaseThingHandler {
                                 ffmpegOutputFolder + "ipcamera.m3u8", username, password);
                     }
                 }
-                ffmpegHLS.startConverting();
+                if (!ffmpegHLS.getIsAlive()) {
+                    ffmpegHLS.startConverting();
+                    ffmpegHLS.setKeepAlive(60);
+                }
                 break;
             case "DASH":
                 if (ffmpegDASH == null) {

@@ -461,6 +461,7 @@ String BabyCamHlsStreamUrl "HLS Stream" { channel="ipcamera:DAHUA:BabyCamera:hls
 String BabyCamRTSPStreamUrl "RTSP Stream" { channel="ipcamera:DAHUA:BabyCamera:rtspUrl" }
 DateTime BabyCamLastMotionTime "Time motion was last detected [%1$ta %1$tR]"
 String BabyCamLastMotionType "Last Motion Type" { channel="ipcamera:DAHUA:BabyCamera:lastMotionType" }
+Switch BabyCamStartHLS { channel="ipcamera:DAHUA:BabyCamera:startStream" }
 
 Switch CamEnableMotionAlarm "MotionAlarm on/off" { channel="ipcamera:HIKVISION:002:enableMotionAlarm" }
 Switch CamMotionAlarm "Motion detected" { channel="ipcamera:HIKVISION:002:motionAlarm" }

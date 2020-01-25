@@ -42,19 +42,26 @@ public class Ffmpeg {
     private String ffmpegCommand = "", format = "";
     private String[] commandArray;
     private StreamRunning streamRunning = new StreamRunning();
-    private int keepAlive = 0;
+    private int keepAlive = 60;
+    boolean running = false;
 
     public void setKeepAlive(int seconds) {
-        keepAlive = seconds / (Integer.parseInt(ipCameraHandler.config.get(CONFIG_POLL_CAMERA_MS).toString()) / 1000);
+        if (seconds == -1) {
+            keepAlive = -1;
+        } else if (keepAlive != -1) {
+            keepAlive = seconds
+                    / (Integer.parseInt(ipCameraHandler.config.get(CONFIG_POLL_CAMERA_MS).toString()) / 1000);
+        }
     }
 
     public void checkKeepAlive() {
         if (keepAlive <= -1) {
             return;
         } else if (keepAlive == 0) {
-            this.stopConverting();
+            stopConverting();
+        } else {
+            keepAlive--;
         }
-        keepAlive--;
         return;
     }
 
@@ -134,8 +141,9 @@ public class Ffmpeg {
         if (!streamRunning.isAlive()) {
             streamRunning = new StreamRunning();
             logger.debug("Starting ffmpeg with this command now:{}", ffmpegCommand);
-            setKeepAlive(60);
             streamRunning.start();
+            running = true;
+            ipCameraHandler.setChannelState(CHANNEL_START_STREAM, OnOffType.valueOf("ON"));
             try {
                 Thread.sleep(4500);
             } catch (InterruptedException e) {
@@ -143,16 +151,22 @@ public class Ffmpeg {
         }
     }
 
+    public boolean getIsAlive() {
+        return running;
+    }
+
     @SuppressWarnings("null")
     public void stopConverting() {
         if (streamRunning.isAlive()) {
             logger.debug("Stopping ffmpeg now");
+            running = false;
             if (process != null) {
                 process.destroy();
                 if (process.isAlive()) {
                     process.destroyForcibly();
                 }
             }
+            ipCameraHandler.setChannelState(CHANNEL_START_STREAM, OnOffType.valueOf("OFF"));
         }
     }
 }
