@@ -20,6 +20,7 @@ import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.binding.BaseThingHandlerFactory;
 import org.eclipse.smarthome.core.thing.binding.ThingHandler;
 import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory;
+import org.openhab.binding.ipcamera.handler.IpCameraGroupHandler;
 import org.openhab.binding.ipcamera.handler.IpCameraHandler;
 import org.osgi.service.component.annotations.Component;
 
@@ -35,7 +36,12 @@ public class IpCameraHandlerFactory extends BaseThingHandlerFactory {
 
     @Override
     public boolean supportsThingType(ThingTypeUID thingTypeUID) {
-        return IpCameraHandler.SUPPORTED_THING_TYPES.contains(thingTypeUID);
+        if (IpCameraHandler.SUPPORTED_THING_TYPES.contains(thingTypeUID)) {
+            return true;
+        } else if (IpCameraGroupHandler.SUPPORTED_THING_TYPES.contains(thingTypeUID)) {
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -44,6 +50,8 @@ public class IpCameraHandlerFactory extends BaseThingHandlerFactory {
 
         if (IpCameraHandler.SUPPORTED_THING_TYPES.contains(thingTypeUID)) {
             return new IpCameraHandler(thing);
+        } else if (IpCameraGroupHandler.SUPPORTED_THING_TYPES.contains(thingTypeUID)) {
+            return new IpCameraGroupHandler(thing);
         }
         return null;
     }

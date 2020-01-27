@@ -3,6 +3,183 @@
 	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
 	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
 
+<thing-type id="GROUPDISPLAY">
+        <label>"GROUPDISPLAY" Display multiple cameras that are ONLINE as a single camera.</label>
+        <description>experimental.</description>
+        <channels>
+        <channel id="updateGif" typeId="updateGif"/>
+        <channel id="image" typeId="image"/>
+        <channel id="startStream" typeId="startStream"/>        
+        <channel id="streamUrl" typeId="streamUrl"/>
+        <channel id="rtspUrl" typeId="rtspUrl"/>
+        <channel id="imageUrl" typeId="imageUrl"/>
+        <channel id="hlsUrl" typeId="hlsUrl"/>
+        </channels>
+        <config-description>
+
+<parameter-group name="Settings">
+<label>Main Settings</label>
+<description>Settings required to connect to the camera.</description>
+<advanced>false</advanced>
+</parameter-group>
+
+<parameter-group name="Image Settings">
+<label>Snapshot/Image Settings</label>
+<description>Settings for the snapshot features.</description>
+<advanced>false</advanced>
+</parameter-group>
+
+<parameter-group name="Streaming Setup">
+<label>Stream Settings</label>
+<description>Settings that setup or effect the video stream.</description>
+<advanced>false</advanced>
+</parameter-group>
+
+<parameter name="IMAGE_UPDATE_EVENTS" type="integer" groupName="Image Settings" multiple="false">
+<label>Update the JPG and Image when:</label>
+<description>
+<![CDATA[
+The Image channel and JPG served on request can be set to update in a number of ways to help reduce network traffic.</p>
+]]>
+</description>
+<default>1</default>
+<options>
+<option value="0">JPG and Image only update when updateImageNow is ON (0)</option>
+<option value="1">Always update JPG, Image ch follows updateImageNow (1)</option>
+<option value="2">Start Motion Alarm (2)</option>
+<option value="3">Start Audio Alarm (3)</option>
+<option value="23">Start of Motion and Audio Alarms (23)</option>
+<option value="4">During Motion Alarm (4)</option>
+<option value="5">During Audio Alarm (5)</option>
+<option value="45">During Motion and Audio Alarms (45)</option>
+</options>
+</parameter>
+
+<parameter name="UPDATE_IMAGE" type="boolean" required="true" groupName="Image Settings">
+<label>Default UPDATE_IMAGE setting</label>
+<description>When switched OFF the image channel will NOT update unless you override this with the updateImageNow channel.
+</description>
+<default>false</default>
+</parameter>
+
+<parameter name="IPADDRESS" type="text" required="true" groupName="Settings">
+<context>network-address</context>
+<label>IP Address</label>
+<description>Use this format 192.168.1.2 and do not include the port number.
+</description>
+</parameter>
+
+<parameter name="PORT" type="integer" required="true" min="1" max="65535" groupName="Settings">
+<label>The port of the camera that accepts HTTP.</label>
+<description>This port will be used for http calls ie for fetching the snapshot.
+</description>
+<default>80</default>
+</parameter>
+
+<parameter name="SNAPSHOT_URL_OVERRIDE" type="text" required="false" groupName="Image Settings">
+<context>url</context>
+<label>SNAPSHOT_URL_OVERRIDE</label>
+<description>Enter a http url to where a snapshot can be seen if entered into any browser.
+</description>
+</parameter>
+
+<parameter name="STREAM_URL_OVERRIDE" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>STREAM_URL_OVERRIDE</label>
+<description>Full http address to where a MJPEG stream can be watched if entered into any browser.
+</description>
+</parameter>
+
+<parameter name="FFMPEG_INPUT" type="text" required="false" groupName="Streaming Setup">
+<context>url</context>
+<label>FFMPEG_INPUT</label>
+<description>Enter any HTTP or RTSP URL that ffmpeg can use as an input. Best if this is in H264 format.
+</description>
+</parameter>
+
+<parameter name="FFMPEG_LOCATION" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_LOCATION</label>
+<description>The full path including the filename for where you have installed ffmpeg. Default should work for Linux, but For windows use this format, c:\ffmpeg\bin\ffmpeg.exe
+</description>
+<default>/usr/bin/ffmpeg</default>
+</parameter>
+
+<parameter name="FFMPEG_OUTPUT" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_OUTPUT</label>
+<description>The full path where ffmpeg has the ability to write files to ending with a slash. For windows use this format, c:\openhabconf\html\ipcamera\
+</description>
+<default>/cameratmpfs/camera1/</default>
+</parameter>
+
+<parameter name="FFMPEG_HLS_OUT_ARGUMENTS" type="text" required="false" groupName="Streaming Setup">
+<label>FFMPEG_HLS_OUT_ARGUMENTS</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used.
+</description>
+<default>-strict -2 -f lavfi -i aevalsrc=0 -acodec aac -vcodec copy -hls_flags delete_segments -segment_list_flags live -flags -global_header</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="FFMPEG_GIF_OUT_ARGUMENTS" type="text" required="false" groupName="Image Settings">
+<label>FFMPEG_GIF_OUT_ARGUMENTS</label>
+<description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
+</description>
+<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_PREROLL" type="integer" required="true" min="0" max="30" groupName="Image Settings">
+<label>GIF_PREROLL</label>
+<description>Store this many snapshots from BEFORE you trigger a GIF creation.
+</description>
+<default>0</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="GIF_POSTROLL" type="integer" required="true" min="1" max="30" groupName="Image Settings">
+<label>GIF_POSTROLL</label>
+<description>How long in seconds to create a GIF from a stream. Alternatively if using GIF_PREROLL this is how many snapshots to use AFTER you trigger a GIF creation.
+</description>
+<default>8</default>
+<advanced>true</advanced>
+</parameter>
+
+<parameter name="SERVER_PORT" type="integer" required="true" min="-1" max="65535" groupName="Streaming Setup">
+<label>SERVER_PORT</label>
+<description>The port that will serve the video streams back to Openhab without authentication. It must be unique and unused for each camera that you setup. Setting the port to -1 which is the default, will turn all streaming off.
+</description>
+<default>-1</default>
+</parameter>
+
+<parameter name="IP_WHITELIST" type="text" required="false" groupName="Streaming Setup">
+<label>IP_WHITELIST</label>
+<description>Enter any IP's inside (brackets) that you wish to allow to access the video stream. DISABLE will turn this feature off.
+</description>
+<default>DISABLE</default>
+</parameter>
+
+<parameter name="USERNAME" type="text" required="false" groupName="Settings">
+<label>User name for camera.</label>
+<description>Enter the User name used to connect to your camera. Leave blank if your camera does not use login details.
+</description>
+</parameter>
+
+<parameter name="PASSWORD" type="text" required="false" groupName="Settings">
+<context>password</context>
+<label>Password for camera.</label>
+<description>Enter Password for your camera. Leave blank if your camera does not use login details.
+</description>
+</parameter>
+
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" groupName="Image Settings">
+<label>Time in milliseconds between checking camera states and fetching a JPG/Image.</label>
+<description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
+</description>
+<default>2000</default>
+</parameter>
+</config-description>
+</thing-type>
+
+
 	<thing-type id="HTTPONLY">
 		<label>"HTTPONLY" Generic IP camera with only HTTP support.</label>
 		<description>Use when your camera is not ONVIF compatible.</description>
@@ -175,7 +352,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 </description>
 </parameter>
 
-<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching a JPG/Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
@@ -377,7 +554,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <default>0</default>
 </parameter>
 
-<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching a JPG/Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
@@ -818,7 +995,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <default>0</default>
 </parameter>
 
-<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching a JPG/Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
@@ -1234,7 +1411,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <default>0</default>
 </parameter>
 
-<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching a JPG/Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>
@@ -1455,7 +1632,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <default>0</default>
 </parameter>
 
-<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" max="60000" groupName="Image Settings">
+<parameter name="POLL_CAMERA_MS" type="integer" required="true" min="1000" groupName="Image Settings">
 <label>Time in milliseconds between checking camera states and fetching a JPG/Image.</label>
 <description>Camera states are not just alarms but can also be missing SD cards or full storage alerts. Default is "2000" which is 2 seconds.
 </description>

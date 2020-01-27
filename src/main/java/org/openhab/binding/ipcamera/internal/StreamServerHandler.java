@@ -18,6 +18,7 @@ import static org.openhab.binding.ipcamera.IpCameraBindingConstants.*;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.Nullable;
@@ -112,6 +113,10 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                                 if (ipCameraHandler.snapshotUri != null) {
                                     ipCameraHandler.sendHttpGET(ipCameraHandler.snapshotUri);
                                 }
+                                if (ipCameraHandler.currentSnapshot.length == 1) {// no jpg received from camera.
+                                    logger.debug("No jpg in ram to send");
+                                    break;
+                                }
                             }
                             sendSnapshotImage(ctx, "image/jpeg");
                             break;
@@ -193,15 +198,16 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
 
     private void sendSnapshotImage(ChannelHandlerContext ctx, String contentType) throws IOException {
         HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
+        ByteBuf snapshotData = Unpooled.copiedBuffer(ipCameraHandler.currentSnapshot);
         response.headers().add(HttpHeaderNames.CONTENT_TYPE, contentType);
         response.headers().set(HttpHeaderNames.CACHE_CONTROL, HttpHeaderValues.NO_CACHE);
-        response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
+        response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
+        response.headers().add(HttpHeaderNames.CONTENT_LENGTH, snapshotData.readableBytes());
         response.headers().add("Access-Control-Allow-Origin", "*");
         response.headers().add("Access-Control-Expose-Headers", "content-length");
-        ByteBuf bbuf = Unpooled.copiedBuffer(ipCameraHandler.currentSnapshot);
-        response.headers().add(HttpHeaderNames.CONTENT_LENGTH, bbuf.readableBytes());
         ctx.channel().write(response);
-        ctx.channel().writeAndFlush(bbuf);
+        ctx.channel().writeAndFlush(snapshotData);
+        ctx.close();
     }
 
     private void sendFile(ChannelHandlerContext ctx, String fileUri, String contentType) throws IOException {
@@ -215,7 +221,10 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
         response.headers().add("Access-Control-Allow-Origin", "*");
         response.headers().add("Access-Control-Expose-Headers", "content-length");
         ctx.channel().write(response);
-        ctx.channel().writeAndFlush(chunkedFile);
+        // ctx.channel().writeAndFlush(chunkedFile);
+        ctx.channel().write(chunkedFile);
+        ByteBuf footerBbuf = Unpooled.copiedBuffer("\r\n", 0, 2, StandardCharsets.UTF_8);
+        ctx.channel().writeAndFlush(footerBbuf);
     }
 
     @Override

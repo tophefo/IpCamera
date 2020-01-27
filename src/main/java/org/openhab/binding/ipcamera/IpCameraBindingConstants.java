@@ -28,6 +28,7 @@ public class IpCameraBindingConstants {
     private static final String BINDING_ID = "ipcamera";
 
     // List of all Thing Type UIDs
+    public static final ThingTypeUID THING_TYPE_GROUPDISPLAY = new ThingTypeUID(BINDING_ID, "GROUPDISPLAY");
     public static final ThingTypeUID THING_TYPE_HTTPONLY = new ThingTypeUID(BINDING_ID, "HTTPONLY");
     public static final ThingTypeUID THING_TYPE_ONVIF = new ThingTypeUID(BINDING_ID, "ONVIF");
     public static final ThingTypeUID THING_TYPE_AMCREST = new ThingTypeUID(BINDING_ID, "AMCREST");

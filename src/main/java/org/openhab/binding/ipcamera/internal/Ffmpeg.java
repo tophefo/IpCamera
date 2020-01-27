@@ -143,7 +143,9 @@ public class Ffmpeg {
             logger.debug("Starting ffmpeg with this command now:{}", ffmpegCommand);
             streamRunning.start();
             running = true;
-            ipCameraHandler.setChannelState(CHANNEL_START_STREAM, OnOffType.valueOf("ON"));
+            if (format.equals("HLS")) {
+                ipCameraHandler.setChannelState(CHANNEL_START_STREAM, OnOffType.valueOf("ON"));
+            }
             try {
                 Thread.sleep(4500);
             } catch (InterruptedException e) {
@@ -166,7 +168,10 @@ public class Ffmpeg {
                     process.destroyForcibly();
                 }
             }
-            ipCameraHandler.setChannelState(CHANNEL_START_STREAM, OnOffType.valueOf("OFF"));
+            keepAlive = 60;
+            if (format.equals("HLS")) {
+                ipCameraHandler.setChannelState(CHANNEL_START_STREAM, OnOffType.valueOf("OFF"));
+            }
         }
     }
 }

@@ -132,6 +132,7 @@ public class IpCameraHandler extends BaseThingHandler {
     public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<ThingTypeUID>(
             Arrays.asList(THING_TYPE_ONVIF, THING_TYPE_HTTPONLY, THING_TYPE_AMCREST, THING_TYPE_DAHUA,
                     THING_TYPE_INSTAR, THING_TYPE_FOSCAM, THING_TYPE_DOORBIRD, THING_TYPE_HIKVISION));
+    public static ArrayList<IpCameraHandler> listOfCameras = new ArrayList<IpCameraHandler>(1);
 
     public final Logger logger = LoggerFactory.getLogger(getClass());
     private final ScheduledExecutorService cameraConnection = Executors.newSingleThreadScheduledExecutor();
@@ -194,7 +195,7 @@ public class IpCameraHandler extends BaseThingHandler {
     private @Nullable ChannelFuture serverFuture = null;
     public int serverPort = 0;
     private @Nullable Object firstStreamedMsg = null;
-    public byte[] currentSnapshot;
+    public byte[] currentSnapshot = new byte[] { (byte) 0x00 };
     private String rtspUri = "";
     public String ipAddress = "empty";
     public String updateImageEvents;
@@ -219,6 +220,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
     public IpCameraHandler(Thing thing) {
         super(thing);
+        listOfCameras.add(this);
     }
 
     private IpCameraHandler getHandle() {
@@ -918,8 +920,6 @@ public class IpCameraHandler extends BaseThingHandler {
                         lock.unlock();
                     }
                     ctx.close();
-                } else if (e.state() == IdleState.WRITER_IDLE) {
-                    // ctx.writeAndFlush("fakePing\r\n");
                 }
             }
         }
