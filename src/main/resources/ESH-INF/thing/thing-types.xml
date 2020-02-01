@@ -123,7 +123,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-r 2 -filter_complex scale=-2:360:flags=lanczos,setpts=0.5*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -305,7 +305,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-r 2 -filter_complex scale=-2:360:flags=lanczos,setpts=0.5*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -471,7 +471,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-r 2 -filter_complex scale=-2:360:flags=lanczos,setpts=0.5*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -651,7 +651,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-r 2 -filter_complex scale=-2:360:flags=lanczos,setpts=0.5*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -878,7 +878,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-r 2 -filter_complex scale=-2:360:flags=lanczos,setpts=0.5*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -1086,7 +1086,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-r 2 -filter_complex scale=-2:360:flags=lanczos,setpts=0.5*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -1288,7 +1288,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-r 2 -filter_complex scale=-2:360:flags=lanczos,setpts=0.5*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -1515,7 +1515,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-r 2 -filter_complex scale=-2:360:flags=lanczos,setpts=0.5*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 <advanced>true</advanced>
 </parameter>
 
@@ -1731,7 +1731,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 <label>FFMPEG_GIF_OUT_ARGUMENTS</label>
 <description>This gives you direct access to specify your own ffmpeg options to be used for animated GIF files.
 </description>
-<default>-filter_complex fps=4,scale=480:-2:flags=lanczos,setpts=0.25*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
+<default>-r 2 -filter_complex scale=-2:360:flags=lanczos,setpts=0.5*PTS,split[o1][o2];[o1]palettegen[p];[o2]fifo[o3];[o3][p]paletteuse</default>
 <advanced>true</advanced>
 </parameter>
 

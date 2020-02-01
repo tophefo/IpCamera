@@ -863,18 +863,20 @@ public class IpCameraHandler extends BaseThingHandler {
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            lock.lock();
-            try {
-                byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
-                if (indexInLists >= 0) {
-                    listOfChStatus.set(indexInLists, (byte) -1);
-                } else {
-                    logger.warn("!!!! exceptionCaught could not locate the channel to close it down");
-                }
-            } finally {
-                lock.unlock();
-            }
-            logger.warn("!!!! Camera has closed a channel \tURL: Cause reported is: {}", cause);
+            /*
+             * lock.lock();
+             * try {
+             * byte indexInLists = (byte) listOfChannels.indexOf(ctx.channel());
+             * if (indexInLists >= 0) {
+             * listOfChStatus.set(indexInLists, (byte) -1);
+             * } else {
+             * logger.warn("!!!! exceptionCaught could not locate the channel to close it down");
+             * }
+             * } finally {
+             * lock.unlock();
+             * }
+             */
+            logger.warn("!!!! Camera possibly closed the channel on the binding, cause reported is: {}", cause);
             ctx.close();
         }
 
@@ -965,7 +967,7 @@ public class IpCameraHandler extends BaseThingHandler {
                     serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
-                            socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(0, 10, 0));
+                            socketChannel.pipeline().addLast("idleStateHandler", new IdleStateHandler(0, 25, 0));
                             socketChannel.pipeline().addLast("HttpServerCodec", new HttpServerCodec());
                             socketChannel.pipeline().addLast("ChunkedWriteHandler", new ChunkedWriteHandler());
                             socketChannel.pipeline().addLast("streamServerHandler",
@@ -1049,21 +1051,32 @@ public class IpCameraHandler extends BaseThingHandler {
     // sends direct to ctx so can be either snapshots.mjpeg or normal mjpeg stream
     public void sendMjpegFirstPacket(ChannelHandlerContext ctx) {
         final String BOUNDARY = "thisMjpegStream";
-        String contentType = "multipart/x-mixed-replace;boundary=" + BOUNDARY;
+        String contentType = "multipart/x-mixed-replace; boundary=" + BOUNDARY;
         HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
         response.headers().add(HttpHeaderNames.CONTENT_TYPE, contentType);
         response.headers().set(HttpHeaderNames.CACHE_CONTROL, HttpHeaderValues.NO_CACHE);
+        // response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
+        response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
+        // response.headers().add("Pragma", "no-cache");
         response.headers().add("Access-Control-Allow-Origin", "*");
-        response.headers().add("Access-Control-Expose-Headers", "content-length");
-        ctx.channel().write(response);
+        response.headers().add("Access-Control-Request-Headers", "*");
+        response.headers().add("Access-Control-Expose-Headers",
+                "Origin, X-Requested-With, content-type, content-length, Accept");
+        response.headers().add("Access-Control-Allow-Headers",
+                "Authorization,Accept,Origin,DNT,X-CustomHeader,content-length,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,content-type,Content-Range,Range");
+
+        response.headers().add("Access-Control-Max-Age", "86400");
+        // "maxAgeSeconds": 86400
+        response.headers().add("Access-Control-Allow-Methods", "GET,POST,OPTIONS,PUT,HEAD,PATCH");
+        ctx.channel().writeAndFlush(response);
     }
 
     public void sendMjpegFrame(byte[] jpg, ChannelGroup channelGroup) {
         final String BOUNDARY = "thisMjpegStream";
         ByteBuf imageByteBuf = Unpooled.copiedBuffer(jpg);
         int length = imageByteBuf.readableBytes();
-        String header = "--" + BOUNDARY + "\r\n" + "Content-Type: image/jpeg\r\n" + "Content-Length: " + length + "\r\n"
-                + "\r\n";
+        String header = "--" + BOUNDARY + "\r\n" + "content-type: image/jpeg" + "\r\n" + "content-length: " + length
+                + "\r\n" + "\r\n";
         ByteBuf headerBbuf = Unpooled.copiedBuffer(header, 0, header.length(), StandardCharsets.UTF_8);
         ByteBuf footerBbuf = Unpooled.copiedBuffer("\r\n", 0, 2, StandardCharsets.UTF_8);
         streamToGroup(headerBbuf, channelGroup, false);
@@ -1150,8 +1163,8 @@ public class IpCameraHandler extends BaseThingHandler {
             case "GIF":
                 if (ffmpegGIF == null) {
                     if (preroll > 0) {
-                        ffmpegGIF = new Ffmpeg(this, format, config.get(CONFIG_FFMPEG_LOCATION).toString(),
-                                "-y -f image2 -framerate 1", ffmpegOutputFolder + "snapshot%d.jpg",
+                        ffmpegGIF = new Ffmpeg(this, format, config.get(CONFIG_FFMPEG_LOCATION).toString(), "-y -r 1",
+                                ffmpegOutputFolder + "snapshot%d.jpg",
                                 "-frames:v " + (preroll + postroll) + " "
                                         + config.get(CONFIG_FFMPEG_GIF_OUT_ARGUMENTS).toString(),
                                 ffmpegOutputFolder + "ipcamera.gif", username, password);
@@ -1213,12 +1226,12 @@ public class IpCameraHandler extends BaseThingHandler {
             case "SNAPSHOT":
                 // if mjpeg stream you can use ffmpeg -i input.h264 -codec:v copy -bsf:v mjpeg2jpeg output%03d.jpg
                 if (ffmpegSnapshot == null) {
-                    inOptions = "-rtsp_transport tcp -skip_frame nokey";// iFrames only
+                    inOptions = "-rtsp_transport tcp -threads 1 -skip_frame nokey";// iFrames only
                     if (!rtspUri.contains("rtsp")) {
-                        inOptions = "-skip_frame nokey";
+                        inOptions = "-threads 1 -skip_frame nokey";
                     }
                     ffmpegSnapshot = new Ffmpeg(this, format, config.get(CONFIG_FFMPEG_LOCATION).toString(), inOptions,
-                            rtspUri, "-qscale:v 5 -update 1 -r 1", "http://127.0.0.1:" + serverPort + "/snapshot.jpg",
+                            rtspUri, "-an -vsync vfr -update 1", "http://127.0.0.1:" + serverPort + "/snapshot.jpg",
                             username, password);
                 }
                 ffmpegSnapshot.startConverting();
@@ -1507,6 +1520,10 @@ public class IpCameraHandler extends BaseThingHandler {
                                 "Binding has no snapshot url, and is set to always update images. Using your CPU to create snapshots with Ffmpeg.");
                         ffmpegSnapshotGeneration = true;
                         setupFfmpegFormat("SNAPSHOT");
+                        updateState(CHANNEL_UPDATE_IMAGE_NOW, OnOffType.valueOf("ON"));
+                    } else {
+                        logger.warn(
+                                "Binding has no snapshot URL so to create jpg files non stop using ffmpeg either set UPDATE_IMAGE_EVENTS to 1, or to start and stop on demand use the updateImageNow channel.");
                     }
                 }
                 return;

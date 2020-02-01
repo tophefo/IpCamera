@@ -98,7 +98,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                                 ipCameraHandler.setupFfmpegFormat("HLS");
                             }
                             ipCameraHandler.ffmpegHLS.setKeepAlive(60);
-                            sendFile(ctx, httpRequest.uri(), "application/x-mpegURL");
+                            sendFile(ctx, httpRequest.uri(), "application/x-mpegurl");
                             break;
                         case "/ipcamera.mpd":
                             // ipCameraHandler.setupFfmpegFormat("DASH");
@@ -118,7 +118,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                                     break;
                                 }
                             }
-                            sendSnapshotImage(ctx, "image/jpeg");
+                            sendSnapshotImage(ctx, "image/jpg");
                             break;
                         case "/snapshots.mjpeg":
                             ipCameraHandler.setupSnapshotStreaming(true, ctx, false);
@@ -143,7 +143,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
                                 sendFile(ctx, httpRequest.uri(), "video/MP2T");
                             } else if (httpRequest.uri().contains(".jpg")) {
                                 // Allow access to the preroll and postroll jpg files
-                                sendFile(ctx, httpRequest.uri(), "image/jpeg");
+                                sendFile(ctx, httpRequest.uri(), "image/jpg");
                             } else if (httpRequest.uri().contains(".m4s")) {
                                 sendFile(ctx, httpRequest.uri(), "video/mp4");
                             } else if (httpRequest.uri().contains(".mp4")) {
@@ -206,8 +206,9 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
         response.headers().add("Access-Control-Allow-Origin", "*");
         response.headers().add("Access-Control-Expose-Headers", "content-length");
         ctx.channel().write(response);
-        ctx.channel().writeAndFlush(snapshotData);
-        ctx.close();
+        ctx.channel().write(snapshotData);
+        ByteBuf footerBbuf = Unpooled.copiedBuffer("\r\n", 0, 2, StandardCharsets.UTF_8);
+        ctx.channel().writeAndFlush(footerBbuf);
     }
 
     private void sendFile(ChannelHandlerContext ctx, String fileUri, String contentType) throws IOException {
@@ -221,7 +222,6 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
         response.headers().add("Access-Control-Allow-Origin", "*");
         response.headers().add("Access-Control-Expose-Headers", "content-length");
         ctx.channel().write(response);
-        // ctx.channel().writeAndFlush(chunkedFile);
         ctx.channel().write(chunkedFile);
         ByteBuf footerBbuf = Unpooled.copiedBuffer("\r\n", 0, 2, StandardCharsets.UTF_8);
         ctx.channel().writeAndFlush(footerBbuf);
