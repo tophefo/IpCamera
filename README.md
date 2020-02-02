@@ -27,6 +27,16 @@ _(not implemented, but should be possible to add)_
 * [INSTAR](https://wikiold.instar.de/index.php/List_of_CGI_commands_(HD))
 
 
+## What to do if you have problems
+
+Step 1 is always look at the log files. 
+Step 2 is check if there is something that needs to be done for your brand listed below.
+
+In this readme there is a whole section on how to enable DEBUG and TRACE log modes because to keep your log file clean the binding holds a lot back unless these are turned on.
+The cameras reply is only shown in TRACE mode and often you will find the camera telling you the password is wrong, or the camera has locked you out due to previous passwords being wrong.
+Check the logs first, then post on the Openhab forum giving any trace level log output that may assist.
+
+
 ## Special notes for different brands
 
 **Generic Cameras**
