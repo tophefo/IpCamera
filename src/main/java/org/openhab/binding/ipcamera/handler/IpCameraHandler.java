@@ -274,7 +274,9 @@ public class IpCameraHandler extends BaseThingHandler {
                 }
             }
         } catch (MalformedURLException e) {
-            logger.error("A non valid url was given to the binding {}", longUrl);
+            if (!longUrl.equals("ffmpeg")) {
+                logger.error("A non valid url was given to the binding {}", longUrl);
+            }
         }
         return temp;
     }
@@ -985,7 +987,9 @@ public class IpCameraHandler extends BaseThingHandler {
                     updateState(CHANNEL_IMAGE_URL,
                             new StringType("http://" + hostIp + ":" + serverPort + "/ipcamera.jpg"));
                 } catch (Exception e) {
-                    logger.error("Exception occured when starting the streaming server:{}", e);
+                    logger.error(
+                            "Exception occured when starting the streaming server. Try changing the SERVER_PORT to another number: {}",
+                            e);
                 }
             }
         }
@@ -1022,11 +1026,11 @@ public class IpCameraHandler extends BaseThingHandler {
         if (start) {
             if (mjpegChannelGroup.isEmpty()) {
                 mjpegChannelGroup.add(ctx.channel());
-                if (!mjpegUri.equals("")) {
-                    sendHttpGET(mjpegUri);
-                } else {
+                if (mjpegUri.equals("") || mjpegUri.equals("ffmpeg")) {
                     sendMjpegFirstPacket(ctx);
                     setupFfmpegFormat("MJPEG");
+                } else {
+                    sendHttpGET(mjpegUri);
                 }
             } else if (firstStreamedMsg != null) {
                 ctx.channel().writeAndFlush(firstStreamedMsg);
@@ -1057,17 +1061,16 @@ public class IpCameraHandler extends BaseThingHandler {
         response.headers().set(HttpHeaderNames.CACHE_CONTROL, HttpHeaderValues.NO_CACHE);
         // response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
         response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
-        // response.headers().add("Pragma", "no-cache");
-        response.headers().add("Access-Control-Allow-Origin", "*");
-        response.headers().add("Access-Control-Request-Headers", "*");
-        response.headers().add("Access-Control-Expose-Headers",
-                "Origin, X-Requested-With, content-type, content-length, Accept");
-        response.headers().add("Access-Control-Allow-Headers",
-                "Authorization,Accept,Origin,DNT,X-CustomHeader,content-length,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,content-type,Content-Range,Range");
+        // response.headers().add("Content-Range", "bytes 0-3979/3980"); // try bytes 0-3979/*
+        // response.headers().add("Server", "Apache/2");
 
-        response.headers().add("Access-Control-Max-Age", "86400");
-        // "maxAgeSeconds": 86400
-        response.headers().add("Access-Control-Allow-Methods", "GET,POST,OPTIONS,PUT,HEAD,PATCH");
+        // response.headers().add("Keep-Alive", "timeout=2, max=100");
+        // response.headers().add("Accept-Ranges", "bytes");
+        // response.headers().add("X-Content-Duration", "0.0"); // try 0.0 for live streams
+        // response.headers().add("Content-Duration", "0.0");
+
+        response.headers().add("Access-Control-Allow-Origin", "*");
+        response.headers().add("Access-Control-Expose-Headers", "*");
         ctx.channel().writeAndFlush(response);
     }
 
@@ -1075,8 +1078,11 @@ public class IpCameraHandler extends BaseThingHandler {
         final String BOUNDARY = "thisMjpegStream";
         ByteBuf imageByteBuf = Unpooled.copiedBuffer(jpg);
         int length = imageByteBuf.readableBytes();
-        String header = "--" + BOUNDARY + "\r\n" + "content-type: image/jpeg" + "\r\n" + "content-length: " + length
-                + "\r\n" + "\r\n";
+        String header = "--" + BOUNDARY + "\r\n" + "content-type: image/jpeg" + "\r\n"
+        // + "Access-Control-Allow-Origin: *" + "\r\n" + "Access-Control-Expose-Headers: *" + "\r\n"
+        // + "Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept" + "\r\n"
+                + "content-length: " + length + "\r\n" // + "Content-Range: bytes 0-" + (length - 1) + "/*" + "\r\n"
+                + "\r\n";
         ByteBuf headerBbuf = Unpooled.copiedBuffer(header, 0, header.length(), StandardCharsets.UTF_8);
         ByteBuf footerBbuf = Unpooled.copiedBuffer("\r\n", 0, 2, StandardCharsets.UTF_8);
         streamToGroup(headerBbuf, channelGroup, false);
@@ -1888,5 +1894,9 @@ public class IpCameraHandler extends BaseThingHandler {
 
     public void setStreamServerHandler(StreamServerHandler streamServerHandler2) {
         streamServerHandler = streamServerHandler2;
+    }
+
+    public String getWhiteList() {
+        return config.get(CONFIG_IP_WHITELIST).toString();
     }
 }

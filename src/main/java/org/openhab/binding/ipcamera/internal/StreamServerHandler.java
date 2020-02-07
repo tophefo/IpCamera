@@ -13,7 +13,7 @@
 
 package org.openhab.binding.ipcamera.internal;
 
-import static org.openhab.binding.ipcamera.IpCameraBindingConstants.*;
+import static org.openhab.binding.ipcamera.IpCameraBindingConstants.CONFIG_FFMPEG_OUTPUT;
 
 import java.io.File;
 import java.io.IOException;
@@ -57,12 +57,14 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
     private boolean handlingMjpeg = false; // used to remove ctx from group when handler is removed.
     private boolean handlingSnapshotStream = false; // used to remove ctx from group when handler is removed.
     byte[] incomingJpeg = null;
+    String whiteList = "";
     int recievedBytes = 0;
     int count = 0;
     boolean updateSnapshot = false;
 
     public StreamServerHandler(IpCameraHandler ipCameraHandler) {
         this.ipCameraHandler = ipCameraHandler;
+        whiteList = ipCameraHandler.getWhiteList();
     }
 
     @Override
@@ -75,15 +77,14 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
         @Nullable
         HttpContent content = null;
         try {
-            // logger.debug("{}", msg);
+            // logger.info("{}", msg);
             if (msg instanceof HttpRequest) {
                 HttpRequest httpRequest = (HttpRequest) msg;
                 // logger.debug("{}", httpRequest);
                 logger.debug("Stream Server recieved request \t{}:{}", httpRequest.method(), httpRequest.uri());
                 String requestIP = "("
                         + ((InetSocketAddress) ctx.channel().remoteAddress()).getAddress().getHostAddress() + ")";
-                if (!ipCameraHandler.config.get(CONFIG_IP_WHITELIST).toString().contains(requestIP)
-                        && !ipCameraHandler.config.get(CONFIG_IP_WHITELIST).toString().contentEquals("DISABLE")) {
+                if (!whiteList.contains(requestIP) && !whiteList.equals("DISABLE")) {
                     logger.warn("The request made from {} was not in the whitelist and will be ignored.", requestIP);
                     return;
                 } else if ("GET".equalsIgnoreCase(httpRequest.method().toString())) {
@@ -204,7 +205,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
         response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
         response.headers().add(HttpHeaderNames.CONTENT_LENGTH, snapshotData.readableBytes());
         response.headers().add("Access-Control-Allow-Origin", "*");
-        response.headers().add("Access-Control-Expose-Headers", "content-length");
+        response.headers().add("Access-Control-Expose-Headers", "*");
         ctx.channel().write(response);
         ctx.channel().write(snapshotData);
         ByteBuf footerBbuf = Unpooled.copiedBuffer("\r\n", 0, 2, StandardCharsets.UTF_8);
@@ -220,7 +221,7 @@ public class StreamServerHandler extends ChannelInboundHandlerAdapter {
         response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
         response.headers().add(HttpHeaderNames.CONTENT_LENGTH, chunkedFile.length());
         response.headers().add("Access-Control-Allow-Origin", "*");
-        response.headers().add("Access-Control-Expose-Headers", "content-length");
+        response.headers().add("Access-Control-Expose-Headers", "*");
         ctx.channel().write(response);
         ctx.channel().write(chunkedFile);
         ByteBuf footerBbuf = Unpooled.copiedBuffer("\r\n", 0, 2, StandardCharsets.UTF_8);

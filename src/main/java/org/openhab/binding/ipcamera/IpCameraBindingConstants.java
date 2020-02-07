@@ -62,6 +62,11 @@ public class IpCameraBindingConstants {
     public static final String CONFIG_FFMPEG_GIF_OUT_ARGUMENTS = "FFMPEG_GIF_OUT_ARGUMENTS";
     public static final String CONFIG_GIF_PREROLL = "GIF_PREROLL";
     public static final String CONFIG_GIF_POSTROLL = "GIF_POSTROLL";
+    public static final String CONFIG_FIRST_CAM = "FIRST_CAM";
+    public static final String CONFIG_SECOND_CAM = "SECOND_CAM";
+    public static final String CONFIG_THIRD_CAM = "THIRD_CAM";
+    public static final String CONFIG_FORTH_CAM = "FORTH_CAM";
+    public static final String CONFIG_MOTION_CHANGES_ORDER = "MOTION_CHANGES_ORDER";
 
     // List of all Channel ids
     public static final String CHANNEL_UPDATE_IMAGE_NOW = "updateImageNow";

@@ -2,7 +2,7 @@
 
 This binding allows you to use IP cameras in openHAB 2.x and has multiple features and ways to work around common challenges that cameras present. 
 Please take the time to read through this guide as it will show many hidden features and different ways to work with cameras that you may not know about. 
-I recommend purchasing a brand of camera that has an open API, as many of the features use far less CPU when done with an API camera, streams open quicker and they usually have more features. 
+I recommend purchasing a brand of camera that has an open API, as many of the features use far less CPU when done with an API camera, and they usually have more features. 
 You will also have a more enjoyable time with these cameras as they are more tested and easier to setup.
  
 To see what each brand has implemented from the API, please see this post:
@@ -29,10 +29,12 @@ _(not implemented, but should be possible to add)_
 
 ## What to do if you have problems
 
-Step 1 is always look at the log files. 
-Step 2 is check if there is something that needs to be done for your brand listed below.
+Step 1 is check if there is something that needs to be done for your brand listed below.
+Step 2 is always look at the log files, which includes looking at the logs with TRACE enabled. 
+Step 3 only then ask for help in the forum.
 
-In this readme there is a whole section on how to enable DEBUG and TRACE log modes because to keep your log file clean the binding holds a lot back unless these are turned on.
+In this readme there is a whole section log files and how to enable DEBUG and TRACE log modes.
+To keep your log file clean, the binding holds a lot back unless these are turned on.
 The cameras reply is only shown in TRACE mode and often you will find the camera telling you the password is wrong, or the camera has locked you out due to previous passwords being wrong.
 Check the logs first, then post on the Openhab forum giving any trace level log output that may assist.
 
@@ -129,6 +131,8 @@ This can be done by entering this into any browser:
 ```
 http://ip:88/cgi-bin/CGIProxy.fcgi?cmd=setSubStreamFormat&format=1&usr=admin&pwd=password
 ```
+
++ If your camera does not support mjpeg as some Foscams no longer do, then you can set ``STREAM_URL_OVERRIDE="ffmpeg"`` to use your CPU to generate a mjpeg stream.
 
 + Some FOSCAM cameras need to have a detection area listed in the URL when you enable the motion alarm. 
 As each model has a different resolution and two different URLs, this makes it difficult to make this automatic so an override feature was added to create your own enable the alarm url. 
@@ -683,7 +687,8 @@ sudo apt update && sudo apt install ffmpeg
 **MJPEG Streaming**
 
 Cameras that have MJPEG abilities via HTTP (cameras with an API) can stream to openHAB with the MJPEG format with next to no CPU load and Ffmpeg does not need to be installed. 
-The binding is now able to create mjpeg from a rtsp source and this will require Ffmpeg to be installed and will use the Openhab CPU to create the stream.
+The binding is now able to create mjpeg from a rtsp source and this will require Ffmpeg to be installed and will use the Openhab servers CPU to create the stream.
+To do this you can set ``STREAM_URL_OVERRIDE="ffmpeg"`` to use your CPU to generate the mjpeg stream, or you can use the snapshots.mjpeg to create a stream without using the CPU.
 Ffmpeg may require you to lower the resolution and/or the FPS to lower the CPU load down enough to run, you may need to experiment.
 The main cameras that can do mjpeg with very low CPU load are Amcrest, Dahua, Hikvision, Foscam HD and Instar HD. 
 For cameras that do not auto detect the url for mjpeg streams, you will need to enter a working url for ``STREAM_URL_OVERRIDE`` otherwise ffmpeg will be the default and create the stream when asked. 
@@ -704,7 +709,7 @@ You can run the open source motion software on a raspberry Pi with this project.
 <https://github.com/ccrisan/motioneyeos/wiki>
 
 
-**snapshot.mjpeg and autofps.mjpeg a special kind of MJPEG Stream**
+**snapshots.mjpeg and autofps.mjpeg a special kind of MJPEG Stream**
 
 These features allow you to request a mjpeg stream created by the binding with low CPU usage from the cameras snapshots. 
 Snapshots are usually high resolution and look great, however they are limited to a max of 1 FPS.
@@ -985,7 +990,7 @@ end
 Note that the example above also implies that you use the same naming convention (`[Room]_Camera_[Action]`) and the folders where your GIF files are stored are called `/camera-[room]/` where `[room]` is simply `[Room]` but in lowercase.
 
 
-## Reducing log sizes
+## Changing the log to show debug or trace and reducing log output
 
 There are two log files discussed here, openHAB.log and events.log please take the time to consider both logs if a fast and stable setup is something you care about. 
 On some systems with slow disk access like SD cards, the writing of a log file can greatly impact on performance. We can turn on/up logs to fault find issues, and then disable them to get the performance back when everything is working.
@@ -1090,7 +1095,6 @@ Areas the binding could be improved are:
 + ONVIF alarms: I have started writing some code for this already, see EventsRequest.java and compare it to how the working PTZRequest.java works, but it needs to be finished off. 
 
 + PTZ methods for continuous move so you can scan back and forth and wear your camera out faster. 
-Absolute and Presets are far better in networks that can drop out in the middle of a move.
 
 + 1 and 2 way audio. Keen to add this at some point for talking with people at my front door and baby monitor uses.
 
@@ -1098,4 +1102,3 @@ Absolute and Presets are far better in networks that can drop out in the middle 
 Example Onvif SOAP contents can be found here for most requests and responses. 
 I have found these useful as often example SOAP traces are not in the Onvif documentation.
 <https://git.linuxmce.org/garagevibes/linuxmce/tree/08c52739954c0bfce7443eddc1ad4f6936a70fbe/src/Advanced_IP_Camera/onvif>
-
