@@ -16,6 +16,7 @@ package org.openhab.binding.ipcamera.handler;
 import static org.openhab.binding.ipcamera.IpCameraBindingConstants.*;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
@@ -69,7 +70,8 @@ public class IpCameraGroupHandler extends BaseThingHandler {
     public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<ThingTypeUID>(
             Arrays.asList(THING_TYPE_GROUPDISPLAY));
     private Configuration config;
-    ArrayList<IpCameraHandler> cameraOrder = new ArrayList<IpCameraHandler>(1);
+    BigDecimal pollTimeInSeconds = new BigDecimal(2);
+    ArrayList<IpCameraHandler> cameraOrder = new ArrayList<IpCameraHandler>(2);
     private EventLoopGroup serversLoopGroup = new NioEventLoopGroup();
     private final ScheduledExecutorService pollCameraGroup = Executors.newSingleThreadScheduledExecutor();
     private @Nullable ScheduledFuture<?> pollCameraGroupJob = null;
@@ -77,7 +79,8 @@ public class IpCameraGroupHandler extends BaseThingHandler {
     private @Nullable ChannelFuture serverFuture = null;
     public String hostIp = "0.0.0.0";
     public int serverPort = 0;
-    String playList = "";
+    public String playList = "";
+    String playingNow = "";
     int cameraIndex = 0;
     int mediaSequence = 1;
 
@@ -99,27 +102,57 @@ public class IpCameraGroupHandler extends BaseThingHandler {
     }
 
     private String parseLastFile(int cameraIndex) {
+        // logger.info("parsing camers playlist now");
+        String camerasm3u8 = "";
+        String temp = "";
         IpCameraHandler handle = cameraOrder.get(cameraIndex);
         try {
             String file = handle.config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8";
-            playList = new String(Files.readAllBytes(Paths.get(file)));
+            camerasm3u8 = new String(Files.readAllBytes(Paths.get(file)));
         } catch (IOException e) {
         }
-        String temp = playList.substring(playList.lastIndexOf("#EXTINF:"), playList.length());
-        temp = temp.replace("ipcamera", cameraIndex + "/ipcamera");
+        int lastLocation = camerasm3u8.lastIndexOf("#EXTINF:");
+        if (lastLocation != -1) {
+            // temp = playList.substring(0, lastLocation);
+            // lastLocation = temp.lastIndexOf("#EXTINF:");
+            // int duration = Integer.parseInt(camerasm3u8.substring(lastLocation + 8, lastLocation + 9));
+            // if (duration >= pollTimeInSeconds.intValue()) {
+            temp = camerasm3u8.substring(lastLocation); // start of second last occurrence
+            temp = temp.replace("ipcamera", cameraIndex + "ipcamera"); // add index so we can then fetch output path
+                                                                       // later
+            // } else {
+            // logger.error("Poll time is {} and it must match the segment size {} from the cameras.",
+            // pollTimeInSeconds.intValue(), duration);
+            // }
+        }
+
         return temp;
     }
 
+    int entries = 0;
+
     public void setPlayList() {
-        String playNow = parseLastFile(cameraIndex);
-        String playNext = "";
-        if (cameraIndex + 1 >= cameraOrder.size()) {
-            playNext = parseLastFile(0);
+        // logger.info("setting up playlist now");
+        String playNext = parseLastFile(cameraIndex);
+        if (playingNow.equals("")) {
+            playingNow = playNext;
+            playNext = "";
+            entries = 1;
         } else {
-            playNext = parseLastFile(cameraIndex + 1);
+            int found = playList.indexOf("#EXTINF:"); // first occurrence we want to remove
+            found = playList.indexOf("#EXTINF:", found + 2); // search for second
+            if (found == -1 || entries < 5) { // allows number of segments in playlist to be X
+                playingNow = playingNow + playNext;
+                playNext = "";
+                entries++;
+            } else {
+                playingNow = playList.substring(found);
+            }
         }
+
         playList = "#EXTM3U\n" + "#EXT-X-TARGETDURATION:2\n" + "#EXT-X-VERSION:3\n" + "#EXT-X-MEDIA-SEQUENCE:"
-                + mediaSequence++ + "\n" + playNow + playNext;
+                + mediaSequence++ + "\n" + playingNow + playNext;
+
     }
 
     private IpCameraGroupHandler getHandle() {
@@ -243,6 +276,7 @@ public class IpCameraGroupHandler extends BaseThingHandler {
             if ((boolean) config.get(CONFIG_MOTION_CHANGES_ORDER)) {
                 cameraIndex = checkForMotion(cameraIndex);
             }
+            setPlayList();
         }
     };
 
@@ -252,25 +286,28 @@ public class IpCameraGroupHandler extends BaseThingHandler {
 
     @Override
     public void initialize() {
-        logger.info("initialize() called for a group thing. NOT IMPLEMENTED YET !!!! ");
+        logger.info("!!!! initialize() was called for a group camera thing. NOT FULLY IMPLEMENTED YET !!!! ");
         config = thing.getConfiguration();
         serverPort = Integer.parseInt(config.get(CONFIG_SERVER_PORT).toString());
+        pollTimeInSeconds = new BigDecimal(config.get(CONFIG_POLL_CAMERA_MS).toString());
+        pollTimeInSeconds = pollTimeInSeconds.divide(new BigDecimal(1000));
         if (serverPort == -1) {
             logger.warn("The SERVER_PORT = -1 which disables a lot of features. See readme for more info.");
         } else if (serverPort < 1025) {
             logger.warn("The SERVER_PORT is <= 1024 and may cause permission errors under Linux, try a higher port.");
         }
         pollCameraGroupJob = pollCameraGroup.scheduleAtFixedRate(pollingCameraGroup, 5000,
-                Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
+                pollTimeInSeconds.intValue() * 1000, TimeUnit.MILLISECONDS);
     }
 
     @Override
     public void dispose() {
-        logger.debug("dispose() called for a group thing.");
+        logger.info("dispose() called for a group thing.");
         startStreamServer(false);
         if (pollCameraGroupJob != null) {
             pollCameraGroupJob.cancel(true);
             pollCameraGroupJob = null;
         }
+        cameraOrder.clear();
     }
 }

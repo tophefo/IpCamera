@@ -69,9 +69,12 @@ public class StreamServerGroupHandler extends ChannelInboundHandlerAdapter {
     public void handlerAdded(@Nullable ChannelHandlerContext ctx) {
     }
 
-    private String resolveIndex(String uri) {
-        return ipCameraGroupHandler.getOutputFolder(Integer.parseInt(uri.substring(1, 2)));
-        // example is /1/ipcameraxx.ts
+    private String resolveIndexToPath(String uri) {
+        if (!uri.substring(1, 2).equals("i")) {
+            return ipCameraGroupHandler.getOutputFolder(Integer.parseInt(uri.substring(1, 2)));
+        }
+        return "notFound";
+        // example is /1ipcameraxx.ts
     }
 
     @Override
@@ -84,7 +87,7 @@ public class StreamServerGroupHandler extends ChannelInboundHandlerAdapter {
             if (msg instanceof HttpRequest) {
                 HttpRequest httpRequest = (HttpRequest) msg;
                 // logger.debug("{}", httpRequest);
-                logger.info("Stream Server recieved request \t{}:{}", httpRequest.method(), httpRequest.uri());
+                logger.debug("Stream Server recieved request \t{}:{}", httpRequest.method(), httpRequest.uri());
                 String requestIP = "("
                         + ((InetSocketAddress) ctx.channel().remoteAddress()).getAddress().getHostAddress() + ")";
                 if (!whiteList.contains(requestIP) && !whiteList.equals("DISABLE")) {
@@ -93,30 +96,37 @@ public class StreamServerGroupHandler extends ChannelInboundHandlerAdapter {
                 } else if ("GET".equalsIgnoreCase(httpRequest.method().toString())) {
                     switch (httpRequest.uri()) {
                         case "/ipcamera.m3u8":
-                            ipCameraGroupHandler.setPlayList();
+                            // ipCameraGroupHandler.setPlayList();
+                            logger.debug("playlist is:{}", ipCameraGroupHandler.playList);
                             sendString(ctx, ipCameraGroupHandler.getPlayList(), "application/x-mpegurl");
                             break;
                         case "/ipcamera.jpg":
+                            logger.warn("Not yet implemented");
                             // sendSnapshotImage(ctx, "image/jpg");
                             break;
                         case "/snapshots.mjpeg":
+                            logger.warn("Not yet implemented");
                             // ipCameraGroupHandler.setupSnapshotStreaming(true, ctx, false);
                             // handlingSnapshotStream = true;
                             break;
                         case "/ipcamera.mjpeg":
+                            logger.warn("Not yet implemented");
                             // ipCameraGroupHandler.setupMjpegStreaming(true, ctx);
                             // handlingMjpeg = true;
                             break;
                         case "/autofps.mjpeg":
+                            logger.warn("Not yet implemented");
                             // ipCameraGroupHandler.setupSnapshotStreaming(true, ctx, true);
                             // handlingSnapshotStream = true;
                             break;
-                        case "/ipcamera0.ts":
-                            // TimeUnit.SECONDS.sleep(6);
                         default:
                             if (httpRequest.uri().contains(".ts")) {
-                                String path = resolveIndex(httpRequest.uri());
-                                sendFile(ctx, path + httpRequest.uri().substring(3), "video/MP2T");
+                                String path = resolveIndexToPath(httpRequest.uri());
+                                if (path.equals("notFound")) {
+                                    sendError(ctx);
+                                } else {
+                                    sendFile(ctx, path + httpRequest.uri().substring(2), "video/MP2T");
+                                }
                             } else if (httpRequest.uri().contains(".jpg")) {
                                 // Allow access to the preroll and postroll jpg files
                                 sendFile(ctx, httpRequest.uri(), "image/jpg");
@@ -191,7 +201,7 @@ public class StreamServerGroupHandler extends ChannelInboundHandlerAdapter {
     }
 
     private void sendFile(ChannelHandlerContext ctx, String fileUri, String contentType) throws IOException {
-        logger.info("file is :{}", fileUri);
+        logger.debug("file is :{}", fileUri);
         File file = new File(fileUri);
         ChunkedFile chunkedFile = new ChunkedFile(file);
         HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
@@ -205,6 +215,14 @@ public class StreamServerGroupHandler extends ChannelInboundHandlerAdapter {
         ctx.channel().write(chunkedFile);
         ByteBuf footerBbuf = Unpooled.copiedBuffer("\r\n", 0, 2, StandardCharsets.UTF_8);
         ctx.channel().writeAndFlush(footerBbuf);
+    }
+
+    private void sendError(ChannelHandlerContext ctx) throws IOException {
+        HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND);
+        response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
+        response.headers().add("Access-Control-Allow-Origin", "*");
+        response.headers().add("Access-Control-Expose-Headers", "*");
+        ctx.channel().writeAndFlush(response);
     }
 
     private void sendString(ChannelHandlerContext ctx, String contents, String contentType) throws IOException {
