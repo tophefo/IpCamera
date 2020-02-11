@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.config.core.Configuration;
+import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.StringType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
@@ -78,6 +79,7 @@ public class IpCameraGroupHandler extends BaseThingHandler {
     private @Nullable ServerBootstrap serverBootstrap;
     private @Nullable ChannelFuture serverFuture = null;
     public String hostIp = "0.0.0.0";
+    boolean motionChangesOrder = true;
     public int serverPort = 0;
     public String playList = "";
     String playingNow = "";
@@ -106,6 +108,9 @@ public class IpCameraGroupHandler extends BaseThingHandler {
         String camerasm3u8 = "";
         String temp = "";
         IpCameraHandler handle = cameraOrder.get(cameraIndex);
+        if (handle.ffmpegHLS == null) {
+            handle.handleCommand(handle.getThing().getChannel(CHANNEL_START_STREAM).getUID(), OnOffType.valueOf("ON"));
+        }
         try {
             String file = handle.config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8";
             camerasm3u8 = new String(Files.readAllBytes(Paths.get(file)));
@@ -132,7 +137,6 @@ public class IpCameraGroupHandler extends BaseThingHandler {
     int entries = 0;
 
     public void setPlayList() {
-        // logger.info("setting up playlist now");
         String playNext = parseLastFile(cameraIndex);
         if (playingNow.equals("")) {
             playingNow = playNext;
@@ -149,10 +153,9 @@ public class IpCameraGroupHandler extends BaseThingHandler {
                 playingNow = playList.substring(found);
             }
         }
-
-        playList = "#EXTM3U\n" + "#EXT-X-TARGETDURATION:2\n" + "#EXT-X-VERSION:3\n" + "#EXT-X-MEDIA-SEQUENCE:"
-                + mediaSequence++ + "\n" + playingNow + playNext;
-
+        playList = "#EXTM3U\n" + "#EXT-X-VERSION:3\n" // + "#EXT-X-ALLOW-CACHE:NO\n"
+                + "#EXT-X-TARGETDURATION:2\n" + "#EXT-X-MEDIA-SEQUENCE:" + mediaSequence++ + "\n" + playingNow
+                + "#EXT-X-DISCONTINUITY\n" + playNext;
     }
 
     private IpCameraGroupHandler getHandle() {
@@ -247,6 +250,7 @@ public class IpCameraGroupHandler extends BaseThingHandler {
         int checked = 0;
         for (int index = nextCamerasIndex; checked >= cameraOrder.size(); checked++) {
             if (cameraOrder.get(index).motionDetected) {
+                logger.debug("Motion detected on a camera in a group and the display order has changed");
                 return index;
             }
             if (++index >= cameraOrder.size()) {
@@ -273,7 +277,7 @@ public class IpCameraGroupHandler extends BaseThingHandler {
                     mediaSequence = 0;
                 }
             }
-            if ((boolean) config.get(CONFIG_MOTION_CHANGES_ORDER)) {
+            if (motionChangesOrder) {
                 cameraIndex = checkForMotion(cameraIndex);
             }
             setPlayList();
@@ -290,6 +294,7 @@ public class IpCameraGroupHandler extends BaseThingHandler {
         config = thing.getConfiguration();
         serverPort = Integer.parseInt(config.get(CONFIG_SERVER_PORT).toString());
         pollTimeInSeconds = new BigDecimal(config.get(CONFIG_POLL_CAMERA_MS).toString());
+        motionChangesOrder = (boolean) config.get(CONFIG_MOTION_CHANGES_ORDER);
         pollTimeInSeconds = pollTimeInSeconds.divide(new BigDecimal(1000));
         if (serverPort == -1) {
             logger.warn("The SERVER_PORT = -1 which disables a lot of features. See readme for more info.");

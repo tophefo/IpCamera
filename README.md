@@ -437,7 +437,8 @@ Also replace AMCREST or HIKVISION with the name of the supported thing you are u
 *.things
 
 ```java
-Thing ipcamera:DAHUA:001 [
+Thing ipcamera:DAHUA:001 "Babymonitor" @ "Cameras"
+[ 
     IPADDRESS="192.168.0.5", PASSWORD="suitcase123456",
     USERNAME="admin",
     POLL_CAMERA_MS=2000,
@@ -445,12 +446,22 @@ Thing ipcamera:DAHUA:001 [
     FFMPEG_OUTPUT="/tmpfs/camera1/"
 ]
 
-Thing ipcamera:HIKVISION:002 [
+Thing ipcamera:HIKVISION:002 "Front Door" @ "Cameras"
+[
     IPADDRESS="192.168.0.6", PASSWORD="suitcase123456",
     USERNAME="admin",
     POLL_CAMERA_MS=2000,
     SERVER_PORT=54322,
     FFMPEG_OUTPUT="/tmpfs/camera2/"
+]
+
+Thing ipcamera:HTTPONLY:TestCam "TestCam" @ "Cameras"
+[
+    IPADDRESS="192.168.0.7", PASSWORD="pass123", USERNAME="admin", POLL_CAMERA_MS=1000, SERVER_PORT=54323,
+    SNAPSHOT_URL_OVERRIDE="http://192.168.1.65/tmpfs/snap.jpg", //remove this line if your camera has none
+    STREAM_URL_OVERRIDE="ffmpeg",
+    FFMPEG_OUTPUT="/tmpfs/HttpTest/", 
+    FFMPEG_INPUT="rtsp://192.168.1.65:554/11" //no need to add user or pass as binding handles this for you.
 ]
 
 ```
@@ -484,6 +495,16 @@ Switch CamEnableMotionAlarm "MotionAlarm on/off" { channel="ipcamera:HIKVISION:0
 Switch CamMotionAlarm "Motion detected" { channel="ipcamera:HIKVISION:002:motionAlarm" }
 Switch CamEnableLineAlarm "LineAlarm on/off" { channel="ipcamera:HIKVISION:002:enableLineCrossingAlarm" }
 Switch CamLineAlarm "Line Alarm detected" { channel="ipcamera:HIKVISION:002:lineCrossingAlarm" }
+
+Dimmer HttpOnlyMotionControl "Motion Threshold [%d]" { channel="ipcamera:HTTPONLY:TestCam:controlMotionAlarm" }
+Switch HttpOnlyMotionAlarm "Motion detected" { channel="ipcamera:HTTPONLY:TestCam:motionAlarm" }
+Dimmer HttpOnlyAudioThreshold "Audio Threshold [%d]" { channel="ipcamera:HTTPONLY:TestCam:thresholdAudioAlarm" }
+Switch HttpOnlyAudioAlarm "Audio detected" { channel="ipcamera:HTTPONLY:TestCam:audioAlarm" }
+Switch HttpOnlyCreateGif "Create animated GIF" { channel="ipcamera:HTTPONLY:TestCam:updateGif" }
+String HttpOnlyMjpegStreamUrl "Mjpeg Stream" { channel="ipcamera:HTTPONLY:TestCam:streamUrl" }
+String HttpOnlyRTSPStreamUrl "RTSP Stream" { channel="ipcamera:HTTPONLY:TestCam:rtspUrl" }
+String HttpOnlyHlsStreamUrl "HLS Stream" { channel="ipcamera:HTTPONLY:TestCam:hlsUrl" }
+String HttpOnlyImageUrl "Image Url" { channel="ipcamera:HTTPONLY:TestCam:imageUrl" }
 
 ```
 
@@ -519,6 +540,22 @@ Switch CamLineAlarm "Line Alarm detected" { channel="ipcamera:HIKVISION:002:line
             Text label="HLS Webview Stream" icon="camera"{Webview url="http://192.168.0.2:54321/ipcamera.m3u8" height=15}
             Text label="Image using jpg method" icon="camera"{Image url="http://192.168.0.2:54321/ipcamera.jpg" refresh=2000}        
     }
+    
+    Text label="Httponly Camera" icon="camera"{
+            Switch item=HttpOnlyCreateGif
+            Switch item=HttpOnlyMotionControl
+            Slider item=HttpOnlyMotionControl
+            Default item=HttpOnlyMotionAlarm
+            Switch item=HttpOnlyAudioThreshold
+            Slider item=HttpOnlyAudioThreshold          
+            Default item=HttpOnlyAudioAlarm
+            Text label="Mjpeg Stream" icon="camera"{Video url="http://192.168.0.2:54323/ipcamera.mjpeg" encoding="mjpeg"}
+            Text label="snapshots 1FPS Stream" icon="camera"{Video url="http://192.168.0.2:54323/snapshots.mjpeg" encoding="mjpeg"}
+            Text label="autofps Stream" icon="camera"{Video url="http://192.168.0.2:54323/autofps.mjpeg" encoding="mjpeg"}
+            Text label="HLS Video Stream" icon="camera"{Video url="http://192.168.0.2:54323/ipcamera.m3u8" encoding="hls"}
+            Text label="HLS Stream" icon="camera"{Webview url="http://192.168.0.2:54323/ipcamera.m3u8" height=15}
+            Text label="Image jpg method" icon="camera"{Image url="http://192.168.0.2:54323/ipcamera.jpg" refresh=1000}                
+        }
 
 ```
 

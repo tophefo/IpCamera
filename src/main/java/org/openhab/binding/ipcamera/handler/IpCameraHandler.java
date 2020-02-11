@@ -706,10 +706,10 @@ public class IpCameraHandler extends BaseThingHandler {
                                         logger.debug("!! Header matched, this may be a Reolink camera. !!");
                                         if (response.headers().getAsString(name)
                                                 .contains("max-age=63072000; includeSubdomains; preload")) {
-                                            logger.debug(
-                                                    "!! Using more RAM as this is a Reolink camera. Report if this is not your brand !!");
+                                            logger.debug("!! Closing channel and wont keep it open !!");
                                             // Reolink cameras send more data than in the content length header.
-                                            bytesToRecieve = 0;
+                                            // bytesToRecieve = 0;
+                                            closeConnection = true;
                                         }
                                         break;
                                 }
@@ -769,7 +769,7 @@ public class IpCameraHandler extends BaseThingHandler {
                                     processSnapshot();
                                     incomingJpeg = null;
                                     if (closeConnection) {
-                                        // logger.debug("Snapshot recieved: Binding will now close the channel.");
+                                        logger.debug("Snapshot recieved: Binding will now close the channel.");
                                         ctx.close();
                                     }
                                 }
@@ -1139,10 +1139,12 @@ public class IpCameraHandler extends BaseThingHandler {
                 if (ffmpegHLS == null) {
                     if (rtspUri.contains(":554")) {
                         ffmpegHLS = new Ffmpeg(this, format, config.get(CONFIG_FFMPEG_LOCATION).toString(),
-                                "-rtsp_transport tcp", rtspUri, config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
+                                "-hide_banner -loglevel panic -rtsp_transport tcp", rtspUri,
+                                config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
                                 ffmpegOutputFolder + "ipcamera.m3u8", username, password);
                     } else {
-                        ffmpegHLS = new Ffmpeg(this, format, config.get(CONFIG_FFMPEG_LOCATION).toString(), "", rtspUri,
+                        ffmpegHLS = new Ffmpeg(this, format, config.get(CONFIG_FFMPEG_LOCATION).toString(),
+                                "-hide_banner -loglevel panic", rtspUri,
                                 config.get(CONFIG_FFMPEG_HLS_OUT_ARGUMENTS).toString(),
                                 ffmpegOutputFolder + "ipcamera.m3u8", username, password);
                     }
