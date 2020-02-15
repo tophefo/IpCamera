@@ -43,7 +43,6 @@ import org.eclipse.smarthome.core.thing.ThingStatus;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
 import org.eclipse.smarthome.core.types.Command;
-import org.openhab.binding.ipcamera.internal.IpCameraDiscoveryService;
 import org.openhab.binding.ipcamera.internal.StreamServerGroupHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,12 +66,12 @@ import io.netty.handler.timeout.IdleStateHandler;
  */
 
 public class IpCameraGroupHandler extends BaseThingHandler {
-    private final Logger logger = LoggerFactory.getLogger(IpCameraDiscoveryService.class);
+    private final Logger logger = LoggerFactory.getLogger(getClass());
     public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<ThingTypeUID>(
             Arrays.asList(THING_TYPE_GROUPDISPLAY));
     private Configuration config;
     BigDecimal pollTimeInSeconds = new BigDecimal(2);
-    ArrayList<IpCameraHandler> cameraOrder = new ArrayList<IpCameraHandler>(2);
+    public ArrayList<IpCameraHandler> cameraOrder = new ArrayList<IpCameraHandler>(2);
     private EventLoopGroup serversLoopGroup = new NioEventLoopGroup();
     private final ScheduledExecutorService pollCameraGroup = Executors.newSingleThreadScheduledExecutor();
     private @Nullable ScheduledFuture<?> pollCameraGroupJob = null;
@@ -83,7 +82,8 @@ public class IpCameraGroupHandler extends BaseThingHandler {
     public int serverPort = 0;
     public String playList = "";
     String playingNow = "";
-    int cameraIndex = 0;
+    public int cameraIndex = 0;
+    boolean hlsTurnedOn = false;
     int mediaSequence = 1;
 
     public IpCameraGroupHandler(Thing thing) {
@@ -104,33 +104,21 @@ public class IpCameraGroupHandler extends BaseThingHandler {
     }
 
     private String parseLastFile(int cameraIndex) {
-        // logger.info("parsing camers playlist now");
+        logger.debug("parsing cameras playlist now");
         String camerasm3u8 = "";
         String temp = "";
         IpCameraHandler handle = cameraOrder.get(cameraIndex);
-        if (handle.ffmpegHLS == null) {
-            handle.handleCommand(handle.getThing().getChannel(CHANNEL_START_STREAM).getUID(), OnOffType.valueOf("ON"));
-        }
         try {
             String file = handle.config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8";
             camerasm3u8 = new String(Files.readAllBytes(Paths.get(file)));
         } catch (IOException e) {
+            logger.error("error occured:{}", e);
         }
         int lastLocation = camerasm3u8.lastIndexOf("#EXTINF:");
         if (lastLocation != -1) {
-            // temp = playList.substring(0, lastLocation);
-            // lastLocation = temp.lastIndexOf("#EXTINF:");
-            // int duration = Integer.parseInt(camerasm3u8.substring(lastLocation + 8, lastLocation + 9));
-            // if (duration >= pollTimeInSeconds.intValue()) {
-            temp = camerasm3u8.substring(lastLocation); // start of second last occurrence
+            temp = camerasm3u8.substring(lastLocation);
             temp = temp.replace("ipcamera", cameraIndex + "ipcamera"); // add index so we can then fetch output path
-                                                                       // later
-            // } else {
-            // logger.error("Poll time is {} and it must match the segment size {} from the cameras.",
-            // pollTimeInSeconds.intValue(), duration);
-            // }
         }
-
         return temp;
     }
 
@@ -145,7 +133,7 @@ public class IpCameraGroupHandler extends BaseThingHandler {
         } else {
             int found = playList.indexOf("#EXTINF:"); // first occurrence we want to remove
             found = playList.indexOf("#EXTINF:", found + 2); // search for second
-            if (found == -1 || entries < 5) { // allows number of segments in playlist to be X
+            if (found == -1 || entries < 4) { // allows number of segments in playlist to be X
                 playingNow = playingNow + playNext;
                 playNext = "";
                 entries++;
@@ -153,9 +141,8 @@ public class IpCameraGroupHandler extends BaseThingHandler {
                 playingNow = playList.substring(found);
             }
         }
-        playList = "#EXTM3U\n" + "#EXT-X-VERSION:3\n" // + "#EXT-X-ALLOW-CACHE:NO\n"
-                + "#EXT-X-TARGETDURATION:2\n" + "#EXT-X-MEDIA-SEQUENCE:" + mediaSequence++ + "\n" + playingNow
-                + "#EXT-X-DISCONTINUITY\n" + playNext;
+        playList = "#EXTM3U\n" + "#EXT-X-VERSION:3\n" + "#EXT-X-ALLOW-CACHE:NO\n" + "#EXT-X-TARGETDURATION:2\n"
+                + "#EXT-X-MEDIA-SEQUENCE:" + mediaSequence++ + "\n" + playingNow + "#EXT-X-DISCONTINUITY\n" + playNext;
     }
 
     private IpCameraGroupHandler getHandle() {
@@ -227,28 +214,67 @@ public class IpCameraGroupHandler extends BaseThingHandler {
         }
     }
 
-    void addOnlineCamera(String UniqueID) {
-        for (IpCameraHandler handler : IpCameraHandler.listOfCameras) {
-            if (handler.getThing().getUID().getId().equals(UniqueID)) {
-                this.cameraOrder.add(handler);
+    void addCamera(String UniqueID) {
+        if (IpCameraHandler.listOfOnlineCameraUID.contains(UniqueID)) {
+            for (IpCameraHandler handler : IpCameraHandler.listOfOnlineCameraHandlers) {
+                if (handler.getThing().getUID().getId().equals(UniqueID)) {
+                    if (!cameraOrder.contains(handler)) {
+                        logger.info("Adding {} to a camera group.", UniqueID);
+                        if (hlsTurnedOn) {
+                            logger.info("Starting HLS for the new camera.");
+                            handler.handleCommand(handler.getThing().getChannel(CHANNEL_START_STREAM).getUID(),
+                                    OnOffType.valueOf("ON"));
+                        }
+                        cameraOrder.add(handler);
+                    }
+                }
             }
         }
     }
 
-    void createCameraList() {
-        addOnlineCamera(config.get(CONFIG_FIRST_CAM).toString());
-        addOnlineCamera(config.get(CONFIG_SECOND_CAM).toString());
+    // Event based. This is called as each camera comes online after the group handler is registered.
+    public void cameraOnline(String uid) {
+        logger.debug("New camera {} came online, checking if part of this group", uid);
+        if (config.get(CONFIG_FIRST_CAM).equals(uid)) {
+            addCamera(uid);
+        } else if (config.get(CONFIG_SECOND_CAM).equals(uid)) {
+            addCamera(uid);
+        } else if (config.get(CONFIG_THIRD_CAM).equals(uid)) {
+            addCamera(uid);
+        } else if (config.get(CONFIG_FORTH_CAM).equals(uid)) {
+            addCamera(uid);
+        }
+    }
+
+    // Event based. This is called as each camera comes online after the group handler is registered.
+    public void cameraOffline(IpCameraHandler handle) {
+        if (cameraOrder.remove(handle)) {
+            logger.info("Camera {} is now offline, now removed from this group.", handle.getThing().getUID().getId());
+        }
+    }
+
+    boolean addIfOnline(String UniqueID) {
+        if (IpCameraHandler.listOfOnlineCameraUID.contains(UniqueID)) {
+            addCamera(UniqueID);
+            return true;
+        }
+        return false;
+    }
+
+    void createCameraOrder() {
+        addIfOnline(config.get(CONFIG_FIRST_CAM).toString());
+        addIfOnline(config.get(CONFIG_SECOND_CAM).toString());
         if (config.get(CONFIG_THIRD_CAM) != null) {
-            addOnlineCamera(config.get(CONFIG_THIRD_CAM).toString());
+            addIfOnline(config.get(CONFIG_THIRD_CAM).toString());
         }
         if (config.get(CONFIG_FORTH_CAM) != null) {
-            addOnlineCamera(config.get(CONFIG_FORTH_CAM).toString());
+            addIfOnline(config.get(CONFIG_FORTH_CAM).toString());
         }
     }
 
     int checkForMotion(int nextCamerasIndex) {
         int checked = 0;
-        for (int index = nextCamerasIndex; checked >= cameraOrder.size(); checked++) {
+        for (int index = nextCamerasIndex; checked < cameraOrder.size(); checked++) {
             if (cameraOrder.get(index).motionDetected) {
                 logger.debug("Motion detected on a camera in a group and the display order has changed");
                 return index;
@@ -263,35 +289,58 @@ public class IpCameraGroupHandler extends BaseThingHandler {
     Runnable pollingCameraGroup = new Runnable() {
         @Override
         public void run() {
-            if (cameraOrder.isEmpty()) {
-                createCameraList();
-                if (!cameraOrder.isEmpty()) {
-                    updateStatus(ThingStatus.ONLINE);
-                    if (!"-1".contentEquals(config.get(CONFIG_SERVER_PORT).toString())) {
-                        startStreamServer(true);
-                    }
-                }
-            } else if (++cameraIndex >= cameraOrder.size()) {
+
+            // if (cameraOrder.isEmpty()) {
+            // createCameraOrder();
+            // }
+            if (++cameraIndex >= cameraOrder.size()) {
                 cameraIndex = 0;
-                if (mediaSequence > 500000) {
+                if (mediaSequence > 2147000000) {
                     mediaSequence = 0;
                 }
             }
             if (motionChangesOrder) {
                 cameraIndex = checkForMotion(cameraIndex);
             }
-            setPlayList();
+            if (hlsTurnedOn) {
+                logger.debug("Creating playlist");
+                setPlayList();
+            }
         }
     };
 
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
+        if (!"REFRESH".equals(command.toString())) {
+            switch (channelUID.getId()) {
+                case CHANNEL_START_STREAM:
+                    if ("ON".equals(command.toString())) {
+                        logger.info("Starting HLS generation for all cameras.");
+                        hlsTurnedOn = true;
+                        for (IpCameraHandler handler : cameraOrder) {
+                            handler.handleCommand(handler.getThing().getChannel(CHANNEL_START_STREAM).getUID(),
+                                    OnOffType.valueOf("ON"));
+                        }
+                    } else {
+                        // do we turn all off or do we remember the state before we turned them all on?
+                        hlsTurnedOn = false;
+                    }
+            }
+        }
     }
 
     @Override
     public void initialize() {
-        logger.info("!!!! initialize() was called for a group camera thing. NOT FULLY IMPLEMENTED YET !!!! ");
+        logger.debug("initialize() called for a group camera thing.");
         config = thing.getConfiguration();
+        updateStatus(ThingStatus.ONLINE);
+        try {
+            TimeUnit.SECONDS.sleep(6);
+        } catch (InterruptedException e) {
+        }
+        createCameraOrder();
+        // Cameras can now send events of when they go on and offline.
+        IpCameraHandler.listOfGroupHandlers.add(this);
         serverPort = Integer.parseInt(config.get(CONFIG_SERVER_PORT).toString());
         pollTimeInSeconds = new BigDecimal(config.get(CONFIG_POLL_CAMERA_MS).toString());
         motionChangesOrder = (boolean) config.get(CONFIG_MOTION_CHANGES_ORDER);
@@ -301,13 +350,19 @@ public class IpCameraGroupHandler extends BaseThingHandler {
         } else if (serverPort < 1025) {
             logger.warn("The SERVER_PORT is <= 1024 and may cause permission errors under Linux, try a higher port.");
         }
-        pollCameraGroupJob = pollCameraGroup.scheduleAtFixedRate(pollingCameraGroup, 5000,
+        pollCameraGroupJob = pollCameraGroup.scheduleAtFixedRate(pollingCameraGroup, 10000,
                 pollTimeInSeconds.intValue() * 1000, TimeUnit.MILLISECONDS);
+        if (!"-1".contentEquals(config.get(CONFIG_SERVER_PORT).toString())) {
+            startStreamServer(true);
+        } else {
+            logger.warn("SERVER_PORT is -1 which disables all serving features of the camera group.");
+        }
     }
 
     @Override
     public void dispose() {
         logger.info("dispose() called for a group thing.");
+        IpCameraHandler.listOfGroupHandlers.remove(this);
         startStreamServer(false);
         if (pollCameraGroupJob != null) {
             pollCameraGroupJob.cancel(true);

@@ -35,7 +35,6 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
-import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.stream.ChunkedFile;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
@@ -101,21 +100,20 @@ public class StreamServerGroupHandler extends ChannelInboundHandlerAdapter {
                             sendString(ctx, debugMe, "application/x-mpegurl");
                             break;
                         case "/ipcamera.jpg":
-                            logger.warn("Not yet implemented");
-                            // sendSnapshotImage(ctx, "image/jpg");
+                            sendSnapshotImage(ctx, "image/jpg");
                             break;
                         case "/snapshots.mjpeg":
-                            logger.warn("Not yet implemented");
+                            logger.warn("snapshots.mjpeg is not yet implemented, use ipcamera.jpg or HLS.");
                             // ipCameraGroupHandler.setupSnapshotStreaming(true, ctx, false);
                             // handlingSnapshotStream = true;
                             break;
                         case "/ipcamera.mjpeg":
-                            logger.warn("Not yet implemented");
+                            logger.warn("ipcamera.mjpeg is not yet implemented, use ipcamera.jpg or HLS.");
                             // ipCameraGroupHandler.setupMjpegStreaming(true, ctx);
                             // handlingMjpeg = true;
                             break;
                         case "/autofps.mjpeg":
-                            logger.warn("Not yet implemented");
+                            logger.warn("autofps.mjpeg is not yet implemented, use ipcamera.jpg or HLS.");
                             // ipCameraGroupHandler.setupSnapshotStreaming(true, ctx, true);
                             // handlingSnapshotStream = true;
                             break;
@@ -133,46 +131,6 @@ public class StreamServerGroupHandler extends ChannelInboundHandlerAdapter {
                                 sendFile(ctx, httpRequest.uri(), "video/mp4");
                             }
                     }
-                } else if ("POST".equalsIgnoreCase(httpRequest.method().toString())) {
-                    switch (httpRequest.uri()) {
-                        case "/ipcamera.jpg":
-                            break;
-                        case "/snapshot.jpg":
-                            updateSnapshot = true;
-                            break;
-                    }
-                }
-            }
-            if (msg instanceof HttpContent) {
-                content = (HttpContent) msg;
-                int index = 0;
-
-                if (incomingJpeg == null) {
-                    incomingJpeg = new byte[content.content().capacity()];
-                } else {
-                    byte[] temp = incomingJpeg;
-                    incomingJpeg = new byte[recievedBytes + content.content().capacity()];
-
-                    for (; index < temp.length; index++) {
-                        incomingJpeg[index] = temp[index];
-                    }
-                }
-                for (int i = 0; i < content.content().capacity(); i++) {
-                    incomingJpeg[index++] = content.content().getByte(i);
-                }
-                recievedBytes = incomingJpeg.length;
-                if (content instanceof LastHttpContent) {
-                    if (updateSnapshot) {
-                        // ipCameraGroupHandler.currentSnapshot = incomingJpeg;
-                        // ipCameraGroupHandler.processSnapshot();
-                    } else {
-                        if (recievedBytes > 1000) {
-                            // ipCameraGroupHandler.sendMjpegFrame(incomingJpeg,
-                            // ipCameraGroupHandler.mjpegChannelGroup);
-                        }
-                    }
-                    incomingJpeg = null;
-                    recievedBytes = 0;
                 }
             }
         } finally {
@@ -180,24 +138,21 @@ public class StreamServerGroupHandler extends ChannelInboundHandlerAdapter {
         }
     }
 
-    /*
-     * private void sendSnapshotImage(ChannelHandlerContext ctx, String contentType) throws IOException {
-     *
-     * HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
-     * ByteBuf snapshotData = Unpooled.copiedBuffer(ipCameraGroupHandler.currentSnapshot);
-     * response.headers().add(HttpHeaderNames.CONTENT_TYPE, contentType);
-     * response.headers().set(HttpHeaderNames.CACHE_CONTROL, HttpHeaderValues.NO_CACHE);
-     * response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
-     * response.headers().add(HttpHeaderNames.CONTENT_LENGTH, snapshotData.readableBytes());
-     * response.headers().add("Access-Control-Allow-Origin", "*");
-     * response.headers().add("Access-Control-Expose-Headers", "*");
-     * ctx.channel().write(response);
-     * ctx.channel().write(snapshotData);
-     * ByteBuf footerBbuf = Unpooled.copiedBuffer("\r\n", 0, 2, StandardCharsets.UTF_8);
-     * ctx.channel().writeAndFlush(footerBbuf);
-     *
-     * }
-     */
+    private void sendSnapshotImage(ChannelHandlerContext ctx, String contentType) throws IOException {
+        HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
+        ByteBuf snapshotData = Unpooled
+                .copiedBuffer(ipCameraGroupHandler.cameraOrder.get(ipCameraGroupHandler.cameraIndex).currentSnapshot);
+        response.headers().add(HttpHeaderNames.CONTENT_TYPE, contentType);
+        response.headers().set(HttpHeaderNames.CACHE_CONTROL, HttpHeaderValues.NO_CACHE);
+        response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
+        response.headers().add(HttpHeaderNames.CONTENT_LENGTH, snapshotData.readableBytes());
+        response.headers().add("Access-Control-Allow-Origin", "*");
+        response.headers().add("Access-Control-Expose-Headers", "*");
+        ctx.channel().write(response);
+        ctx.channel().write(snapshotData);
+        ByteBuf footerBbuf = Unpooled.copiedBuffer("\r\n", 0, 2, StandardCharsets.UTF_8);
+        ctx.channel().writeAndFlush(footerBbuf);
+    }
 
     private void sendFile(ChannelHandlerContext ctx, String fileUri, String contentType) throws IOException {
         logger.debug("file is :{}", fileUri);
@@ -206,7 +161,7 @@ public class StreamServerGroupHandler extends ChannelInboundHandlerAdapter {
         ByteBuf footerBbuf = Unpooled.copiedBuffer("\r\n", 0, 2, StandardCharsets.UTF_8);
         HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
         response.headers().add(HttpHeaderNames.CONTENT_TYPE, contentType);
-        // response.headers().set(HttpHeaderNames.CACHE_CONTROL, HttpHeaderValues.NO_CACHE);
+        response.headers().set(HttpHeaderNames.CACHE_CONTROL, HttpHeaderValues.NO_CACHE);
         response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
         response.headers().add(HttpHeaderNames.CONTENT_LENGTH, chunkedFile.length());
         response.headers().add("Access-Control-Allow-Origin", "*");
@@ -230,7 +185,7 @@ public class StreamServerGroupHandler extends ChannelInboundHandlerAdapter {
         ByteBuf contentsBbuf = Unpooled.copiedBuffer(contents, 0, contents.length(), StandardCharsets.UTF_8);
         HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
         response.headers().add(HttpHeaderNames.CONTENT_TYPE, contentType);
-        // response.headers().set(HttpHeaderNames.CACHE_CONTROL, HttpHeaderValues.NO_CACHE);
+        response.headers().set(HttpHeaderNames.CACHE_CONTROL, HttpHeaderValues.NO_CACHE);
         response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
         response.headers().add(HttpHeaderNames.CONTENT_LENGTH, contentsBbuf.readableBytes());
         response.headers().add("Access-Control-Allow-Origin", "*");

@@ -186,6 +186,7 @@ These are listed in CAPS below. Example: The thing type for a generic onvif came
 | `HTTPONLY` | For any camera that is not ONVIF compatible yet still has the ability to fetch a snapshot or stream with a url. |
 | `INSTAR` | Use for all current INSTAR Cameras as they support an API as well as ONVIF. |
 | `ONVIF` | Use for all ONVIF Cameras from any brand that does not have an API. You gain Pan Tilt and Zoom controls and auto discovery of the snapshot and rtsp urls over a basic HTTPONLY thing. |
+| `GROUPDISPLAY` | Used to display or cast multiple cameras that scoll like they are a single camera. |
 
 
 ## Binding Configuration
@@ -339,17 +340,24 @@ Recommend this is disabled and you use another method for a stream or snapshot c
 ## Channels
 
 See PaperUI for a full list of channels and the descriptions, as most are easy to understand. 
-Any which need further explanation will be added here. 
+Any channels which need further explanation will be added here. 
 Each camera brand will have different channels depending on how much of the support for an API has been added. 
 The channels are kept consistent as much as possible from brand to brand to make upgrading to a different branded camera easier and to help when sharing rules with other users in the forum.
+
+**externalMotion**
+
+This channel is intended to allow any external sensor the ability to inform the binding that there is motion in the cameras field of view. 
+An example of how this is useful is if your camera either has no motion alarm features, or you have bugs tripping the built in sensors you can use this channel with a ZWave PIR sensor to inform the camera of motion.
+This becomes more important when you start to use Camera groups that dynamically change the display order of the cameras based on if there is movement.
+It can also be handy to use this when doing testing as it allows motion to be simulated with the press of a button. 
 
 **updateImageNow**
 
 This control can be used to manually start and stop updating the Image channel with a picture. 
 The `UPDATE_IMAGE` config sets the state this control is set to on startup/reboot of Openhab. 
-When ON the image will update at the `POLL_CAMERA_MS` rate down to a minimum of 5 seconds. 
-When OFF the Image will NOT update. 
-If you need to update a picture more often then every 5 seconds, please see the snapshot and stream sections of this readme to learn how to get a picture without using the Image channel. 
+When ON the image will update at the `POLL_CAMERA_MS` rate. 
+When OFF the Image channel will NOT update, but the other methods of achieving a picture or stream will still work. 
+If you need to update the image channel more often then every 5 seconds, please see the snapshot and stream sections of this readme to learn how to get a picture without using the Image channel. 
 
 **controlMotionAlarm** (non API cameras only)
 
@@ -359,7 +367,8 @@ You can link a Switch and a Slider to this channel at the same time to have ON/O
 
 **thresholdAudioAlarm**
 
-Most of the API cameras have a separate ON/OFF channel, but for cameras that use ffmpeg to create an Audio Alarm from a RTSP source this channel can be linked to a Switch and a Slider to this channel at the same time to have ON/OFF control as well as a slider to change the threshold. 
+Most of the API cameras have a separate ON/OFF channel, but for non API cameras that use ffmpeg to create an Audio Alarm from a RTSP source, this channel can be linked to a Switch and a Slider.
+Linking both controls to this channel at the same time gives ON/OFF control as well as a slider to change the threshold. 
 The value of the slider is the value in dB that is detected as no noise/alarm. 
 Higher values are more sensitive and will trigger the Alarm with quieter noise.
 
@@ -398,7 +407,7 @@ end
 ```
 
 
-## API Access Channel
+**apiAccess**
 
 A special String channel has been added that allows you to send any GET request to Dahua cameras only. 
 This is due to the HTTP binding currently not supporting the DIGEST method that these cameras must use in the latest firmwares. 
@@ -437,7 +446,19 @@ Also replace AMCREST or HIKVISION with the name of the supported thing you are u
 *.things
 
 ```java
-Thing ipcamera:DAHUA:001 "Babymonitor" @ "Cameras"
+
+Thing ipcamera:GROUPDISPLAY:OutsideCameras
+[
+    POLL_CAMERA_MS=2000, SERVER_PORT=54320, 
+    FFMPEG_OUTPUT="/tmpfs/OutsideGroup/",
+    FIRST_CAM="001",
+    SECOND_CAM="002",
+    THIRD_CAM="TestCam",
+    FORTH_CAM="",
+    MOTION_CHANGES_ORDER=true
+]
+
+Thing ipcamera:DAHUA:001
 [ 
     IPADDRESS="192.168.0.5", PASSWORD="suitcase123456",
     USERNAME="admin",
@@ -446,7 +467,7 @@ Thing ipcamera:DAHUA:001 "Babymonitor" @ "Cameras"
     FFMPEG_OUTPUT="/tmpfs/camera1/"
 ]
 
-Thing ipcamera:HIKVISION:002 "Front Door" @ "Cameras"
+Thing ipcamera:HIKVISION:002
 [
     IPADDRESS="192.168.0.6", PASSWORD="suitcase123456",
     USERNAME="admin",
@@ -455,7 +476,7 @@ Thing ipcamera:HIKVISION:002 "Front Door" @ "Cameras"
     FFMPEG_OUTPUT="/tmpfs/camera2/"
 ]
 
-Thing ipcamera:HTTPONLY:TestCam "TestCam" @ "Cameras"
+Thing ipcamera:HTTPONLY:TestCam
 [
     IPADDRESS="192.168.0.7", PASSWORD="pass123", USERNAME="admin", POLL_CAMERA_MS=1000, SERVER_PORT=54323,
     SNAPSHOT_URL_OVERRIDE="http://192.168.1.65/tmpfs/snap.jpg", //remove this line if your camera has none
@@ -506,12 +527,20 @@ String HttpOnlyRTSPStreamUrl "RTSP Stream" { channel="ipcamera:HTTPONLY:TestCam:
 String HttpOnlyHlsStreamUrl "HLS Stream" { channel="ipcamera:HTTPONLY:TestCam:hlsUrl" }
 String HttpOnlyImageUrl "Image Url" { channel="ipcamera:HTTPONLY:TestCam:imageUrl" }
 
+String OutsideCameraGroupHlsStreamUrl "Outside Cameras" { channel="ipcamera:GROUPDISPLAY:OutsideCameras:hlsUrl", ga="Camera" [ protocols="hls" ] }
+Switch OutsideCameraGroupStartHLS "Start outside HLS" { channel="ipcamera:GROUPDISPLAY:OutsideCameras:startStream" }
+String OutsideCameraGroupMjpegUrl "Mjpeg Stream" { channel="ipcamera:GROUPDISPLAY:OutsideCameras:streamUrl" }
+String OutsideCameraGroupImageUrl "Image Url" { channel="ipcamera:GROUPDISPLAY:OutsideCameras:imageUrl" }
+
 ```
 
 
 *.sitemap
 
 ```java
+
+Text label="Outside Camera Group" icon="camera"{Image url="http://192.168.0.2:54320/ipcamera.jpg" refresh=1000} 
+
     Text label="BabyMonitor" icon="camera"{
         Switch item=BabyCamDirection icon=movecontrol label="Camera Direction" mappings=[0="Room", 1="Cot", 2="Door"]
         Default item=BabyCamMotionAlarm icon=siren
@@ -622,7 +651,7 @@ For the above notifications to work you will need to setup multiple users with t
 
 ## Moving PTZ capable cameras
 
-Currently there are two ways to move the camera, 1 with Onvif Absolute move and the second with Onvif presets. 
+Currently there are two ways to move the camera, 1 is with Onvif Absolute move, and the second is with Onvif presets. 
 The full example above shows how to use the Absolute move method which when a control is moved, it will wait until the next poll time has arrived and make all the movements at the same time. 
 Not all cameras support Absolute movements, so the below Onvif Preset method is easier to use, does not need a rule to set 3 different values from a single button, and does not wait for the Poll time to arrive.
 
@@ -652,7 +681,7 @@ The presets do not wait until the next poll time to arrive and are made right aw
 To create the preset locations, use a program like the free 'onvif device manager' program to create the presets and then you can create names using the mappings feature of the selection element. See docs here <https://www.openhab.org/docs/configuration/sitemaps.html#mappings>
 
 
-## Image Snapshots
+## Image / Snapshots
 
 There are a number of ways to use snapshots with this binding.
 There are advantages to using these methods from the binding instead of directly from the camera. 
@@ -663,7 +692,7 @@ There are advantages to using these methods from the binding instead of directly
 For cameras like Dahua that refuse to allow DIGEST to be turned off this is not an option, plus the binding has some advantages which are explained below so even if your camera can work directly, you may not wish to do so.
 + Request a snapshot with the url ``http://192.168.xxx.xxx:54321/ipcamera.jpg`` (with 54321 being the SERVER_PORT number that you specify in the bindings setup) this will return the current snapshot without needing to wait for the camera to create and send a snapshot.
 This file does not exist on disk and is served out of ram to keep disk writes to a minimum with this binding. 
-It also means the binding can serve a jpg file much faster than a camera can directly as a camera usually waits for a keyframe, then has to compresses the data, before it can be sent. 
+It also means the binding can serve a jpg file much faster than a camera can directly as a camera usually waits for a keyframe, then has to compresses the data, before it can then be sent. 
 All of this takes time giving you a delay compared to serving the file from Ram and can make a sitemap or habpanel UI feel slow to respond if the pictures take time to appear.
 The ipcamera.jpg can be cast as most cameras can not cast their snapshots without using the binding.
 + Use the ``http://192.168.xxx.xxx:54321/snapshots.mjpeg`` to request a stream of snapshots to be delivered in mjpeg format. 
@@ -925,6 +954,13 @@ then
 end
 ```
 
+## Group Displays
+
+The full example section has an example of how to setup a group display.
+Currently the poll time of the group must be the same time as the segment size if using HLS and all cameras must have the same segment size for this to work.
+The poll time is how long to display each camera for, before moving onto the next camera.
+This is still a very new feature and if you have any issues please send me some TRACE level log output of when the problem occurs.
+
 ## Batch motion detection rules
 
 In case you have more than one camera to manage, you might want to create a general rule that would react on the events.
@@ -1030,10 +1066,11 @@ Note that the example above also implies that you use the same naming convention
 ## Changing the log to show debug or trace and reducing log output
 
 There are two log files discussed here, openHAB.log and events.log please take the time to consider both logs if a fast and stable setup is something you care about. 
-On some systems with slow disk access like SD cards, the writing of a log file can greatly impact on performance. We can turn on/up logs to fault find issues, and then disable them to get the performance back when everything is working.
+On some systems with slow disk access like SD cards, the writing of a log file can greatly impact on performance. 
+We can turn on/up logs to fault find issues, and then disable them to get the performance back when everything is working.
 
 
-To watch the logs in realtime with Linux based setups you can use this linux command which can be done via SSH with a program called putty from a windows or mac.
+To watch the logs in realtime with Linux based setups, you can use this linux command which can be done via SSH with a program called putty from a pc or mac.
 
 ```
 
@@ -1041,7 +1078,10 @@ tail -f /var/log/openhab2/openhab.log -f /var/log/openhab2/events.log
 
 ```
 
-CTRL+C will close the stream. You can also use SAMBA/network shares to open or copy the file directly, but my favorite way to view the logs is with "Frontail". Frontail is another UI that can be selected like paperUI, and can be installed using the openHABian config tool. This allows you to search and only show what you care about, ie a particular warning or error.
+CTRL+C will close the stream. 
+You can also use SAMBA/network shares to open or copy the file directly, but my favorite way to view the logs is with "Frontail". 
+Frontail is another UI that can be selected like paperUI, and can be installed using the openHABian config tool. 
+This allows you to search and only show what you care about, ie a particular warning or error.
 
 
 **openHAB.log** 
@@ -1121,7 +1161,7 @@ Sharing rules with others becomes easier if all brands are handled the same way 
 If you need a feature added that is in an API and you can not program, please raise an issue ticket here at this Github project with a sample of what a browser shows when you enter in the URL and it is usually very quick to add these features.
 
 If you wish to contribute then please create an issue ticket first to discuss how things will work before doing any coding. 
-This is for multiple reasons due to needing to keep things CONSISTENT between brands and also easy to maintain. 
+This is for multiple reasons due to needing to keep things CONSISTENT between brands, lower the risk of breaking changes, and also easy to maintain. 
 
 The following list is a great place to start helping with this binding if you wish to contribute. 
 Any feedback, push requests and ideas are welcome, just please create a Github issue with your plans first.
@@ -1131,7 +1171,7 @@ Areas the binding could be improved are:
 
 + ONVIF alarms: I have started writing some code for this already, see EventsRequest.java and compare it to how the working PTZRequest.java works, but it needs to be finished off. 
 
-+ PTZ methods for continuous move so you can scan back and forth and wear your camera out faster. 
++ PTZ methods for continuous move so you can scan back and forth. 
 
 + 1 and 2 way audio. Keen to add this at some point for talking with people at my front door and baby monitor uses.
 

@@ -132,7 +132,9 @@ public class IpCameraHandler extends BaseThingHandler {
     public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<ThingTypeUID>(
             Arrays.asList(THING_TYPE_ONVIF, THING_TYPE_HTTPONLY, THING_TYPE_AMCREST, THING_TYPE_DAHUA,
                     THING_TYPE_INSTAR, THING_TYPE_FOSCAM, THING_TYPE_DOORBIRD, THING_TYPE_HIKVISION));
-    public static ArrayList<IpCameraHandler> listOfCameras = new ArrayList<IpCameraHandler>(1);
+    public static ArrayList<IpCameraHandler> listOfOnlineCameraHandlers = new ArrayList<IpCameraHandler>(1);
+    public static ArrayList<IpCameraGroupHandler> listOfGroupHandlers = new ArrayList<IpCameraGroupHandler>(0);
+    public static ArrayList<String> listOfOnlineCameraUID = new ArrayList<String>(1);
 
     public final Logger logger = LoggerFactory.getLogger(getClass());
     private final ScheduledExecutorService cameraConnection = Executors.newSingleThreadScheduledExecutor();
@@ -220,7 +222,6 @@ public class IpCameraHandler extends BaseThingHandler {
 
     public IpCameraHandler(Thing thing) {
         super(thing);
-        listOfCameras.add(this);
     }
 
     private IpCameraHandler getHandle() {
@@ -562,7 +563,7 @@ public class IpCameraHandler extends BaseThingHandler {
 
         if (!chFuture.isSuccess()) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                    "Connection Timeout: Check your IP is correct and the camera can be reached.");
+                    "Connection Timeout: Check your IP and PORT are correct and the camera can be reached.");
             restart();
             if (isOnline) {
                 logger.error("Can not connect with HTTP to the camera at {}:{} check your network for issues!",
@@ -1255,8 +1256,8 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     public void motionDetected(String thisAlarmsChannel) {
-        updateState(thisAlarmsChannel.toString(), OnOffType.valueOf("ON"));
         updateState(CHANNEL_LAST_MOTION_TYPE, new StringType(thisAlarmsChannel));
+        updateState(thisAlarmsChannel, OnOffType.valueOf("ON"));
         motionDetected = true;
         if (updateImageEvents.contains("2")) {
             if (!firstMotionAlarm) {
@@ -1363,6 +1364,13 @@ public class IpCameraHandler extends BaseThingHandler {
                         if (ffmpegHLS != null) {
                             ffmpegHLS.stopConverting();
                         }
+                    }
+                    return;
+                case CHANNEL_EXTERNAL_MOTION:
+                    if ("ON".equals(command.toString())) {
+                        motionDetected(CHANNEL_EXTERNAL_MOTION);
+                    } else {
+                        noMotionDetected(CHANNEL_EXTERNAL_MOTION);
                     }
                     return;
                 case CHANNEL_GOTO_PRESET:
@@ -1493,18 +1501,28 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     void bringCameraOnline() {
+        // Instar needs the host IP before thing can come online.
+        if (!"-1".contentEquals(config.get(CONFIG_SERVER_PORT).toString())) {
+            startStreamServer(true);
+        }
+
         updateStatus(ThingStatus.ONLINE);
+        listOfOnlineCameraHandlers.add(this);
+        listOfOnlineCameraUID.add(getThing().getUID().getId());
         isOnline = true;
         cameraConnectionJob.cancel(false);
         cameraConnectionJob = null;
         pollCameraJob = pollCamera.scheduleAtFixedRate(pollingCamera, 4000,
                 Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
         logger.info("IP Camera at {} is now online.", ipAddress);
-        if (!"-1".contentEquals(config.get(CONFIG_SERVER_PORT).toString())) {
-            startStreamServer(true);
-        }
+
         if (!rtspUri.equals("")) {
             updateState(CHANNEL_RTSP_URL, new StringType(rtspUri));
+        }
+        if (!listOfGroupHandlers.isEmpty()) {
+            for (IpCameraGroupHandler handle : listOfGroupHandlers) {
+                handle.cameraOnline(getThing().getUID().getId());
+            }
         }
     }
 
@@ -1516,7 +1534,6 @@ public class IpCameraHandler extends BaseThingHandler {
                     logger.debug("Camera at {} has a snapshot address of:{}:", ipAddress, snapshotUri);
                     if (sendHttpRequest("GET", snapshotUri, null)) {
                         bringCameraOnline();
-                        updateState(CHANNEL_IMAGE_URL, new StringType("http://" + ipAddress + snapshotUri));
                         if (updateImage) {
                             updateState(CHANNEL_UPDATE_IMAGE_NOW, OnOffType.valueOf("ON"));
                         }
@@ -1621,24 +1638,10 @@ public class IpCameraHandler extends BaseThingHandler {
 
             if (!snapshotUri.equals("")) {
                 if (sendHttpRequest("GET", snapshotUri, null)) {
-                    updateState(CHANNEL_IMAGE_URL, new StringType("http://" + ipAddress + snapshotUri));
-                    if (!rtspUri.equals("")) {
-                        updateState(CHANNEL_RTSP_URL, new StringType(rtspUri));
-                    }
+                    bringCameraOnline();
                     if (updateImage) {
                         updateState(CHANNEL_UPDATE_IMAGE_NOW, OnOffType.valueOf("ON"));
                     }
-                    pollCameraJob = pollCamera.scheduleAtFixedRate(pollingCamera, 7000,
-                            Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
-                    // Instar needs the host IP before thing comes online.
-                    if (!"-1".contentEquals(config.get(CONFIG_SERVER_PORT).toString())) {
-                        startStreamServer(true);
-                    }
-                    updateStatus(ThingStatus.ONLINE);
-                    isOnline = true;
-                    logger.info("IP Camera at {} is now online.", ipAddress);
-                    cameraConnectionJob.cancel(false);
-                    cameraConnectionJob = null;
                 }
             } else {
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
@@ -1837,6 +1840,12 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     private void restart() {
+        listOfOnlineCameraHandlers.remove(this);
+        listOfOnlineCameraUID.remove(getThing().getUID().getId());
+        // inform all group handlers that this camera has gone offline
+        for (IpCameraGroupHandler handle : listOfGroupHandlers) {
+            handle.cameraOffline(this);
+        }
         basicAuth = ""; // clear out stored password hash
         useDigestAuth = false;
         firstStreamedMsg = null;

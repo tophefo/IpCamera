@@ -95,19 +95,20 @@
 </config-description>
 </thing-type>
 
-
 	<thing-type id="HTTPONLY">
 		<label>"HTTPONLY" Generic IP camera with only HTTP support.</label>
 		<description>Use when your camera is not ONVIF compatible.</description>
 		<channels>
-		<channel id="updateImageNow" typeId="updateImageNow"/>
-		<channel id="updateGif" typeId="updateGif"/>
 		<channel id="image" typeId="image"/>
+		<channel id="updateImageNow" typeId="updateImageNow"/>
+		<channel id="updateGif" typeId="updateGif"/>		
 		<channel id="controlMotionAlarm" typeId="controlMotionAlarm"/>
-		<channel id="motionAlarm" typeId="motionAlarm"/>		
+		<channel id="motionAlarm" typeId="motionAlarm"/>
+		<channel id="lastMotionType" typeId="lastMotionType"/>		
         <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm"/>
         <channel id="audioAlarm" typeId="audioAlarm"/>
-        <channel id="startStream" typeId="startStream"/>        
+        <channel id="startStream" typeId="startStream"/>
+        <channel id="externalMotion" typeId="externalMotion"/>     
 		<channel id="streamUrl" typeId="streamUrl"/>
 		<channel id="rtspUrl" typeId="rtspUrl"/>
 		<channel id="imageUrl" typeId="imageUrl"/>
@@ -281,11 +282,13 @@ The Image channel and JPG served on request can be set to update in a number of 
 		<label>"ONVIF" Generic IP camera with ONVIF support.</label>
 		<description>Use when the binding does not list your brand of ONVIF compatible Camera</description>
 		<channels>
-		<channel id="updateImageNow" typeId="updateImageNow"/>
-		<channel id="updateGif" typeId="updateGif"/>
 		<channel id="image" typeId="image"/>
+		<channel id="updateImageNow" typeId="updateImageNow"/>
+		<channel id="updateGif" typeId="updateGif"/>		
 		<channel id="controlMotionAlarm" typeId="controlMotionAlarm"/>
-        <channel id="motionAlarm" typeId="motionAlarm"/>        
+		<channel id="externalMotion" typeId="externalMotion"/>
+        <channel id="motionAlarm" typeId="motionAlarm"/>
+        <channel id="lastMotionType" typeId="lastMotionType"/>       
         <channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm"/>
         <channel id="audioAlarm" typeId="audioAlarm"/>
 		<channel id="pan" typeId="pan"/>
@@ -296,7 +299,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 		<channel id="streamUrl" typeId="streamUrl"/>
 		<channel id="rtspUrl" typeId="rtspUrl"/>
 		<channel id="imageUrl" typeId="imageUrl"/>
-		<channel id="hlsUrl" typeId="hlsUrl"/>
+		<channel id="hlsUrl" typeId="hlsUrl"/>	
 		</channels>
 		<config-description>
 
@@ -484,10 +487,11 @@ The Image channel and JPG served on request can be set to update in a number of 
 		<label>"AMCREST" IP camera with ONVIF and API support.</label>
 		<description>Use for all current Amcrest Cameras, as they support an API as well as ONVIF.</description>
 		<channels>
+		<channel id="image" typeId="image"/>
 			<channel id="updateImageNow" typeId="updateImageNow"/>
-			<channel id="updateGif" typeId="updateGif"/>
-			<channel id="image" typeId="image"/>			
+			<channel id="updateGif" typeId="updateGif"/>					
 			<channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>
+			<channel id="externalMotion" typeId="externalMotion"/>
 			<channel id="motionAlarm" typeId="motionAlarm"/>
 			<channel id="enableAudioAlarm" typeId="enableAudioAlarm"/>
 			<channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm"/>
@@ -702,7 +706,9 @@ The Image channel and JPG served on request can be set to update in a number of 
 			<channel id="updateGif" typeId="updateGif"/>
 			<channel id="image" typeId="image"/>			
 			<channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>
+			<channel id="externalMotion" typeId="externalMotion"/>
 			<channel id="motionAlarm" typeId="motionAlarm"/>
+			<channel id="lastMotionType" typeId="lastMotionType"/>
 			<channel id="enableAudioAlarm" typeId="enableAudioAlarm"/>
 			<channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm"/>
 			<channel id="audioAlarm" typeId="audioAlarm"/>	 
@@ -730,7 +736,6 @@ The Image channel and JPG served on request can be set to update in a number of 
 			<channel id="rtspUrl" typeId="rtspUrl"/>
 			<channel id="imageUrl" typeId="imageUrl"/>
 			<channel id="hlsUrl" typeId="hlsUrl"/> 
-			<channel id="lastMotionType" typeId="lastMotionType"/>
 		</channels>
 		<config-description>
 
@@ -927,8 +932,10 @@ The Image channel and JPG served on request can be set to update in a number of 
 		<channels>
 			<channel id="updateImageNow" typeId="updateImageNow"/>
 			<channel id="updateGif" typeId="updateGif"/>
-			<channel id="image" typeId="image"/>			
+			<channel id="image" typeId="image"/>
+			<channel id="externalMotion" typeId="externalMotion"/>			
 			<channel id="motionAlarm" typeId="motionAlarm"/>
+			<channel id="lastMotionType" typeId="lastMotionType"/>
 			<channel id="activateAlarmOutput" typeId="activateAlarmOutput"/>
 			<channel id="activateAlarmOutput2" typeId="activateAlarmOutput2"/>
 			<channel id="doorBell" typeId="doorBell"/>
@@ -938,7 +945,6 @@ The Image channel and JPG served on request can be set to update in a number of 
 			<channel id="rtspUrl" typeId="rtspUrl"/>
 			<channel id="imageUrl" typeId="imageUrl"/>
 			<channel id="hlsUrl" typeId="hlsUrl"/>
-			<channel id="lastMotionType" typeId="lastMotionType"/>
 		</channels>		
 		<config-description>
 
@@ -1125,7 +1131,9 @@ The Image channel and JPG served on request can be set to update in a number of 
 		<channel id="updateGif" typeId="updateGif"/>
 			<channel id="image" typeId="image"/>
 			<channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>
+			<channel id="externalMotion" typeId="externalMotion"/>
 			<channel id="motionAlarm" typeId="motionAlarm"/>
+			<channel id="lastMotionType" typeId="lastMotionType"/>
 			<channel id="enableAudioAlarm" typeId="enableAudioAlarm"/>
 			<channel id="audioAlarm" typeId="audioAlarm"/>
 			<channel id="thresholdAudioAlarm" typeId="thresholdAudioAlarm"/>
@@ -1140,7 +1148,6 @@ The Image channel and JPG served on request can be set to update in a number of 
 			<channel id="rtspUrl" typeId="rtspUrl"/>
 			<channel id="imageUrl" typeId="imageUrl"/>
 			<channel id="hlsUrl" typeId="hlsUrl"/>
-			<channel id="lastMotionType" typeId="lastMotionType"/>
 		</channels>		
 		<config-description>
 
@@ -1345,6 +1352,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 			<channel id="updateGif" typeId="updateGif"/>
 			<channel id="image" typeId="image"/>			
 			<channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>
+			<channel id="externalMotion" typeId="externalMotion"/>
 			<channel id="motionAlarm" typeId="motionAlarm"/>
 			<channel id="pirAlarm" typeId="pirAlarm"/>			 
 			<channel id="enableLineCrossingAlarm" typeId="enableLineCrossingAlarm"/>
@@ -1566,6 +1574,7 @@ The Image channel and JPG served on request can be set to update in a number of 
 			<channel id="updateGif" typeId="updateGif"/>
 			<channel id="image" typeId="image"/>
 			<channel id="enableMotionAlarm" typeId="enableMotionAlarm"/>
+			<channel id="externalMotion" typeId="externalMotion"/>
 			<channel id="enablePirAlarm" typeId="enablePirAlarm"/>
 			<channel id="enableAudioAlarm" typeId="enableAudioAlarm"/>
 			<channel id="enableExternalAlarmInput" typeId="enableExternalAlarmInput"/>
@@ -1951,6 +1960,13 @@ The Image channel and JPG served on request can be set to update in a number of 
 		<description>By using this feature you can stop the camera from sending emails when you are actually home.</description>
 		<category>Motion</category>
 		</channel-type>
+		
+		<channel-type id="externalMotion">
+        <item-type>Switch</item-type>
+        <label>Externally trigger the Motion Alarm</label>
+        <description>Use other sensors external to the camera like a ZWave PIR sensor to flag that the camera has motion in its field of view.</description>
+        <category>Motion</category>
+        </channel-type>
 		
 		<channel-type id="controlMotionAlarm">
 		<item-type>Dimmer</item-type>
