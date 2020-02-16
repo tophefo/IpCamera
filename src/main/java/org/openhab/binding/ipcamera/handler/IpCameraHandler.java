@@ -1501,11 +1501,11 @@ public class IpCameraHandler extends BaseThingHandler {
     }
 
     void bringCameraOnline() {
+
         // Instar needs the host IP before thing can come online.
         if (!"-1".contentEquals(config.get(CONFIG_SERVER_PORT).toString())) {
             startStreamServer(true);
         }
-
         updateStatus(ThingStatus.ONLINE);
         listOfOnlineCameraHandlers.add(this);
         listOfOnlineCameraUID.add(getThing().getUID().getId());

@@ -42,7 +42,8 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
     private String username, password;
     private String httpMethod = "", httpUrl = "";
     private byte ncCounter = 0;
-    String nonce = "empty", opaque = "empty", qop = "empty", realm = "empty";
+    String nonce = "", opaque = "", qop = "";
+    String realm = "";
 
     public MyNettyAuthHandler(String user, String pass, String method, String url, ThingHandler handle) {
         myHandler = (IpCameraHandler) handle;
@@ -132,7 +133,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
 
             /////// Fresh Digest Authenticate method follows as Basic is already handled and returned ////////
             realm = searchString(authenticate, "realm=\"");
-            if (realm == null) {
+            if (realm == "") {
                 logger.warn("Could not find a valid WWW-Authenticate response in :{}", authenticate);
                 return "Error";
             }
@@ -149,7 +150,7 @@ public class MyNettyAuthHandler extends ChannelDuplexHandler {
             }
 
             String stale = searchString(authenticate, "stale=\"");
-            if (stale == null) {
+            if (stale == "") {
             } else if (stale.equalsIgnoreCase("true")) {
                 logger.debug("Camera reported stale=true which normally means the NONCE has expired.");
             }

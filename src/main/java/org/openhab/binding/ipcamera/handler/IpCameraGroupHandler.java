@@ -17,6 +17,7 @@ import static org.openhab.binding.ipcamera.IpCameraBindingConstants.*;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
@@ -83,7 +84,9 @@ public class IpCameraGroupHandler extends BaseThingHandler {
     public String playList = "";
     String playingNow = "";
     public int cameraIndex = 0;
-    boolean hlsTurnedOn = false;
+    public boolean hlsTurnedOn = false;
+    int entries = 0;
+    BigDecimal numberOfFiles = new BigDecimal(1);
     int mediaSequence = 1;
 
     public IpCameraGroupHandler(Thing thing) {
@@ -103,10 +106,8 @@ public class IpCameraGroupHandler extends BaseThingHandler {
         return (String) handle.config.get(CONFIG_FFMPEG_OUTPUT);
     }
 
-    private String parseLastFile(int cameraIndex) {
-        logger.debug("parsing cameras playlist now");
+    private String readCamerasPlaylist(int cameraIndex) {
         String camerasm3u8 = "";
-        String temp = "";
         IpCameraHandler handle = cameraOrder.get(cameraIndex);
         try {
             String file = handle.config.get(CONFIG_FFMPEG_OUTPUT).toString() + "ipcamera.m3u8";
@@ -114,35 +115,46 @@ public class IpCameraGroupHandler extends BaseThingHandler {
         } catch (IOException e) {
             logger.error("error occured:{}", e);
         }
-        int lastLocation = camerasm3u8.lastIndexOf("#EXTINF:");
-        if (lastLocation != -1) {
-            temp = camerasm3u8.substring(lastLocation);
-            temp = temp.replace("ipcamera", cameraIndex + "ipcamera"); // add index so we can then fetch output path
-        }
-        return temp;
+        return camerasm3u8;
     }
 
-    int entries = 0;
+    String keepLast(String string, int numberToRetain) {
+        int start = string.length();
+        for (int loop = numberToRetain; loop > 0; loop--) {
+            start = string.lastIndexOf("#EXTINF:", start - 1);
+        }
+        entries = entries + numberToRetain;
+        return string.substring(start);
+    }
+
+    String removeFromStart(String string, int numberToRemove) {
+        int start = 0;
+        for (int loop = numberToRemove; loop > 0; loop--) {
+            start = string.indexOf("#EXTINF:", start + 1);
+        }
+        mediaSequence = mediaSequence + numberToRemove;
+        entries = entries - numberToRemove;
+        return playingNow.substring(start);
+    }
 
     public void setPlayList() {
-        String playNext = parseLastFile(cameraIndex);
-        if (playingNow.equals("")) {
-            playingNow = playNext;
-            playNext = "";
-            entries = 1;
-        } else {
-            int found = playList.indexOf("#EXTINF:"); // first occurrence we want to remove
-            found = playList.indexOf("#EXTINF:", found + 2); // search for second
-            if (found == -1 || entries < 4) { // allows number of segments in playlist to be X
-                playingNow = playingNow + playNext;
-                playNext = "";
-                entries++;
-            } else {
-                playingNow = playList.substring(found);
-            }
+        String m3u8File = readCamerasPlaylist(cameraIndex);
+        BigDecimal segmentLength = new BigDecimal(
+                m3u8File.substring(m3u8File.lastIndexOf("#EXTINF:") + 8, m3u8File.lastIndexOf(",")));
+        logger.debug("assmebling with segments that are {} seconds long", segmentLength);
+        numberOfFiles = pollTimeInSeconds.divide(segmentLength, 6, RoundingMode.HALF_UP);
+        logger.debug("Keeping the last {} files from the cameras playlist.", numberOfFiles.intValue());
+        if (numberOfFiles.intValue() < 1) {
+            numberOfFiles = new BigDecimal(1);
         }
-        playList = "#EXTM3U\n" + "#EXT-X-VERSION:3\n" + "#EXT-X-ALLOW-CACHE:NO\n" + "#EXT-X-TARGETDURATION:2\n"
-                + "#EXT-X-MEDIA-SEQUENCE:" + mediaSequence++ + "\n" + playingNow + "#EXT-X-DISCONTINUITY\n" + playNext;
+        m3u8File = keepLast(m3u8File, numberOfFiles.intValue());
+        m3u8File = m3u8File.replace("ipcamera", cameraIndex + "ipcamera"); // add index so we can then fetch output path
+        if (segmentLength.intValue() * entries > pollTimeInSeconds.intValue()) {
+            playingNow = removeFromStart(playingNow, numberOfFiles.intValue());
+        }
+        playingNow = playingNow + "#EXT-X-DISCONTINUITY\n" + m3u8File;
+        playList = "#EXTM3U\n" + "#EXT-X-VERSION:3\n" + "#EXT-X-ALLOW-CACHE:NO\n" + "#EXT-X-TARGETDURATION:4\n"
+                + "#EXT-X-MEDIA-SEQUENCE:" + mediaSequence + "\n" + playingNow;
     }
 
     private IpCameraGroupHandler getHandle() {
@@ -270,6 +282,8 @@ public class IpCameraGroupHandler extends BaseThingHandler {
         if (config.get(CONFIG_FORTH_CAM) != null) {
             addIfOnline(config.get(CONFIG_FORTH_CAM).toString());
         }
+        // Cameras can now send events of when they go on and offline.
+        IpCameraHandler.listOfGroupHandlers.add(this);
     }
 
     int checkForMotion(int nextCamerasIndex) {
@@ -290,9 +304,9 @@ public class IpCameraGroupHandler extends BaseThingHandler {
         @Override
         public void run() {
 
-            // if (cameraOrder.isEmpty()) {
-            // createCameraOrder();
-            // }
+            if (cameraOrder.isEmpty()) {
+                createCameraOrder();
+            }
             if (++cameraIndex >= cameraOrder.size()) {
                 cameraIndex = 0;
                 if (mediaSequence > 2147000000) {
@@ -315,7 +329,7 @@ public class IpCameraGroupHandler extends BaseThingHandler {
             switch (channelUID.getId()) {
                 case CHANNEL_START_STREAM:
                     if ("ON".equals(command.toString())) {
-                        logger.info("Starting HLS generation for all cameras.");
+                        logger.info("Starting HLS generation for all cameras in group.");
                         hlsTurnedOn = true;
                         for (IpCameraHandler handler : cameraOrder) {
                             handler.handleCommand(handler.getThing().getChannel(CHANNEL_START_STREAM).getUID(),
@@ -333,37 +347,30 @@ public class IpCameraGroupHandler extends BaseThingHandler {
     public void initialize() {
         logger.debug("initialize() called for a group camera thing.");
         config = thing.getConfiguration();
-        updateStatus(ThingStatus.ONLINE);
-        try {
-            TimeUnit.SECONDS.sleep(6);
-        } catch (InterruptedException e) {
-        }
-        createCameraOrder();
-        // Cameras can now send events of when they go on and offline.
-        IpCameraHandler.listOfGroupHandlers.add(this);
         serverPort = Integer.parseInt(config.get(CONFIG_SERVER_PORT).toString());
         pollTimeInSeconds = new BigDecimal(config.get(CONFIG_POLL_CAMERA_MS).toString());
         motionChangesOrder = (boolean) config.get(CONFIG_MOTION_CHANGES_ORDER);
-        pollTimeInSeconds = pollTimeInSeconds.divide(new BigDecimal(1000));
+        pollTimeInSeconds = pollTimeInSeconds.divide(new BigDecimal(1000), 1, RoundingMode.HALF_UP);
         if (serverPort == -1) {
             logger.warn("The SERVER_PORT = -1 which disables a lot of features. See readme for more info.");
         } else if (serverPort < 1025) {
             logger.warn("The SERVER_PORT is <= 1024 and may cause permission errors under Linux, try a higher port.");
         }
-        pollCameraGroupJob = pollCameraGroup.scheduleAtFixedRate(pollingCameraGroup, 10000,
-                pollTimeInSeconds.intValue() * 1000, TimeUnit.MILLISECONDS);
         if (!"-1".contentEquals(config.get(CONFIG_SERVER_PORT).toString())) {
             startStreamServer(true);
         } else {
             logger.warn("SERVER_PORT is -1 which disables all serving features of the camera group.");
         }
+        updateStatus(ThingStatus.ONLINE);
+        pollCameraGroupJob = pollCameraGroup.scheduleAtFixedRate(pollingCameraGroup, 10000,
+                Integer.parseInt(config.get(CONFIG_POLL_CAMERA_MS).toString()), TimeUnit.MILLISECONDS);
     }
 
     @Override
     public void dispose() {
         logger.info("dispose() called for a group thing.");
-        IpCameraHandler.listOfGroupHandlers.remove(this);
         startStreamServer(false);
+        IpCameraHandler.listOfGroupHandlers.remove(this);
         if (pollCameraGroupJob != null) {
             pollCameraGroupJob.cancel(true);
             pollCameraGroupJob = null;
