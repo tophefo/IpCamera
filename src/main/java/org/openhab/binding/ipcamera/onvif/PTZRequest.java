@@ -1,24 +1,17 @@
 /**
  * Copyright (c) 2010-2019 Contributors to the openHAB project
- *
+ * <p>
  * See the NOTICE file(s) distributed with this work for additional
  * information.
- *
+ * <p>
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
  * http://www.eclipse.org/legal/epl-2.0
- *
+ * <p>
  * SPDX-License-Identifier: EPL-2.0
  */
 
 package org.openhab.binding.ipcamera.onvif;
-
-import java.util.LinkedList;
-
-import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.jdt.annotation.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import be.teletask.onvif.OnvifManager;
 import be.teletask.onvif.listeners.OnvifResponseListener;
@@ -26,6 +19,12 @@ import be.teletask.onvif.models.OnvifDevice;
 import be.teletask.onvif.models.OnvifType;
 import be.teletask.onvif.requests.OnvifRequest;
 import be.teletask.onvif.responses.OnvifResponse;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.LinkedList;
 
 /**
  * The {@link PTZRequest} is responsible for handling onvif PTZ commands.
@@ -86,7 +85,7 @@ public class PTZRequest implements OnvifRequest {
 
     LinkedList<String> listOfResults(String search, String toFind) {
         LinkedList<String> results = new LinkedList<String>();
-        for (int beginIndex = 0, endIndex = 0; beginIndex != -1;) {
+        for (int beginIndex = 0, endIndex = 0; beginIndex != -1; ) {
             beginIndex = search.indexOf(toFind, beginIndex);
             if (beginIndex >= 0) {
                 endIndex = search.indexOf("\"", (beginIndex + toFind.length()));
@@ -251,10 +250,10 @@ public class PTZRequest implements OnvifRequest {
             case "AbsoluteMove":
                 return "<AbsoluteMove xmlns=\"http://www.onvif.org/ver20/ptz/wsdl\"><ProfileToken>" + mediaProfileToken
                         + "</ProfileToken><Position><PanTilt x=\"" + currentPanCamValue + "\" y=\""
-                        + currentTiltCamValue + "\" space=\"\">\n" + "                 </PanTilt>\n"
-                        + "                 <Zoom x=\"" + currentZoomCamValue + "\" space=\"\">\n"
+                        + currentTiltCamValue + "\">\n" + "                 </PanTilt>\n"
+                        + "                 <Zoom x=\"" + currentZoomCamValue + "\">\n"
                         + "                 </Zoom>\n" + "                </Position>\n"
-                        + "                <Speed><PanTilt x=\"0.0\" y=\"0.0\" space=\"\"></PanTilt><Zoom x=\"0.0\" space=\"\"></Zoom>\n"
+                        + "                <Speed><PanTilt x=\"0.0\" y=\"0.0\"></PanTilt><Zoom x=\"0.0\"></Zoom>\n"
                         + "                </Speed></AbsoluteMove>";
             case "GetNodes":
                 return "<GetNodes xmlns=\"http://www.onvif.org/ver20/ptz/wsdl\"></GetNodes>";
